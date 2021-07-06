@@ -7,45 +7,37 @@ import ru.gb.simplenas.server.utils.ServerProperyManager;
 import java.util.List;
 import java.util.Properties;
 
-public class NasServerProperyManager implements ServerProperyManager
-{
-    private static ServerProperyManager instance;
+public class NasServerProperyManager implements ServerProperyManager {
     private static final Properties properties = new Properties();
     private static final Logger LOGGER = LogManager.getLogger(NasServerProperyManager.class.getName());
+    private static ServerProperyManager instance;
 
 
-    private NasServerProperyManager ()
-    {
+    private NasServerProperyManager () {
         LOGGER.debug("создан NasServerProperyManager");
     }
 
 
-    public static ServerProperyManager getInstance()
-    {
-        if (instance == null)
-        {
+    public static ServerProperyManager getInstance () {
+        if (instance == null) {
             instance = new NasServerProperyManager();
         }
         return instance;
     }
 
-    @Override public int getPortProperty()
-    {
+    @Override public int getPortProperty () {
         return -1;
     }
 
-    @Override public String getCloudDirectory()
-    {
+    @Override public String getCloudDirectory () {
         return null;
     }
 
-    @Override public List<String> getWelcomeFileList()
-    {
+    @Override public List<String> getWelcomeFileList () {
         return null;
     }
 
-    @Override public List<String> getWelcomeDirsList()
-    {
+    @Override public List<String> getWelcomeDirsList () {
         return null;
     }
 

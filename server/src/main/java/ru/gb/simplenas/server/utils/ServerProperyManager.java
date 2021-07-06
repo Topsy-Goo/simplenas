@@ -2,14 +2,13 @@ package ru.gb.simplenas.server.utils;
 
 import java.util.List;
 
-public interface ServerProperyManager
-{
-    int getPortProperty();
+public interface ServerProperyManager {
+    int getPortProperty ();
 
-    List<String> getWelcomeFileList();
+    List<String> getWelcomeFileList ();
 
-    List<String> getWelcomeDirsList();
+    List<String> getWelcomeDirsList ();
 
-    String getCloudDirectory();
+    String getCloudDirectory ();
 
 }

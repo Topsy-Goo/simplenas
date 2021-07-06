@@ -17,8 +17,7 @@ import java.util.List;
 import static ru.gb.simplenas.common.CommonData.MAINWND_TITLE;
 
 
-public class CFactory
-{
+public class CFactory {
     public static final String SBAR_TEXT_SERVER_NOCONNECTION = "Соединение с сервером отсутствует.";
     public static final String SBAR_TEXT_SERVER_ONAIR = "Есть подключение к серверу.";
     public static final String SBAR_TEXT_FOLDER_READING_IN_PROGRESS = "Выполняется чтение содержимого папки.";
@@ -45,7 +44,7 @@ public class CFactory
     public static final String PROMPT_FORMAT_FILE_DELETION_CONFIRMATION = "Подтвердите удаление файла:\n\n%s";
     public static final String PROMPT_FOLDERS_EXCHANGE_NOT_SUPPORTED = "Пересылка папок не поддерживается.";
     public static final String PROMPT_DIR_ENTRY_DOESNOT_EXISTS = "Папка или файл не существуют!";
-    public static final String STR_DEF_FOLDER = "user.dir"; //< текущая папка юзера;   "user.home" < папка в учётной записи
+    public static final String STR_DEF_FOLDER = "user.dir";
     public static final String ERROR_UNABLE_CONNECT_TO_SERVER = "Не удалось подключиться к серверу.";
     public static final String ERROR_USUPPORTED_OPERATION_REQUESTED = "Запрошена неподдерживаемая операция.";
     public static final String ERROR_ABNORMAL_APPLICATION_BEHAVIOUR = "Abnormal application behaviour.";
@@ -55,35 +54,26 @@ public class CFactory
 
     private CFactory () {}
 
-    static NetClient newNetClient (NasCallback cbDisconnection)   {   return new NasNetClient (cbDisconnection);   }
+    static NetClient newNetClient (NasCallback cbDisconnection) { return new NasNetClient(cbDisconnection); }
 
-//-------------------------- методы для работы с контекстным меню -----------------------------------------------*/
-
-    public static void setContextMenuEventHandler_OnShoing (ContextMenu menu, TableView<TableFileInfo> tv)
-    {
-        ContextMenuManager.setContextMenuEventHandler_OnShoing (menu, tv);
+    public static void setContextMenuEventHandler_OnShoing (ContextMenu menu, TableView<TableFileInfo> tv) {
+        ContextMenuManager.setContextMenuEventHandler_OnShoing(menu, tv);
     }
 
-//-------------------------- методы для работы с TableView ------------------------------------------------------*/
-
-    public static Point populateTv (@NotNull TableView<TableFileInfo> tv, @NotNull List<FileInfo> infolist)
-    {
-        return TableViewManager.populateTv (tv, infolist);
+    public static Point populateTv (@NotNull TableView<TableFileInfo> tv, @NotNull List<FileInfo> infolist) {
+        return TableViewManager.populateTv(tv, infolist);
     }
 
-    public static Point statisticsTv (@NotNull TableView<TableFileInfo> tv)
-    {
-        return TableViewManager.statisticsTv (tv);
+    public static Point statisticsTv (@NotNull TableView<TableFileInfo> tv) {
+        return TableViewManager.statisticsTv(tv);
     }
 
-    public static TableFileInfo addItemAsFolder (@NotNull String name, @NotNull TableView<TableFileInfo> tv)
-    {
-        return TableViewManager.addItemAsFolder (name, tv);
+    public static TableFileInfo addItemAsFolder (@NotNull String name, @NotNull TableView<TableFileInfo> tv) {
+        return TableViewManager.addItemAsFolder(name, tv);
     }
 
-    public static void deleteTvItem (TableView<TableFileInfo> tv, TableFileInfo t)
-    {
-        TableViewManager.deleteTvItem (tv, t);
+    public static void deleteTvItem (TableView<TableFileInfo> tv, TableFileInfo t) {
+        TableViewManager.deleteTvItem(tv, t);
     }
 
 }

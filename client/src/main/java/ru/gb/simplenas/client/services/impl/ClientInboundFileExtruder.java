@@ -12,37 +12,32 @@ import java.nio.file.Paths;
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static java.nio.file.StandardOpenOption.WRITE;
 
-public class ClientInboundFileExtruder extends InboundFileExtruder
-{
-    private ClientInboundFileExtruder instance;
+public class ClientInboundFileExtruder extends InboundFileExtruder {
     private static final Logger LOGGER = LogManager.getLogger(ClientInboundFileExtruder.class.getName());
+    private ClientInboundFileExtruder instance;
 
-    public ClientInboundFileExtruder()
-    {
+    public ClientInboundFileExtruder () {
         LOGGER.debug("создан ClientInboundFileExtruder");
     }
 
-//подготовка к скачиванию файла с сервера
-    public boolean initialize (NasMsg nm, String toLocalFolder)
-    {
+
+    public boolean initialize (NasMsg nm, String toLocalFolder) {
         boolean result = false;
-        if (instance == null)
-        {
+        if (instance == null) {
             instance = this;
-            try {   pTargetDir = Paths.get (toLocalFolder);
-                    pTmpDir = Files.createTempDirectory (pTargetDir, null);
+            try {
+                pTargetDir = Paths.get(toLocalFolder);
+                pTmpDir = Files.createTempDirectory(pTargetDir, null);
 
-                    pFileInTmpFolder = pTmpDir.resolve (nm.fileInfo().getFileName());
-                    outputStream = Files.newOutputStream (pFileInTmpFolder, CREATE_NEW, WRITE/*, SYNC*/);
+                pFileInTmpFolder = pTmpDir.resolve(nm.fileInfo().getFileName());
+                outputStream = Files.newOutputStream(pFileInTmpFolder, CREATE_NEW, WRITE);
 
-                    pTargetFile = pTargetDir.resolve(nm.fileInfo().getFileName());
-                    result = true;
-                }
+                pTargetFile = pTargetDir.resolve(nm.fileInfo().getFileName());
+                result = true;
+            }
             catch (IOException e) {e.printStackTrace();}
-            finally
-            {
-                if (!result)
-                {
+            finally {
+                if (!result) {
                     cleanup();
                 }
                 extrudingError = !result;
@@ -53,4 +48,3 @@ public class ClientInboundFileExtruder extends InboundFileExtruder
     }
 
 }
-//---------------------------------------------------------------------------------------------------------------*/

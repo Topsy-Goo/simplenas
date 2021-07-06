@@ -15,40 +15,34 @@ import java.nio.file.attribute.FileTime;
 
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
-public class InboundFileExtruder implements FileExtruder
-{
+public class InboundFileExtruder implements FileExtruder {
+    private static final Logger LOGGER = LogManager.getLogger(InboundFileExtruder.class.getName());
     protected OutputStream outputStream;
     protected Path pTmpDir;
     protected Path pFileInTmpFolder;
     protected Path pTargetDir;
     protected Path pTargetFile;
     protected boolean extrudingError;
-    private static final Logger LOGGER = LogManager.getLogger(InboundFileExtruder.class.getName());
 
+    @Override public boolean initialize (final NasMsg nm, final String strData) { return false; }
 
-    @Override public boolean initialize (final NasMsg nm, final String strData)    {   return false;   }
+    @Override public boolean getState () { return !extrudingError; }
 
-    @Override public boolean getState() {   return !extrudingError;   }
-
-    @Override public int dataBytes2File (final NasMsg nm)
-    {
+    @Override public int dataBytes2File (final NasMsg nm) {
         int chunks = 0;
-        if (!extrudingError)
-        {
+        if (!extrudingError) {
             byte[] array = (byte[]) nm.data();
-            int size = (int) nm.fileInfo().getFilesize();  //< количество байтов для считывания из nm.data.
+            int size = (int) nm.fileInfo().getFilesize();
 
-            if (array != null && size > 0)
-            {
-                LOGGER.debug("получены данные("+size+").");
-                try
-                {   outputStream.write (array, 0, size);
-                    outputStream.flush();   //< этот flush() частично решил проблему скачивания больших файлов
+            if (array != null && size > 0) {
+                LOGGER.debug("получены данные(" + size + ").");
+                try {
+                    outputStream.write(array, 0, size);
+                    outputStream.flush();
                     LOGGER.debug("данные записаны.");
                     chunks++;
                 }
-                catch (IOException e)
-                {
+                catch (IOException e) {
                     extrudingError = true;
                     cleanup();
                     e.printStackTrace();
@@ -58,48 +52,40 @@ public class InboundFileExtruder implements FileExtruder
         return chunks;
     }
 
-    @Override public boolean endupExtruding (NasMsg nm)
-    {
-    //переносим файл из временной папки в папку назначения
+    @Override public boolean endupExtruding (NasMsg nm) {
         boolean ok = false;
-        try
-        {
-            if (!extrudingError)
-            {
-                Files.move(pFileInTmpFolder, pTargetFile, REPLACE_EXISTING);  //< разрешение на перезапись у нас уже есть
-                //поправляем время создания и время изменения
-                Files.getFileAttributeView(pTargetFile, BasicFileAttributeView.class)
-                     .setTimes (FileTime.from(nm.fileInfo().getModified(), CommonData.filetimeUnits),
-                                null,
-                                FileTime.from(nm.fileInfo().getCreated(), CommonData.filetimeUnits));
+        try {
+            if (!extrudingError) {
+                Files.move(pFileInTmpFolder, pTargetFile, REPLACE_EXISTING);
+                Files.getFileAttributeView(pTargetFile, BasicFileAttributeView.class).setTimes(FileTime.from(nm.fileInfo().getModified(), CommonData.filetimeUnits), null, FileTime.from(nm.fileInfo().getCreated(), CommonData.filetimeUnits));
                 ok = true;
             }
         }
-        catch (IOException e)
-        {
+        catch (IOException e) {
             extrudingError = true;
             e.printStackTrace();
         }
-        finally
-        {
+        finally {
             cleanup();
         }
         return ok;
     }
 
-    @Override public void discard()    {   extrudingError = true;   }
-    @Override public void close()   {   cleanup();  }
+    @Override public void discard () { extrudingError = true; }
 
-//завершение операции получения файла от клиента + очистка полей, используемых при выполнении такой операции
-    protected void cleanup()
-    {
-        try {   if (outputStream != null) { outputStream.flush();   outputStream.close(); }
-                if (pFileInTmpFolder != null) Files.deleteIfExists(pFileInTmpFolder);
-                if (pTmpDir != null)          Files.deleteIfExists (pTmpDir);
+    @Override public void close () { cleanup(); }
+
+    protected void cleanup () {
+        try {
+            if (outputStream != null) {
+                outputStream.flush();
+                outputStream.close();
             }
-        catch (IOException e){e.printStackTrace();}
-        finally
-        {
+            if (pFileInTmpFolder != null) { Files.deleteIfExists(pFileInTmpFolder); }
+            if (pTmpDir != null) { Files.deleteIfExists(pTmpDir); }
+        }
+        catch (IOException e) {e.printStackTrace();}
+        finally {
             pTmpDir = null;
             pTargetDir = null;
             pFileInTmpFolder = null;
