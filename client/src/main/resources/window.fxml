@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.collections.FXCollections?>
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.control.cell.PropertyValueFactory?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Text?>
+
+<?import ru.gb.simplenas.client.services.impl.FormattedTableCellFactory?>
+<?import ru.gb.simplenas.common.structs.TableFileInfo?>
+<VBox
+        xmlns:fx="http://javafx.com/fxml"
+        xmlns="http://javafx.com/javafx"
+        fx:controller="ru.gb.simplenas.client.Controller"
+        minHeight="600.0" minWidth="800.0"
+
+        fx:id="rootbox"
+        alignment="center">
+
+
+    <!-- Пути  -->
+    <HBox>
+        <!-- Названия полей ввода (статические элементы)  -->
+        <VBox HBox.hgrow="NEVER" VBox.vgrow="NEVER">
+            <VBox VBox.vgrow="ALWAYS">
+                <Text text="Текущая локальная папка: "/>
+                <VBox.margin><Insets top="3" bottom="10" right="3"/></VBox.margin>
+            </VBox>
+            <VBox VBox.vgrow="ALWAYS">
+                <Text text="Текущая удалённая папка: "/>
+            </VBox>
+        </VBox>
+        <!-- поля ввода - Адресные строки -->
+        <VBox HBox.hgrow="ALWAYS" VBox.vgrow="NEVER">
+            <VBox HBox.hgrow="ALWAYS">
+                <TextField fx:id="textfieldCurrentPath_Client" onAction="#onactionTextField_Client_ApplyAsPath"/>
+                <VBox.margin><Insets bottom="5"/></VBox.margin>
+            </VBox>
+            <VBox HBox.hgrow="ALWAYS">
+                <TextField fx:id="textfieldCurrentPath_Server" onAction="#onactionTextField_Server_ApplyAsPath"/>
+            </VBox>
+        </VBox>
+        <!-- Кнопки для перехода на 1 уровень вверх       -->
+        <VBox HBox.hgrow="NEVER">
+            <VBox>
+                <Button text="▲" fx:id="buttonLevelUp_Client" onAction="#onactionButton_Client_LevelUp"/>
+                <VBox.margin><Insets bottom="5" left="3"/></VBox.margin>
+            </VBox>
+            <VBox>
+                <Button text="▲" fx:id="buttonLevelUp_Server" onAction="#onactionButton_Server_LevelUp"/>
+                <VBox.margin><Insets left="3"/></VBox.margin>
+            </VBox>
+        </VBox>
+        <VBox.margin><Insets top="10" bottom="5" right="10" left="10"/></VBox.margin>
+    </HBox>
+
+
+    <!-- Панели (панели расталкивают отстальные элементы управления к границам окна). maxWidth="10" minWidth="10" prefWidth="10"  -->
+	<SplitPane VBox.vgrow="ALWAYS" >
+<!--    <HBox HBox.hgrow="ALWAYS">-->
+
+		<!-- Client TableView -->
+		<TableView fx:id="tvClientSide" minWidth="100" editable="true" onMouseClicked="#tvClientOnMouseClicked"> <!--   -->
+
+            <HBox.margin><Insets top="5" bottom="3" right="5" left="10"/></HBox.margin>
+
+            <columns>
+            	<TableColumn text="D" fx:id="columnClientFolderMark" minWidth="30" prefWidth="30">
+					<cellValueFactory><PropertyValueFactory property="folderMark" />
+					</cellValueFactory>
+				</TableColumn>
+				<TableColumn text="Имя" fx:id="columnClientFileName" minWidth="20" prefWidth="150"> <!--  cellValueFactory="#cellValueFactory_Name"	editable="false"  -->
+					<cellValueFactory><PropertyValueFactory property="fileName" />
+					</cellValueFactory>
+				</TableColumn>
+				<TableColumn text="Размер" fx:id="columnClientFileSize" minWidth="20" prefWidth="90" > <!--  cellValueFactory="#cellValueFactory_Size"	  -->
+					<cellValueFactory><PropertyValueFactory property="size" />
+					</cellValueFactory>
+					<cellFactory>
+						<FormattedTableCellFactory alignment="right">
+						</FormattedTableCellFactory>
+					</cellFactory>
+				</TableColumn>
+				<TableColumn text="Изменён" fx:id="columnClientModified" minWidth="20" prefWidth="130"> <!--  cellValueFactory="#cellValueFactory_mTime"  -->
+					<cellValueFactory><PropertyValueFactory property="timeModified" />
+					</cellValueFactory>
+				</TableColumn>
+				<TableColumn text="Создан" fx:id="columnClientCreated" minWidth="20" prefWidth="130"> <!--  cellValueFactory="#cellValueFactory_cTime"  -->
+					<cellValueFactory><PropertyValueFactory property="timeCreated" />
+					</cellValueFactory>
+				</TableColumn>
+			</columns>
+
+			<!-- Строки можно добавлять вручную, предварительно создав класс TableFileInfo. -->
+
+<!--			<sortOrder>-->
+<!--				<fx:reference source="columnClientFolderMark"/>-->
+<!--			</sortOrder>-->
+
+			<contextMenu>
+				<ContextMenu fx:id="menuClientTableActions">
+					<items>
+						<!-- userData показывает для каких объектов каталога предназначен пункт. -->
+						<MenuItem text="Открыть папку" 				userData="dir" onAction="#onactionMenuClient_OpenFolder" mnemonicParsing="false"/>
+						<MenuItem text="Отправить файл на сервер"	userData="file" onAction="#onactionUpload" mnemonicParsing="false"/>
+						<MenuItem text="Создать папку"							onAction="#onactionMenuClient_CreateFolder" mnemonicParsing="false"/>
+						<SeparatorMenuItem/>
+						<MenuItem text="Удалить"					userData="any"	onAction="#onactionClientDelete" mnemonicParsing="false"/>
+					</items>
+				</ContextMenu>
+			</contextMenu>
+
+		</TableView>
+
+		<!-- Server TableView -->
+		<TableView fx:id="tvServerSide" minWidth="100" editable="true" onMouseClicked="#tvServerOnMouseClicked"> <!--   -->
+
+            <HBox.margin><Insets top="5" bottom="3" right="5" left="10"/></HBox.margin>
+
+            <columns>
+            	<TableColumn text="D" fx:id="columnServerFolderMark" minWidth="30" prefWidth="30">
+					<cellValueFactory><PropertyValueFactory property="folderMark" />
+					</cellValueFactory>
+				</TableColumn>
+				<TableColumn text="Имя" fx:id="columnServerFileName" minWidth="20" prefWidth="150"> <!--  cellValueFactory="#cellValueFactory_Name"	editable="false"  -->
+					<cellValueFactory><PropertyValueFactory property="fileName" />
+					</cellValueFactory>
+				</TableColumn>
+				<TableColumn text="Размер" fx:id="columnServerFileSize" minWidth="20" prefWidth="90" > <!--  cellValueFactory="#cellValueFactory_Size"	  -->
+					<cellValueFactory><PropertyValueFactory property="size" />
+					</cellValueFactory>
+					<cellFactory>
+						<FormattedTableCellFactory alignment="right">
+						</FormattedTableCellFactory>
+					</cellFactory>
+				</TableColumn>
+				<TableColumn text="Изменён" fx:id="columnServerModified" minWidth="20" prefWidth="130"> <!--  cellValueFactory="#cellValueFactory_mTime"  -->
+					<cellValueFactory><PropertyValueFactory property="timeModified" />
+					</cellValueFactory>
+				</TableColumn>
+				<TableColumn text="Создан" fx:id="columnServerCreated" minWidth="20" prefWidth="130"> <!--  cellValueFactory="#cellValueFactory_cTime"  -->
+					<cellValueFactory><PropertyValueFactory property="timeCreated" />
+					</cellValueFactory>
+				</TableColumn>
+			</columns>
+
+			<!-- Строки можно добавлять вручную, предварительно создав класс TableFileInfo. -->
+
+<!--			<sortOrder>-->
+<!--				<fx:reference source="columnServerFolderMark"/>-->
+<!--			</sortOrder>-->
+
+			<contextMenu>
+				<ContextMenu fx:id="menuServerTableActions">
+					<items>
+						<MenuItem text="Открыть папку"			userData="dir"	onAction="#onactionMenuServer_OpenFolder" mnemonicParsing="false"/>
+						<MenuItem text="Отправить файл клиенту"	userData="file"	onAction="#onactionDownload" mnemonicParsing="false"/>
+						<MenuItem text="Создать папку"							onAction="#onactionMenuServer_CreateFolder" mnemonicParsing="false"/>
+						<SeparatorMenuItem/>
+						<MenuItem text="Удалить" userData="any" onAction="#onactionServerDelete" mnemonicParsing="false"/>
+						<MenuItem text="Вырезать"		visible="false"	onAction="#onactionMenuServer_CutFolder" mnemonicParsing="false"/>
+						<MenuItem text="Вставить"		visible="false"	onAction="#onactionMenuServer_PasteFolder" mnemonicParsing="false"/>
+					</items>
+				</ContextMenu>
+			</contextMenu>
+
+		</TableView>
+
+	</SplitPane>
+
+
+    <!-- Кнопки Upload (Отправить) и Download (Получить)  -->
+    <HBox>
+        <HBox HBox.hgrow="ALWAYS" alignment="CENTER">
+            <Button text="Отправить на сервер &gt;"
+                    fx:id="buttonUpload"
+                    onAction="#onactionUpload"
+                    alignment="CENTER" prefWidth="200" prefHeight="35"/>
+        </HBox>
+        <HBox HBox.hgrow="ALWAYS" alignment="CENTER">
+            <Button text="&lt; Загрузить с сервера"
+                    fx:id="buttonDownload"
+                    onAction="#onactionDownload"
+                    alignment="CENTER" prefWidth="200" prefHeight="35"/>
+        </HBox>
+        <VBox.margin><Insets top="5" bottom="3" right="10" left="10"/></VBox.margin>
+    </HBox>
+
+
+    <!-- Строка состояния  -->
+    <HBox>
+        <Text fx:id="textStatusBar"/>
+        <VBox.margin><Insets top="5" bottom="7" right="7" left="7"/></VBox.margin>
+    </HBox>
+
+</VBox>

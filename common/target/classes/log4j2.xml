@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Configuration>
+
+    <Properties>
+        <Property name="basePath">logs</Property>
+    </Properties>
+
+	<!-- ——————————————————————————————————————————————————————————————————————————— -->
+
+	<Appenders>
+		<File name="FILE_APPENDER_CLIENT" fileName="${basePath}/client.log" append="false">
+			<PatternLayout pattern="%n%-3p [%t] %C{2} (%F:%L) %d{yyyy-MM-dd HH:mm:ss} ••• %m." />
+		</File>
+
+		<File name="FILE_APPENDER_COMMON" fileName="${basePath}/common.log" append="false">
+			<PatternLayout pattern="%n%-3p [%t] %C{2} (%F:%L) %d{yyyy-MM-dd HH:mm:ss} ••• %m." />
+		</File>
+
+		<File name="FILE_APPENDER_SERVER" fileName="${basePath}/server.log" append="false">
+			<PatternLayout pattern="%n%-3p [%t] %C{2} (%F:%L) %d{yyyy-MM-dd HH:mm:ss} ••• %m." />
+		</File>
+
+		<Console name="STDOUT_APPENDER" target="SYSTEM_OUT">
+			<PatternLayout pattern="%n%-3p [%t] %c{2} (%F:%L) ••• %m." />
+		</Console>
+
+		<Console name="STDOUT_APPENDER_ROOT" target="SYSTEM_OUT">
+			<PatternLayout pattern="%n%-3p [%t] %c{2} (%F:%L) ••• %m." />
+		</Console>
+
+		<Console name="STDOUT_APPENDER_ERR" target="SYSTEM_ERR">
+			<PatternLayout pattern="%n%-4p %c{2} [%t] (%F:%L) ••• %m." />
+		</Console>
+
+	</Appenders>
+
+	<!-- ——————————————————————————————————————————————————————————————————————————— -->
+	<!--	Trace  <  Debug  <  Info  <  Warn  <  Error  <  Fatal	-->
+	<Loggers>
+		<Root level="error">
+<!--			<AppenderRef ref="FILE_APPENDER_CLIENT" />-->
+<!--			<AppenderRef ref="FILE_APPENDER_COMMON" />-->
+<!--			<AppenderRef ref="FILE_APPENDER_SERVER" />-->
+<!--			<AppenderRef ref="STDOUT_APPENDER_ROOT" />-->
+		</Root>
+
+        <Logger name="ru.gb.simplenas.client" level="debug" >
+        	<AppenderRef ref="STDOUT_APPENDER"/>
+        	<AppenderRef ref="FILE_APPENDER_CLIENT"/>
+        </Logger>
+
+        <Logger name="ru.gb.simplenas.common" level="debug" >
+        	<AppenderRef ref="STDOUT_APPENDER"/>
+        	<AppenderRef ref="FILE_APPENDER_COMMON"/>
+        </Logger>
+
+        <Logger name="ru.gb.simplenas.server" level="debug" >
+        	<AppenderRef ref="STDOUT_APPENDER"/>
+        	<AppenderRef ref="FILE_APPENDER_SERVER"/>
+        </Logger>
+
+	</Loggers>
+
+</Configuration>
+<!--
+Форматирование:
+	%n		- перенос строки
+	%m		- само сообщение.
+	%-5p	- печатать уровень сообщения; использовать 5 символов (указывать 3 или 4 бесполезно).
+	%d{yyyy-MM-dd HH:mm:ss}
+			- печатать временную метку; использовать указанный формат.
+	%t		- имя потока, из которого выполнена запись.
+	%C{2}	- имя класса, из которого выполнена запись; использовать 2 последних элемента имени класса.
+			Если суффикс {n} не указывать, то выводится полное имя класса.
+	%F:%L	- имя файла:номер строки, из которых вызван метод логирования.
+	Примечание: если для отображения имени класса используются более 1 элемента — %c или %c{n},
+				где n > 1, — и выражение %F:%L взято в круглые скобки, то в консоли выражение
+				%F:%L будет отображаться как ссылка на соотв.строку кода. Это справедливо для
+				IntelliJ IDEA.
+
+	(Разрешается добавлять любые символы «для красоты» — пробелы, пунктуацию, скобки, надписи, —
+	 если они не будут восприняты как форматирование.)
+
+Примеры:
+		<PatternLayout pattern="%n%-5p %c{2} [%t] (%F:%L)>> %m."/>
+
+		"%-5p %d{yyyy-MM-dd HH:mm:ss} [%t] %C (%F:%L)- %m%n"
+
+
+-->

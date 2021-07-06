@@ -1,0 +1,10 @@
+/logs/
+/cloud/
+*.class
+/client/src/main/resources/заметки.txt
+/common/src/main/resources/заметки.txt
+/server/src/main/resources/заметки.txt
+/client/target/classes/window.fxml
+/server/target/classes/заметки.txt
+/common/target/classes/заметки.txt
+/client/target/classes/заметки.txt
