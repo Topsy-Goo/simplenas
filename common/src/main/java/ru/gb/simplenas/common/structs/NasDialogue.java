@@ -20,14 +20,14 @@ public class NasDialogue
     private FileExtruder fileExtruder;
     private List<FileInfo> infolist;
     private InputStream inputStream;
-    private static final Logger LOGGER = LogManager.getLogger(NasDialogue.class.getName());
+    //private static final Logger LOGGER = LogManager.getLogger(NasDialogue.class.getName());
 
 
     private NasDialogue()
     {
         conversation = new LinkedList<>();
         chunks = 0L;
-        LOGGER.debug("создан NasDialogue");
+        //LOGGER.debug("создан NasDialogue");
         //clipboard = new LinkedList<>();
     }
     public NasDialogue (@NotNull NasMsg nm)
@@ -131,7 +131,7 @@ public class NasDialogue
             }
         catch(IOException e){e.printStackTrace();}
         finally
-        {   LOGGER.debug("удален NasDialogue");
+        {   //LOGGER.debug("удален NasDialogue");
         }
     }
 
@@ -141,7 +141,7 @@ public class NasDialogue
     {
         if (DEBUG)
         {   super.finalize();
-            LOGGER.trace("_______A dialogue object is being processed by GC right now._______");
+            //LOGGER.trace("_______A dialogue object is being processed by GC right now._______");
         }
     }
 }

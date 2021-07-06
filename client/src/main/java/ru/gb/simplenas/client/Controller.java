@@ -351,7 +351,7 @@ public class Controller implements Initializable
 
         if (netClient == null)
         {
-            errMsg = CFactory.ERROR_NO_CONNECTION_TO_REMOTE_STORAGE;
+            errMsg = ERROR_NO_CONNECTION_TO_REMOTE_STORAGE;
             alertType = WARNING;
         }
         else if (null != (tfi = tvClientSide.getSelectionModel().getSelectedItem()))
@@ -359,12 +359,12 @@ public class Controller implements Initializable
             //загрузка папок (даже пустых) не реализована
             if (tfi.getFolder())
             {
-                errMsg = CFactory.PROMPT_FOLDERS_EXCHANGE_NOT_SUPPORTED;
+                errMsg = PROMPT_FOLDERS_EXCHANGE_NOT_SUPPORTED;
                 alertType = INFORMATION;
             }
             else errMsg = uploadFileByTfi (tfi);
         }
-        if (errMsg != null)   messageBox(CFactory.ALERTHEADER_LOCAL_STORAGE, errMsg, alertType);
+        if (errMsg != null)   messageBox(ALERTHEADER_LOCAL_STORAGE, errMsg + " @", alertType);
     }
 
 //В поле ввода textfieldCurrentPath_Client нажат ENTER.
@@ -799,13 +799,13 @@ public class Controller implements Initializable
     private String uploadFileByTfi (TableFileInfo tfi)      //+
     {
         String strTargetName = tfi.getFileName();
-        String strErr = ERROR_UNABLE_TO_PERFORM;
+        String strErr = ERROR_UNABLE_TO_PERFORM + " %";
         FileInfo fi = netClient.fileInfo (strCurrentServerPath, strTargetName);
 
         if (fi != null)
         if (fi.isDirectory())
         {
-            messageBox(CFactory.ALERTHEADER_REMOUTE_STORAGE, CFactory.PROMPT_FOLDERS_EXCHANGE_NOT_SUPPORTED, WARNING);
+            messageBox(CFactory.ALERTHEADER_REMOUTE_STORAGE, PROMPT_FOLDERS_EXCHANGE_NOT_SUPPORTED, WARNING);
         }
         else if (isItSafeToUploadFile (strTargetName, fi.isExists()))
         {

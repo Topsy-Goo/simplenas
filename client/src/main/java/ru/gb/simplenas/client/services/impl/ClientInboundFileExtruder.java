@@ -15,12 +15,6 @@ import static java.nio.file.StandardOpenOption.WRITE;
 public class ClientInboundFileExtruder extends InboundFileExtruder
 {
     private ClientInboundFileExtruder instance;
-    private static final Logger LOGGER = LogManager.getLogger(ClientInboundFileExtruder.class.getName());
-
-    public ClientInboundFileExtruder()
-    {
-        LOGGER.debug("создан ClientInboundFileExtruder");
-    }
 
 //подготовка к скачиванию файла с сервера
     public boolean initialize (NasMsg nm, String toLocalFolder)

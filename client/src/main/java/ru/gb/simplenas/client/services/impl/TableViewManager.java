@@ -34,7 +34,7 @@ public class TableViewManager
     private TableView<TableFileInfo> serverTv;
     private TableColumn<TableFileInfo, String> columnClientFileName;
     private TableColumn<TableFileInfo, String> columnServerFileName;
-    private static final Logger LOGGER = LogManager.getLogger(TableViewManager.class.getName());
+    //private static final Logger LOGGER = LogManager.getLogger(TableViewManager.class.getName());
 
 
     public TableViewManager (Controller controller)
@@ -51,7 +51,7 @@ public class TableViewManager
         columnServerFileName.setCellFactory (TextFieldTableCell.<TableFileInfo> forTableColumn());
         columnClientFileName.setOnEditCommit(this::eventHandlerFolderRenameing);
         columnServerFileName.setOnEditCommit(this::eventHandlerFolderRenameing);
-        LOGGER.debug("создан TableViewManager");
+        //LOGGER.debug("создан TableViewManager");
     }
 
 

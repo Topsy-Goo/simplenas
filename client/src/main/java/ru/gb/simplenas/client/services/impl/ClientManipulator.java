@@ -229,14 +229,14 @@ public class ClientManipulator implements Manipulator
         {
             dialogue.add(nm);
 
-            if (DEBUG)
-            {
-                FileInfo fi = nm.fileInfo();
-                if (nm.opCode() == OK)
-                    LOGGER.debug("ОТДАЧА файла завершена «"+fi.getFileName()+"»: размер="+fi.getFilesize()+", chuncks="+dialogue.getChunks()+"");
-                else
-                    LOGGER.debug("ОТДАЧА файла завершилась ошибкой");
-            }
+            //if (DEBUG)
+            //{
+            //    FileInfo fi = nm.fileInfo();
+            //    if (nm.opCode() == OK)
+            //        LOGGER.debug("ОТДАЧА файла завершена «"+fi.getFileName()+"»: размер="+fi.getFilesize()+", chuncks="+dialogue.getChunks()+"");
+            //    else
+            //        LOGGER.debug("ОТДАЧА файла завершилась ошибкой");
+            //}
         //переносим файл из временной папки в папку назначения
             if (nm.opCode() == OK  &&  !dialogue.endupExtruding(nm))
             {
@@ -249,9 +249,6 @@ public class ClientManipulator implements Manipulator
     }
 
 //---------------------------------- LOAD2SERVER ----------------------------------------------------------------*/
-
-//TODO : иногда файл не копируется на сервер с первого раза или не копируется никогда. Это, судя по всему,
-//       связано с предоставлением прав на доступ к файлу. Эти трудные файлы, как праило, служебные.
 
     @Override public boolean startLoad2ServerRequest (String fromLocalFolder, NasMsg nm)    //OUT
     {
@@ -275,6 +272,9 @@ public class ClientManipulator implements Manipulator
         LOGGER.trace("startLoad2ServerRequest(): end ("+nm+")");
         return result;
     }
+
+//TODO : иногда файл не копируется на сервер с первого раза или не копируется никогда. Это, судя по всему,
+//       связано с предоставлением прав на доступ к файлу. Эти трудные файлы, как праило, служебные.
 
     @ManipulateMethod (opcodes = {OperationCodes.LOAD2SERVER})
     private void manipulateLoad2ServerQueue (NasMsg nm)                                     //IN, OUT, OUT, ..., OUT
