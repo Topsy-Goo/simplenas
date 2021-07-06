@@ -1,0 +1,14 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+/dictionaries/.xml
+/aws.xml
+/codeStyles/codeStyleConfig.xml
+/compiler.xml
+/jarRepositories.xml
+/misc.xml
+/codeStyles/Project.xml
+/inspectionProfiles/Project_Default.xml
+/uiDesigner.xml
+/cloud/
+*.class
