@@ -40,8 +40,9 @@ public class NasNetClient implements NetClient
     private String userName;
     private Manipulator manipulator;
     private final Thread javafx;
-    private final NasCallback callbackOnDisconnection;
-    private boolean disconnected = false;
+    private NasCallback callbackOnDisconnection = this::callbackDummy;
+    //private boolean disconnected = false;
+    private boolean connected = false;
 
     private final Object syncObj = new Object();
     private final Object syncObj4ConnectionOnly = new Object();
@@ -57,6 +58,8 @@ public class NasNetClient implements NetClient
     }
 
 //----------------------- колбэки для связи с манипулятором -----------------------------------------------------*/
+
+    void callbackDummy (Object ... objects){}
 
 // Обработка окончания установления соединения : теперь мы можем воспользоваться сохранённой переменной
 // типа SocketChannel и продолжить авторизацию в методе NasNetClient.login().
@@ -94,6 +97,9 @@ public class NasNetClient implements NetClient
         }
     }
 
+    void unusedMethod (String strName)
+    {
+    }
  //------------------------------- подключение, отключение, … ----------------------------------------------------*/
 
 // Запускаем поток, который соединяется с сервером.
@@ -101,7 +107,6 @@ public class NasNetClient implements NetClient
     {
         LOGGER.debug("connect() start");
         boolean isOnAir = schannel != null && schannel.isOpen();
-        disconnected = false;
 
         if (isOnAir)
         {   messageBox(CFactory.ALERTHEADER_CONNECTION, "Уже установлено.", Alert.AlertType.INFORMATION);
@@ -166,8 +171,10 @@ public class NasNetClient implements NetClient
     //      cfuture.channel(),
     //      ClientManipulator.channelActive().ctx.channel
             LOGGER.debug("run() вызывается  b.connect (SERVER_ADDRESS, PORT).sync()");
+
             ChannelFuture cfuture = b.connect (SERVER_ADDRESS, PORT).sync();
-            channelOfChannelFuture = cfuture.channel();
+            this.channelOfChannelFuture = cfuture.channel();
+            this.connected = true;
 
             LOGGER.debug("run() в try освобождаем  syncObj4ConnectionOnly");
             synchronized (syncObj4ConnectionOnly)
@@ -196,19 +203,12 @@ public class NasNetClient implements NetClient
 
 //Метод может вызываться из Controller.closeSession() и из блока catch в run().
 //(закрытие socketChannel приведёт к выполнению блока finally в run().)
-    @Override public void disconnect()      //+l
+    @Override public void disconnect ()      //+l
     {
         LOGGER.trace("disconnect() start");
-    //предотвращаем повторный вызов (если вызывать этот метод дважды, то дважды появится сообщение о разрыве
-    // соединения, что не критично, но выглядит странно)
-        if (disconnected) return;
-        disconnected = true;
-
     //делаем что-то в контроллере
-        if (callbackOnDisconnection != null)
-        {
-            callbackOnDisconnection.callback();
-        }
+        if (connected) callbackOnDisconnection.callback();
+
     //закрываем канал
         if (schannel != null && schannel.isOpen())
         {
@@ -227,6 +227,7 @@ public class NasNetClient implements NetClient
         }
         else LOGGER.trace("disconnect() channelOfChannelFuture уже закрыт");
 
+        connected = false;
         schannel = null;
         channelOfChannelFuture = null;
         threadNetWork = null;

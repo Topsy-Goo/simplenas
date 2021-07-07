@@ -74,7 +74,6 @@ public class Controller implements Initializable
 
     private Thread javafx;
     private final Object syncObj = new Object();
-    private boolean donotShowDisconnectionMessage = false;
     private boolean extraInitialisationIsDone = false;
     private TableViewManager tableViewManager;
     private static final Logger LOGGER = LogManager.getLogger(Controller.class.getName());
@@ -82,10 +81,10 @@ public class Controller implements Initializable
 
 //TODO : Тесты
 //TODO : Проперти
-//TODO : Грэдл
 //TODO : авторизация + БД + флайвэй
 //TODO : наблюдение за изменениями в локальной папке.
 //TODO : DnD
+//TODO : Грэдл
 //
 //TODO : Все файлы больше 3`331`795`456 байтов скачиваются именно в таком размере.
 //          Files.newOutputStream().write (byte[size]) <-----NasMsg.data = byte[size]------- Files.newInputStream(path, READ).read (byte[size])
@@ -107,7 +106,7 @@ public class Controller implements Initializable
 
 //------------------------------- инициализация и завершение ----------------------------------------------------*/
 
-    @Override public void initialize (URL location, ResourceBundle resources)       //+l
+    @Override public void initialize (URL location, ResourceBundle resources)
     {
         LOGGER.trace("initialize() start");
         javafx = Thread.currentThread();
@@ -128,7 +127,7 @@ public class Controller implements Initializable
         LOGGER.trace("initialize() end");
     }
 
-    void onCmdConnectAndLogin (String name)     //+l
+    void onCmdConnectAndLogin (String name)
     {
         LOGGER.trace("onCmdConnectAndLogin("+name+") start");
         if (sayNoToEmptyStrings(name))
@@ -142,19 +141,23 @@ public class Controller implements Initializable
             {
                 login (name);
             }
-            else messageBox(CFactory.ALERTHEADER_CONNECTION, CFactory.ERROR_UNABLE_CONNECT_TO_SERVER, WARNING);
+            else messageBox(CFactory.ALERTHEADER_CONNECTION, ERROR_UNABLE_CONNECT_TO_SERVER, WARNING);
         }
         LOGGER.trace("onCmdConnectAndLogin() end");
     }
 
-    private boolean connect()       //+
+    private boolean connect()
     {
-        netClient = CFactory.newNetClient((ooo)->callbackOnNetClientDisconnection());
-        donotShowDisconnectionMessage = !netClient.connect();
-        return !donotShowDisconnectionMessage;
+        netClient = newNetClient((ooo)->callbackOnNetClientDisconnection());
+        boolean result = netClient.connect();
+        if (!result)
+        {
+            netClient = null;
+        }
+        return result;
     }
 
-    private void login (String name)        //+l
+    private void login (String name)
     {
         NasMsg nm = null;
         if (netClient == null || (null == (nm = netClient.login (name))))
@@ -178,7 +181,7 @@ public class Controller implements Initializable
         }
     }
 
-    private void updateControlsOnSuccessfulLogin()      //+
+    private void updateControlsOnSuccessfulLogin()
     {
         textfieldCurrentPath_Server.clear();
         textfieldCurrentPath_Server.setText(STR_EMPTY);
@@ -193,10 +196,9 @@ public class Controller implements Initializable
     }
 
 // Наш обработчик события primaryStage.setOnCloseRequest.
-    void closeSession()         //+l
+    void closeSession()
     {
         LOGGER.trace("closeSession() start");
-        donotShowDisconnectionMessage = true;
         if (netClient != null)
         {
             netClient.disconnect();  //< это приведёт к разрыву соединения с сервером (к закрытию канала) и к вызову onNetClientDisconnection()
@@ -204,28 +206,25 @@ public class Controller implements Initializable
         LOGGER.trace("closeSession() end");
     }
 
-    void onMainWndShowing (Stage primaryStage)         //+
+    void onMainWndShowing (Stage primaryStage)
     {
         this.primaryStage = primaryStage;
     }
 
 //callback. Вызывается из netClient при закрытии соединения с сервером. Может вызываться дважды для закрытия одной и той же сессии.
-    void callbackOnNetClientDisconnection()     //+l
+    void callbackOnNetClientDisconnection()
     {
         LOGGER.trace("callbackOnNetClientDisconnection() start");
         netClient = null;
         userName = null;
-        if (!donotShowDisconnectionMessage)
-        {
-            Platform.runLater(()->{
-                messageBox(CFactory.ALERTHEADER_REMOUTE_STORAGE, PROMPT_CONNECTION_GETTING_CLOSED, WARNING);  //< вызов не из потока javafx вызывает исключение
-                                  });
-        }
+        //Platform.runLater(()->{
+        //    messageBox(CFactory.ALERTHEADER_REMOUTE_STORAGE, PROMPT_CONNECTION_GETTING_CLOSED, WARNING);  //< вызов не из потока javafx вызывает исключение
+        //                      });
         sbarSetDefaultText(null, CFactory.SBAR_TEXT_SERVER_NOCONNECTION);
         LOGGER.trace("callbackOnNetClientDisconnection() end");
     }
 
-    private void updateMainWndTitleWithUserName()         //+
+    private void updateMainWndTitleWithUserName()
     {
         if (primaryStage != null)
         {
@@ -237,7 +236,7 @@ public class Controller implements Initializable
 //------------------------------------------ обработчики команд GUI ---------------------------------------------*/
 
 //Создание папки на сервере в текущей папке.
-    @FXML public void onactionMenuServer_CreateFolder (ActionEvent actionEvent)     //+l
+    @FXML public void onactionMenuServer_CreateFolder (ActionEvent actionEvent)
     {
         LOGGER.trace("!!!!!!! onactionMenuServer_CreateFolder");
         String name = generateDefaultFolderName (tvServerSide);
@@ -260,7 +259,7 @@ public class Controller implements Initializable
     }
 
 //Создание локальной папки в текущей папке.
-    @FXML public void onactionMenuClient_CreateFolder (ActionEvent actionEvent)      //+l
+    @FXML public void onactionMenuClient_CreateFolder (ActionEvent actionEvent)
     {
         LOGGER.trace("!!!!!!! onactionMenuClient_CreateFolder");
         String name = generateDefaultFolderName (tvClientSide);
@@ -273,7 +272,7 @@ public class Controller implements Initializable
     }
 
 //в текущей клиентской папке удаляем выбранный элемент (файл или папку).
-    @FXML public void onactionClientDelete (ActionEvent actionEvent)       //+l
+    @FXML public void onactionClientDelete (ActionEvent actionEvent)
     {
         LOGGER.trace("!!!!!!! onactionClientDelete");
         TableFileInfo tfi = tvClientSide.getSelectionModel().getSelectedItem();
@@ -292,7 +291,7 @@ public class Controller implements Initializable
     }
 
 //в текущей серверной папке удаляем выбранный элемент (файл или папку).
-    @FXML public void onactionServerDelete (ActionEvent actionEvent)      //+l
+    @FXML public void onactionServerDelete (ActionEvent actionEvent)
     {
         LOGGER.trace("!!!!!!! onactionServerDelete");
         TableFileInfo tfi = tvServerSide.getSelectionModel().getSelectedItem();
@@ -530,16 +529,16 @@ public class Controller implements Initializable
     }
 
 //Запрещаем или разрешаем использование элементов управления. (Используется во время выполнения длительных операций.)
-    void enableUsersInput (boolean mode)        //+
+    void enableUsersInput (boolean enable)        //+
     {
-        textfieldCurrentPath_Client.setDisable(mode);
-        textfieldCurrentPath_Server.setDisable(mode);
-        buttonDownload.setDisable (mode && netClient != null);
-        buttonUpload.setDisable (mode && netClient != null);
-        buttonLevelUp_Client.setDisable(mode);
-        buttonLevelUp_Server.setDisable(mode);
-        tvClientSide.setDisable(mode);
-        tvServerSide.setDisable(mode);
+        textfieldCurrentPath_Client.setDisable(!enable);
+        textfieldCurrentPath_Server.setDisable(!enable);
+        buttonDownload.setDisable (!enable && netClient != null);
+        buttonUpload.setDisable (!enable && netClient != null);
+        buttonLevelUp_Client.setDisable (!enable);
+        buttonLevelUp_Server.setDisable (!enable);
+        tvClientSide.setDisable (!enable);
+        tvServerSide.setDisable (!enable);
     }
 
 //Стандартное окно сообщения с кнопкой Ок.

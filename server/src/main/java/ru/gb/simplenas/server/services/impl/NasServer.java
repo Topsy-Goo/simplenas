@@ -35,7 +35,7 @@ public class NasServer implements Server
 
     private NasServer() {}
 
-    public static Server getInstance()      //+
+    public static Server getInstance()
     {
         if (instance == null)
         {
@@ -45,11 +45,8 @@ public class NasServer implements Server
         return instance;
     }
 
-    private void run()      //+l
+    private void run()
     {
-        //if (instance != null)     теперь нормально, что instance != null в момент запуска
-        //    throw new RuntimeException("ERROR @ NasServer.run(): alredy running; Thread: "
-        //                    +Thread.currentThread()+".");
         LOGGER.trace("run(): start");
     // В этом методе мы настраиваем сервер на приём клиентов и на обработку других запросов клиентов, а затем запускаем
     // бесконечный цикл ожидания клиентов и обработки их запросов. (Пока непонятно, что именно прерывает этот цикл.)
@@ -111,9 +108,9 @@ public class NasServer implements Server
                 });
     // ChannelFuture.sync() запускает исполнение.
             ChannelFuture cfuture = sbts.bind(PORT).sync();
-            LOGGER.debug("run(): ChannelFuture "+ cfuture.toString());
 
-            //понадобиться для остановки сервера из консоли:
+            LOGGER.debug("run(): ChannelFuture "+ cfuture.toString());
+            lnprint("\n\t\t*** Ready to getting clients. ***\n");
             channelOfChannelFuture = cfuture.channel();
             if (consoleReader == null)
             {
@@ -158,41 +155,27 @@ public class NasServer implements Server
     }
 
 //Run-метод потока consoleReader.
-    private void runConsoleReader()     //+l
+    private void runConsoleReader()
     {
         LOGGER.trace("runConsoleReader(): start");
         Scanner scanner = new Scanner(System.in);
-        try
-        {   String msg;
-            while (!serverGettingOff && scanner != null)
+        String msg;
+        while (!serverGettingOff)
+        if (scanner.hasNext())
+        {
+            msg = scanner.nextLine().trim();
+            if (!msg.isEmpty())
+            if (msg.equalsIgnoreCase (CMD_EXIT)) //< теперь сервер можно закрыть руками.
             {
-                //TODO : тут периодически возникают исключения «java.util.NoSuchElementException: No line found
-                //	at java.util.Scanner.nextLine». Пробовали следующее:
-                //       добавили break -- не помогло;
-                //       добавили hasNext() -- виснем;
-                //       закомментировали break и nextLine, прошли отладчиком -- работает чисто;
-                //       пару раз не беспокоило, и вот опять.
-                //       убрали сканнер из try и убиваем его при получении CMD_EXIT -- пока работает.
-                msg = scanner.nextLine().trim();
-
-                if (!msg.isEmpty())
-                if (msg.equalsIgnoreCase (CMD_EXIT)) //< Сервер можно закрыть руками.
-                {
-                    onCmdServerExit();
-                    scanner.close();    scanner = null;
-                }
-                else LOGGER.warn("runConsoleReader(): unsupported command detected: "+ msg);
-            }//while
-        }
-        finally
-        {   consoleReader = null;
-            if (scanner != null)
-            {
-                scanner.close();
-                scanner = null;
+                serverGettingOff = true;
+                LOGGER.info("получена команда CMD_EXIT");
+                onCmdServerExit();
             }
-            LOGGER.trace("runConsoleReader(): end");
-        }
+            else LOGGER.error("runConsoleReader(): unsupported command detected: "+ msg);
+        }//while
+        scanner.close();
+        consoleReader = null;
+        LOGGER.trace("runConsoleReader(): end");
     }
 
 //---------------------------------------------------------------------------------------------------------------*/
@@ -232,7 +215,7 @@ public class NasServer implements Server
     }
 
 //Обработчик команды CMD_EXIT, введённой в консоли.
-    private void onCmdServerExit()      //+l
+    private void onCmdServerExit()
     {
         LOGGER.trace("onCmdServerExit(): start");
         serverGettingOff = true;
