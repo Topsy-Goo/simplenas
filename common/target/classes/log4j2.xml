@@ -39,25 +39,25 @@
 	<!--	Trace  <  Debug  <  Info  <  Warn  <  Error  <  Fatal	-->
 	<Loggers>
 		<Root level="error">
-<!--			<AppenderRef ref="FILE_APPENDER_CLIENT" />-->
-<!--			<AppenderRef ref="FILE_APPENDER_COMMON" />-->
-<!--			<AppenderRef ref="FILE_APPENDER_SERVER" />-->
+			<AppenderRef ref="FILE_APPENDER_CLIENT" />
+			<AppenderRef ref="FILE_APPENDER_COMMON" />
+			<AppenderRef ref="FILE_APPENDER_SERVER" />
 <!--			<AppenderRef ref="STDOUT_APPENDER_ROOT" />-->
 		</Root>
 
         <Logger name="ru.gb.simplenas.client" level="debug" >
         	<AppenderRef ref="STDOUT_APPENDER"/>
-        	<AppenderRef ref="FILE_APPENDER_CLIENT"/>
+<!--        	<AppenderRef ref="FILE_APPENDER_CLIENT"/>-->
         </Logger>
 
         <Logger name="ru.gb.simplenas.common" level="debug" >
         	<AppenderRef ref="STDOUT_APPENDER"/>
-        	<AppenderRef ref="FILE_APPENDER_COMMON"/>
+<!--        	<AppenderRef ref="FILE_APPENDER_COMMON"/>-->
         </Logger>
 
         <Logger name="ru.gb.simplenas.server" level="debug" >
         	<AppenderRef ref="STDOUT_APPENDER"/>
-        	<AppenderRef ref="FILE_APPENDER_SERVER"/>
+<!--        	<AppenderRef ref="FILE_APPENDER_SERVER"/>-->
         </Logger>
 
 	</Loggers>

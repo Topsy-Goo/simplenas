@@ -12,7 +12,7 @@ public interface NetClient extends Runnable
     void disconnect();
     NasMsg list (String folder, String ... subfolders);
     NasMsg goTo (String folder, String ... subfolder);
-    NasMsg levelUp (String fromFolder);
+    //NasMsg levelUp (String fromFolder);
     NasMsg create (String childFolder);
     NasMsg rename (FileInfo from, String to);
     //NasMsg download (String fromRemoteFolder, String toLocalFolder, FileInfo fileInfo);

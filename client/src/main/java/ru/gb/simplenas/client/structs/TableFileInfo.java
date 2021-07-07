@@ -1,14 +1,15 @@
-package ru.gb.simplenas.common.structs;
+package ru.gb.simplenas.client.structs;
 
 import com.sun.istack.internal.NotNull;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleLongProperty;
 import javafx.beans.property.SimpleStringProperty;
+import ru.gb.simplenas.common.structs.FileInfo;
 
 import java.nio.file.attribute.FileTime;
 
 import static ru.gb.simplenas.common.CommonData.*;
-import static ru.gb.simplenas.common.Factory.formatFileTime;
+import static ru.gb.simplenas.client.CFactory.formatFileTime;
 
 //Класс содержит данные для одной строки таблицы, а также методы, необходимые для того, чтобы JFX могла
 // работать со строкой. Генератор кода создал необходимые конструкторы, гетеры и сетеры для себя и для

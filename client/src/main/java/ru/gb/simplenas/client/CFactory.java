@@ -4,14 +4,17 @@ import com.sun.istack.internal.NotNull;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.TableView;
 import ru.gb.simplenas.client.services.NetClient;
+import ru.gb.simplenas.client.services.impl.ClientFileManager;
 import ru.gb.simplenas.client.services.impl.ContextMenuManager;
 import ru.gb.simplenas.client.services.impl.NasNetClient;
 import ru.gb.simplenas.client.services.impl.TableViewManager;
 import ru.gb.simplenas.common.NasCallback;
+import ru.gb.simplenas.server.services.impl.ServerFileManager;
 import ru.gb.simplenas.common.structs.FileInfo;
-import ru.gb.simplenas.common.structs.TableFileInfo;
+import ru.gb.simplenas.client.structs.TableFileInfo;
 
 import java.awt.*;
+import java.nio.file.Path;
 import java.util.List;
 
 import static ru.gb.simplenas.common.CommonData.MAINWND_TITLE;
@@ -19,6 +22,7 @@ import static ru.gb.simplenas.common.CommonData.MAINWND_TITLE;
 
 public class CFactory
 {
+    public static final String STR_DEF_FOLDER = "user.dir"; //< текущая папка юзера;   "user.home" < папка в учётной записи
     public static final String SBAR_TEXT_SERVER_NOCONNECTION = "Соединение с сервером отсутствует.";
     public static final String SBAR_TEXT_SERVER_ONAIR = "Есть подключение к серверу.";
     public static final String SBAR_TEXT_FOLDER_READING_IN_PROGRESS = "Выполняется чтение содержимого папки.";
@@ -30,28 +34,35 @@ public class CFactory
     public static final String ALERT_TITLE = MAINWND_TITLE;
     public static final String NO_USER_TITLE = "(?)";
     public static final String NEW_FOLDER_NAME = "Новая папка";
+
     public static final String ALERTHEADER_AUTHENTIFICATION = "Авторизация.";
     public static final String ALERTHEADER_CONNECTION = "Подключение к серверу.";
     public static final String ALERTHEADER_REMOUTE_STORAGE = "Удалённое хранилище.";
     public static final String ALERTHEADER_LOCAL_STORAGE = "Локальное хранилище.";
-    public static final String ALERTHEADER_RENAMING = "Переименование отклонено, — папка или файл с таким имененм уже существуют.";
+    public static final String ALERTHEADER_LOCAL2SERVER = "Выгрузка файла на сервер.";
+    public static final String ALERTHEADER_LOCAL2LOCAL = "Загрузка файла с сервера.";
     public static final String ALERTHEADER_DOWNLOADING = "Загрузка файла.";
     public static final String ALERTHEADER_UPLOADING = "Выгрузка файла.";
     public static final String ALERTHEADER_DELETION = "Удаление.";
-    public static final String PROMPT_FORMAT_ROOT_FOLDER = "Текущая папка является корневой\n%s";
-    public static final String PROMPT_CONFIRM_CREATE_FOLDER = "Введите имя для новой папки и нажмите ENTER.";
-    public static final String PROMPT_FORMAT_REPLACE_CONFIRMATION = "Файл уже существует в выбранной папке. Хотите его перезаписать?\n%s";
-    public static final String PROMPT_FORMAT_FOLDER_DELETION_CONFIRMATION = "Удаляемая папка НЕ пуста. Всё равно удалить её?\n%s";
-    public static final String PROMPT_FORMAT_FILE_DELETION_CONFIRMATION = "Подтвердите удаление файла:\n\n%s";
+    public static final String ALERTHEADER_RENAMING = "Переименование.";
+    public static final String ALERTHEADER_FOLDER_CREATION = "Создание папки.";
+    public static final String ALERTHEADER_UNABLE_APPLY_AS_PATH = "Не удалось перейти в указанную папку.";
+
+    public static final String PROMPT_FORMAT_ROOT_FOLDER = "Текущая папка является корневой\n\n%s";
+    public static final String PROMPT_FORMAT_REPLACE_CONFIRMATION = "Файл уже существует в выбранной папке. Хотите его перезаписать?\n\n%s\n";
+    public static final String PROMPT_FORMAT_FOLDER_DELETION_CONFIRMATION = "Удаляемая папка НЕ пуста. Всё равно удалить её?\n\n%s\n";
+    public static final String PROMPT_FORMAT_FILE_DELETION_CONFIRMATION = "Подтвердите удаление файла:\n\n%s\n";
+    public static final String PROMPT_FORMAT_RENAMING_ALREADY_EXISTS = "Переименование отклонено, — папка или файл с таким имененм уже существуют:\n\n%s\n";
     public static final String PROMPT_FOLDERS_EXCHANGE_NOT_SUPPORTED = "Пересылка папок не поддерживается.";
+    public static final String PROMPT_CONFIRM_CREATE_FOLDER = "Введите имя для новой папки и нажмите ENTER.";
     public static final String PROMPT_DIR_ENTRY_DOESNOT_EXISTS = "Папка или файл не существуют!";
-    public static final String STR_DEF_FOLDER = "user.dir"; //< текущая папка юзера;   "user.home" < папка в учётной записи
     public static final String ERROR_UNABLE_CONNECT_TO_SERVER = "Не удалось подключиться к серверу.";
     public static final String ERROR_USUPPORTED_OPERATION_REQUESTED = "Запрошена неподдерживаемая операция.";
     public static final String ERROR_ABNORMAL_APPLICATION_BEHAVIOUR = "Abnormal application behaviour.";
     public static final String ERROR_UNABLE_GET_LIST = "Не удалось получить список содержимого папки.";
     public static final String ERROR_NO_CONNECTION_TO_REMOTE_STORAGE = "Нет подключения к серверу.";
-
+    public static final String PROMPT_FORMAT_UNABLE_LIST = "Не удалось вывести список содержимого папки.\n\n%s\n";
+    //public static final String PROMPT_FORMAT_UNABLE_APPLY_PATH = "Не удалось вывести список содержимого папки.\n\n%s\n";
 
     private CFactory () {}
 
@@ -85,5 +96,44 @@ public class CFactory
     {
         TableViewManager.deleteTvItem (tv, t);
     }
+
+
+//--------------------------------- ClientFileManager ------------------------------------------------------------*/
+
+    public static boolean isStringOfRealPath (@NotNull String string, String ... strings)
+    {
+        return ClientFileManager.isStringOfRealPath(string, strings);
+    }
+
+    public static String stringPath2StringAbsoluteParentPath (@NotNull String s)
+    {
+        return ClientFileManager.stringPath2StringAbsoluteParentPath(s);
+    }
+
+    public static String formatFileTime (long time)
+    {
+        return ClientFileManager.formatFileTime(time);
+    }
+
+    public static Path createSubfolder (Path parent, String strChild)
+    {
+        return ClientFileManager.createSubfolder(parent, strChild);
+    }
+
+    public static FileInfo rename (@NotNull Path pathParentAbsolute, @NotNull String oldName, @NotNull String newName)
+    {
+        return ClientFileManager.rename(pathParentAbsolute, oldName, newName);
+    }
+
+    public static int countDirectoryEntries (@NotNull Path pFolder)
+    {
+        return ClientFileManager.countDirectoryEntries(pFolder);
+    }
+
+    public static boolean deleteFileOrDirectory (@NotNull Path path)
+    {
+        return ServerFileManager.deleteFileOrDirectory(path);
+    }
+
 
 }

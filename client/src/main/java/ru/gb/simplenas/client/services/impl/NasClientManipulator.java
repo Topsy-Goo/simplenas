@@ -5,15 +5,16 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.socket.SocketChannel;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import ru.gb.simplenas.client.services.ClientManipulator;
 import ru.gb.simplenas.common.annotations.EndupMethod;
 import ru.gb.simplenas.common.annotations.ManipulateMethod;
 import ru.gb.simplenas.common.NasCallback;
 import ru.gb.simplenas.common.services.FileExtruder;
-import ru.gb.simplenas.common.services.Manipulator;
 import ru.gb.simplenas.common.structs.FileInfo;
 import ru.gb.simplenas.common.structs.NasDialogue;
 import ru.gb.simplenas.common.structs.NasMsg;
 import ru.gb.simplenas.common.structs.OperationCodes;
+import ru.gb.simplenas.server.ServerApp;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -30,32 +31,27 @@ import static ru.gb.simplenas.common.CommonData.*;
 import static ru.gb.simplenas.common.Factory.*;
 import static ru.gb.simplenas.common.structs.OperationCodes.*;
 
-public class ClientManipulator implements Manipulator
+public class NasClientManipulator implements ClientManipulator
 {
     private final SocketChannel schannel;
     private NasDialogue dialogue;
     protected NasCallback callbackChannelActive = this::callbackDummy;  //< для последовательного процесса подключения
     protected NasCallback callbackMsgIncoming = this::callbackDummy;    //< для доставки результатов запросов
     protected NasCallback callbackInfo = this::callbackDummy;           //< для сообщений, которых никто не ждёт
-
-    static final String ERROR_OLD_DIALOGUE_STILL_RUNNING = "Cannot start new dialogue - the previous one slill in use.";
-    private static final Logger LOGGER = LogManager.getLogger(ClientManipulator.class.getName());
-
-
     private Map<OperationCodes, Method> mapManipulateMetods, mapEndupMetods;
+    private static final String ERROR_OLD_DIALOGUE_STILL_RUNNING = "Не могу начать новый диалог, — предыдущий ещё не закрыт.";
+    private static final Logger LOGGER = LogManager.getLogger(NasClientManipulator.class.getName());
 
-
-    public ClientManipulator (NasCallback callbackChannelActive,
-                              NasCallback callbackMsgIncoming,
-                              NasCallback callbackInfo,
-                              SocketChannel sC)
+    public NasClientManipulator (NasCallback callbackChannelActive,
+                                 NasCallback callbackMsgIncoming,
+                                 NasCallback callbackInfo,
+                                 SocketChannel sC)
     {
         this.callbackChannelActive = callbackChannelActive;
         this.callbackMsgIncoming = callbackMsgIncoming;
         this.callbackInfo = callbackInfo;
         this.schannel = sC;
         new Thread(this::buildMethodMaps).start(); // javafx must die !!!
-        LOGGER.debug("создан ClientManipulator");
     }
 
     void callbackDummy (Object ... objects){}
@@ -64,7 +60,6 @@ public class ClientManipulator implements Manipulator
 
     @Override public void handle (ChannelHandlerContext ctx, NasMsg nm)
     {
-        LOGGER.trace("\nhandle(): start ("+nm+")");
         if (!DEBUG || nm.inbound() == OUTBOUND)
         {
             if (nm != null)
@@ -77,7 +72,6 @@ public class ClientManipulator implements Manipulator
                 catch(IllegalArgumentException | ReflectiveOperationException e){e.printStackTrace();}
             }
         }
-        LOGGER.trace("handle(): end ("+nm+")\n");
     }
 
 
@@ -85,7 +79,6 @@ public class ClientManipulator implements Manipulator
     @ManipulateMethod (opcodes = {OK, ERROR})
     private void manipulateEndups (NasMsg nm)
     {
-        LOGGER.trace("manipulateEndups(): start ("+nm+")");
         if (dialogue != null)
         {
             try {
@@ -94,7 +87,6 @@ public class ClientManipulator implements Manipulator
                 }
             catch(IllegalArgumentException | ReflectiveOperationException e){e.printStackTrace();}
         }
-        LOGGER.trace("manipulateEndups(): end ("+nm+")");
     }
 
 //---------------------------------- обработчики простых сообщений ----------------------------------------------*/
@@ -103,15 +95,12 @@ public class ClientManipulator implements Manipulator
 // кроме самого сообщения.
     @Override public boolean startSimpleRequest (NasMsg nm)     //OUT
     {
-        LOGGER.trace("startSimpleRequest(): start ("+nm+")");
         boolean result = false;
         if (nm != null && schannel != null && newDialogue(nm))
         {
-            LOGGER.trace("startSimpleRequest(): >>>>>>>>"+nm.opCode()+">>>>>>> "+nm);
             schannel.writeAndFlush(nm);
             result = true;
         }
-        LOGGER.trace("startSimpleRequest(): end ("+nm+")");
         return result;
     }
 
@@ -120,166 +109,124 @@ public class ClientManipulator implements Manipulator
     @EndupMethod (opcodes = {CREATE, RENAME, FILEINFO, COUNTITEMS, DELETE, LOAD2SERVER, LOGIN})
     private void endupSimpleRequest (NasMsg nm)                 //IN
     {
-        LOGGER.trace("endupSimpleRequest(): start ("+nm+")");
         if (dialogue != null)
         {
+            lnprint("M:пришло сообщение: "+ nm.opCode()+"; тема: "+dialogue.getTheme());
             dialogue.add(nm);
-            callbackMsgIncoming.callback(nm);
-            stopTalking();
+            stopTalking (nm);
         }
-        LOGGER.trace("endupSimpleRequest(): end ("+nm+")");
     }
 
 //---------------------------------- LIST -----------------------------------------------------------------------*/
 
-    @Override public boolean startListRequest (NasMsg nm)               //OUT
+    @Override public boolean startListRequest (NasMsg nm)           //OUT
     {
-        LOGGER.trace("startListRequest(): start ("+nm+")");
         boolean done = false;
         if (nm != null && schannel != null && newDialogue (nm, newInfolist()))
         {
-            LOGGER.trace("startListRequest(): >>>>>>>>"+nm.opCode()+">>>>>>> "+ nm);
             schannel.writeAndFlush(nm);
+            lnprint("M:отправлено сообщение: "+ nm.opCode()+"\n");
             done = true;
         }
-        LOGGER.trace("startListRequest(): end ("+nm+")");
         return done;
     }
 
-    @ManipulateMethod (opcodes = {OperationCodes.LIST})             //IN, IN, ..., IN
+    @ManipulateMethod (opcodes = {LIST})                            //IN, IN, ..., IN
     private void manipulateListQueue (NasMsg nm)
     {
-        LOGGER.trace("manipulateListQueue(): start ("+nm+")");
         if (dialogue != null)
         {
             //dialogue.add(nm);     TODO : проверить в тесте,что здесь nm не записывается в dialogue
+            print("l");
             if (dialogue.infolist() != null)
             {
                 dialogue.infolist().add(nm.fileInfo());
-                LOGGER.trace(nm.fileInfo().isDirectory() ? "D":"f");
             }
         }
-        LOGGER.trace("manipulateListQueue(): end ("+nm+")");
     }
 
 // обработка завершения передачи списка содержимого удалённой папки
     @EndupMethod (opcodes = {LIST})
-    private void endupListRequest (NasMsg nm)                           //IN
+    private void endupListRequest (NasMsg nm)                       //IN
     {
-        LOGGER.trace("endupListRequest(): start ("+nm+")");
         if (dialogue != null)
         {
+            lnprint("M:пришло сообщение: "+ nm.opCode()+"; тема: "+dialogue.getTheme());
             dialogue.add(nm);
             nm.setdata (dialogue.infolist()); //< список, который кропотливо составлял manipulateInboundList().
 
             if (nm.data() == null)
-            {
-                if (DEBUG)  throw new RuntimeException();
-                nm.setdata (newInfolist()); //< чтобы не мучиться с проверками
-            }
-            callbackMsgIncoming.callback(nm);
-            stopTalking();
+                nm.setdata (newInfolist());
+
+            stopTalking (nm);
         }
-        LOGGER.trace("endupListRequest(): end ("+nm+")");
     }
 
 //---------------------------------- LOAD2LOCAL -----------------------------------------------------------------*/
 
     @Override public boolean startLoad2LocalRequest (String toLocalFolder, NasMsg nm)       //OUT
     {
-        LOGGER.trace("startLoad2LocalRequest(): start ("+nm+")");
         boolean result = false;
-        if (nm != null && schannel != null)
+        if (nm != null && schannel != null && newDialogue(nm, new ClientInboundFileExtruder(), toLocalFolder))
         {
-            if (newDialogue(nm, new ClientInboundFileExtruder(), toLocalFolder))
-            {
-                LOGGER.trace("startLoad2LocalRequest(): >>>>>>>>"+nm.opCode()+">>>>>>> "+nm);
-                schannel.writeAndFlush(nm);
-                result = true;
-            }
-            if (!result)
-            {
-                nm.setOpCode(ERROR);
-                stopTalking();
-            }
+            schannel.writeAndFlush(nm);
+            lnprint("M:отправлено сообщение: "+ nm.opCode() +"\n");
+            result = true;
         }
-        LOGGER.trace("startLoad2LocalRequest(): end ("+nm+")");
         return result;
     }
 
-    @ManipulateMethod (opcodes = {OperationCodes.LOAD2LOCAL})
+    @ManipulateMethod (opcodes = {LOAD2LOCAL})
     private void manipulateLoad2LocalQueue (NasMsg nm)                                      //IN, IN, ..., IN
     {
-        LOGGER.trace("manipulateLoad2LocalQueue(): start ("+nm+")");
         if (dialogue != null)
         {
             //dialogue.add(nm);  TODO : проверить в тесте,что здесь nm не записывается в dialogue
-            dialogue.dataBytes2File(nm);
+            dialogue.writeDataBytes2File(nm);
             //полyчаем кусочки файла от сервера и записываем их в файл; если в процессе возникнут
             // ошибки на нашей стороне, передачу не прерываем, а просто ждём её окончания.
         }
-        LOGGER.trace("manipulateLoad2LocalQueue(): end ("+nm+")");
     }
 
     @EndupMethod (opcodes = {LOAD2LOCAL})
     private void endupLoad2LocalRequest (NasMsg nm)                                         //IN
     {
-        LOGGER.trace("endupLoad2LocalRequest(): start ("+nm+")");
+        lnprint("M:получено сообщение: "+ nm.opCode() +"; тема: "+dialogue.getTheme());
         if (dialogue != null)
         {
             dialogue.add(nm);
-
-            //if (DEBUG)
-            //{
-            //    FileInfo fi = nm.fileInfo();
-            //    if (nm.opCode() == OK)
-            //        LOGGER.debug("ОТДАЧА файла завершена «"+fi.getFileName()+"»: размер="+fi.getFilesize()+", chuncks="+dialogue.getChunks()+"");
-            //    else
-            //        LOGGER.debug("ОТДАЧА файла завершилась ошибкой");
-            //}
-        //переносим файл из временной папки в папку назначения
             if (nm.opCode() == OK  &&  !dialogue.endupExtruding(nm))
             {
                 nm.setOpCode(ERROR);
             }
-            callbackMsgIncoming.callback(nm);
-            stopTalking();
+            stopTalking (nm);
         }
-        LOGGER.trace("endupLoad2LocalRequest(): end ("+nm+")");
     }
 
 //---------------------------------- LOAD2SERVER ----------------------------------------------------------------*/
 
     @Override public boolean startLoad2ServerRequest (String fromLocalFolder, NasMsg nm)    //OUT
     {
-        LOGGER.trace("startLoad2ServerRequest(): start ("+nm+")");
         boolean result = false;
         if (nm != null && nm.fileInfo() != null && schannel != null)
         {
             InputStream is = inputstreamByFilename (fromLocalFolder, nm.fileInfo().getFileName());
             if (is != null && newDialogue (nm, is))
             {
-                LOGGER.trace("startLoad2ServerRequest(): >>>>>>>>"+nm.opCode()+">>>>>>> "+nm);
                 schannel.writeAndFlush(nm);
-                result = dialogue.inputStream() != null;
-            }
-            if (!result)
-            {
-                nm.setOpCode(ERROR);
-                stopTalking();
+                lnprint("M:отправлено сообщение: "+ nm.opCode() +"\n");
+                result = true;
             }
         }
-        LOGGER.trace("startLoad2ServerRequest(): end ("+nm+")");
         return result;
     }
 
 //TODO : иногда файл не копируется на сервер с первого раза или не копируется никогда. Это, судя по всему,
 //       связано с предоставлением прав на доступ к файлу. Эти трудные файлы, как праило, служебные.
 
-    @ManipulateMethod (opcodes = {OperationCodes.LOAD2SERVER})
+    @ManipulateMethod (opcodes = {LOAD2SERVER})
     private void manipulateLoad2ServerQueue (NasMsg nm)                                     //IN, OUT, OUT, ..., OUT
     {
-        LOGGER.trace("manipulateLoad2ServerQueue(): start ("+nm+")");
         if (dialogue != null)
         {
             dialogue.add(nm);
@@ -298,38 +245,36 @@ public class ClientManipulator implements Manipulator
                 if (!result)    replyWithErrorMessage();    //< Сервер ответит в любом случае, поэтому очистку здесь не делаем
             }
         }
-        LOGGER.trace("manipulateLoad2ServerQueue(): end ("+nm+")");
     }
 
     private boolean sendFileToServer (NasMsg nm) throws IOException
     {
-        if (nm.fileInfo() == null || dialogue == null || schannel == null)
-        {
+        InputStream istream = null;
+        if (nm.fileInfo() == null || dialogue == null || schannel == null || (istream = dialogue.inputStream()) == null)
             return false;
-        }
+
         final long size = nm.fileInfo().getFilesize();
         long read = 0L;
         long rest = size;
-        byte[] array = new byte[MAX_BUFFER_SIZE];
-        InputStream istream = dialogue.inputStream();
+
+        final int bufferSize = (int)Math.min(INT_MAX_BUFFER_SIZE, size);
+        byte[] array = new byte[bufferSize];
 
         nm.setinbound (OUTBOUND);
         nm.setdata (array);
 
-        LOGGER.trace("sendFileToServer(): начало пересылки данных>>>>>>>");
-        while (rest > 0 && istream != null)
+        print("\n");
+        while (rest > 0)
         {
-            read = istream.read (array, 0, MAX_BUFFER_SIZE); //< блокирующая операция; вернёт -1, если достугнут конец файла
+            read = istream.read(array, 0, bufferSize); //< блокирующая операция; вернёт -1, если достугнут конец файла
             if (read <= 0)
-            {
                 break;
-            }
             rest -= read;
             nm.fileInfo().setFilesize (read);   //< пусть nm.fileInfo.filesize содержит количество считанных байтов
+            print(RF_ + read);
             schannel.writeAndFlush (nm);
             dialogue.incChunks();
         }
-        LOGGER.trace("sendFileToServer(): >>>>>>>>конец пересылки данных");
 
         nm.fileInfo().setFilesize (size);
         return rest == 0L;
@@ -343,8 +288,8 @@ public class ClientManipulator implements Manipulator
             nm.setinbound (OUTBOUND);
             nm.setdata (null);
             dialogue.add(nm);
-            LOGGER.trace(" >>>>>>>>"+nm.opCode()+">>>>>>> "+nm);
             schannel.writeAndFlush (nm);
+            lnprint("M:отправлено сообщение: "+ nm.opCode()+"; тема: "+dialogue.getTheme());
         }
     }
 
@@ -353,44 +298,37 @@ public class ClientManipulator implements Manipulator
 //NetClient прислал задачу отправить серверу сообщение EXIT. Завершаем текущую операцию и отсылаем EXIT серверу.
     @Override public void startExitRequest (NasMsg nm)      //OUT
     {
-        LOGGER.trace("startExitRequest(): start ("+nm+")");
-        discardCurrentOperation (nm);  //< скорее всего это не понадобиться, т.к. GUI блокируется на время операции
+        discardCurrentOperation();  //< скорее всего это не понадобиться, т.к. GUI блокируется на время операции
         if (nm == null && schannel != null)
         {
             nm = new NasMsg (EXIT, OUTBOUND);
-            LOGGER.trace("startExitRequest(): >>>>>>>>"+nm.opCode()+">>>>>>> "+nm);
             schannel.writeAndFlush (nm);
+            lnprint("M:Отправлено сообщение "+OperationCodes.EXIT);
         }
-        LOGGER.trace("startExitRequest(): end ("+nm+")");
     }
 
 //прерываем текущую операцию. некоторым операциям может потребоваться особый способ прерывания.
-    private void discardCurrentOperation (NasMsg nm)
+    private void discardCurrentOperation()
     {
-        LOGGER.trace("discardCurrentOperation(): start");
         if (dialogue != null)
         {
             if (dialogue.getTheme() == LOAD2LOCAL)
             {
                 dialogue.discardExtruding();
             }
-    /*  если от сервера EXIT пришёл во время выполнения запроса юзера, то opCode = ERROR заставит вызывающий метод
-        стандартно обработать не(до)получение данных, а сообщение в nm.msg о разрыве соединения всё объяснит юзеру. */
-            nm.setOpCode(ERROR);
-            callbackMsgIncoming.callback(nm);
-            stopTalking();
         }
-        LOGGER.trace("discardCurrentOperation(): end");
     }
 
 //сервер прислал EXIT. Прерываем текущую задачу и сообщаем юзеру об обрыве связи.
     @ManipulateMethod(opcodes = {EXIT})
     private void manipulateExitRequest (NasMsg nm)          //IN
     {
-        LOGGER.trace("manipulateExitRequest(): start ("+nm+")");
-        discardCurrentOperation (nm);
-        callbackInfo.callback(nm);
-        LOGGER.trace("manipulateExitRequest(): end ("+nm+")");
+        lnprint("M:Получено сообщение "+OperationCodes.EXIT);
+        discardCurrentOperation();
+    /*  если от сервера EXIT пришёл во время выполнения запроса юзера, то opCode = ERROR заставит вызывающий метод
+        стандартно обработать не(до)получение данных, а сообщение в nm.msg о разрыве соединения всё объяснит юзеру. */
+        nm.setOpCode(ERROR);
+        stopTalking(nm);
     }
 
 //---------------------------------- общение с InboundHandler'ом ------------------------------------------------*/
@@ -398,76 +336,64 @@ public class ClientManipulator implements Manipulator
     //Возможно, эти три метода нужно будет похерить, но это будет видно позже; сейчас они нужны серверу для
     @Override public void onChannelActive (ChannelHandlerContext ctx)
     {
-        LOGGER.info("onChannelActive(): открыто соединение: cts: "+ ctx.channel());
+        lnprint("onChannelActive(): открыто соединение: cts: "+ ctx.channel());
         callbackChannelActive.callback();   //< этого колбэка ждёт NetClient.login(), чтобы продолжить работу.
     }
     @Override public void onChannelInactive (ChannelHandlerContext ctx)
     {
-        LOGGER.info("onChannelInactive(): закрыто соединение: ctx: "+ ctx);
+        lnprint("onChannelInactive(): закрыто соединение: ctx: "+ ctx);
     }
     @Override public void onExceptionCaught (ChannelHandlerContext ctx, Throwable cause)
     {
-        LOGGER.error("onExceptionCaught(): аварийное закрытие соединения: ctx: "+ ctx);
+        lnprint("onExceptionCaught(): аварийное закрытие соединения: ctx: "+ ctx);
     }
 
-//---------------------------------- другие полезные методы -----------------------------------------------------*/
+//---------------------------------- dialogue -------------------------------------------------------------------*/
 
 //методы для создания dialogue.
     private boolean newDialogue (@NotNull NasMsg nm)
     {
-        LOGGER.trace("newDialogue(nm): start ("+nm+")("+dialogue+")");
         if (dialogue != null)
         {
-            //throw new RuntimeException();
-            LOGGER.error("newDialogue(): "+ ERROR_OLD_DIALOGUE_STILL_RUNNING);
-            LOGGER.trace("newDialogue(nm): end ("+nm+")");
+            lnprint("M:newDialogue("+nm.opCode()+"): "+ ERROR_OLD_DIALOGUE_STILL_RUNNING );
             return false;
         }
         dialogue = new NasDialogue(nm);
-        LOGGER.trace("newDialogue(nm): end ("+nm+")");
         return dialogue != null;
     }
 
     private boolean newDialogue (@NotNull NasMsg nm, @NotNull List<FileInfo> infolist)
     {
-        LOGGER.trace("newDialogue(il): start ("+nm+")("+dialogue+")");
         if (dialogue != null)
         {
-            LOGGER.error("newDialogue(): "+ ERROR_OLD_DIALOGUE_STILL_RUNNING);
-            LOGGER.trace("newDialogue(il): end ("+nm+")");
+            lnprint("M:newDialogue("+nm.opCode()+", infolist): "+ ERROR_OLD_DIALOGUE_STILL_RUNNING);
             return false;
         }
         if (infolist != null)
         {   dialogue = new NasDialogue(nm, infolist);
         }
-        LOGGER.trace("newDialogue(il): end ("+nm+")");
         return dialogue != null;
     }
 
     private boolean newDialogue (@NotNull NasMsg nm, @NotNull InputStream inputStream)
     {
-        LOGGER.trace("newDialogue(is): start ("+nm+")("+dialogue+")");
         if (dialogue != null)
         {
-            LOGGER.error("newDialogue(): "+ ERROR_OLD_DIALOGUE_STILL_RUNNING);
-            LOGGER.trace("newDialogue(is): end ("+nm+")");
+            lnprint("M:newDialogue("+nm.opCode()+", is): "+ ERROR_OLD_DIALOGUE_STILL_RUNNING);
             return false;
         }
         if (inputStream != null)
         {   dialogue = new NasDialogue(nm, inputStream);
         }
-        LOGGER.trace("newDialogue(is): end ("+nm+")");
         return dialogue != null;
     }
 
-    private boolean newDialogue (@NotNull NasMsg nm, @NotNull FileExtruder fe, @NotNull String toLocalFolder)       //+l
+    private boolean newDialogue (@NotNull NasMsg nm, @NotNull FileExtruder fe, @NotNull String toLocalFolder)
     {
-        LOGGER.trace("newDialogue(fe): start ("+nm+")("+dialogue+")");
         boolean ok = false;
         if (dialogue != null)
         {
-            LOGGER.error("newDialogue(): "+ ERROR_OLD_DIALOGUE_STILL_RUNNING);
-            LOGGER.trace("newDialogue(fe): end ("+nm+")");
+            lnprint("M:newDialogue("+nm.opCode()+", fe, str): "+ ERROR_OLD_DIALOGUE_STILL_RUNNING);
             ok = false;
         }
         else if (fe != null && sayNoToEmptyStrings (toLocalFolder))
@@ -475,42 +401,41 @@ public class ClientManipulator implements Manipulator
             dialogue = new NasDialogue(nm, fe);
             ok = dialogue.initializeFileExtruder(nm, toLocalFolder);
         }
-        LOGGER.trace("newDialogue(fe): end ("+nm+")");
         return ok;
     }
 
-    private void stopTalking()      //+l
+    private void stopTalking (NasMsg nm)
     {
-        LOGGER.trace("\t\t\t\tstopTalking() call");
+        NasDialogue dlg = dialogue;
         if (dialogue != null)
         {
             dialogue.close();
             dialogue = null;
         }
+        callbackMsgIncoming.callback(nm, dlg);
     }
 
+
+//---------------------------------- другие полезные методы -----------------------------------------------------*/
+
 //Шлём серверу сообщение об ошибке.
-    public void replyWithErrorMessage()     //+l
+    public void replyWithErrorMessage()
     {
-        LOGGER.trace("replyWithErrorMessage(): start");
         if (dialogue != null && schannel != null)
         {
             NasMsg nm = new NasMsg (ERROR, STR_EMPTY, OUTBOUND);
             dialogue.add(nm);
-
-            LOGGER.trace("replyWithErrorMessage(): >>>>>>>>"+nm.opCode()+">>>>>>> "+nm);
             schannel.writeAndFlush (nm);
+            lnprint("M:отправлено сообщение: "+ nm.opCode()+"; тема: "+dialogue.getTheme());
         }
-        LOGGER.trace("replyWithErrorMessage(): end");
     }
 
  //Составление списков методов, чтобы использовать эти спики вместо switch-case'ов.
-    private void buildMethodMaps()      //+l
+    private void buildMethodMaps()
     {
-        LOGGER.trace("buildMethodMaps(): start");
         mapManipulateMetods = new HashMap<>();
         mapEndupMetods = new HashMap<>();
-        Method[] methods = ClientManipulator.class.getDeclaredMethods ();
+        Method[] methods = NasClientManipulator.class.getDeclaredMethods();
 
         for (Method m : methods)
         {
@@ -533,10 +458,9 @@ public class ClientManipulator implements Manipulator
                 }
             }
         }
-        LOGGER.trace("buildMethodMaps(): end");
     }
 
-    public static InputStream inputstreamByFilename (String strFolder, String strFileName)      //+
+    public static InputStream inputstreamByFilename (String strFolder, String strFileName)
     {
         InputStream inputstream = null;
         if (sayNoToEmptyStrings(strFolder, strFileName))
@@ -556,6 +480,5 @@ public class ClientManipulator implements Manipulator
         //       не с первого раза, что подтверждает догадку.
     }
 
-}// class ClientManipulator
- //---------------------------------------------------------------------------------------------------------------*/
-
+}// class NasClientManipulator
+//---------------------------------------------------------------------------------------------------------------*/

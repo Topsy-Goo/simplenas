@@ -6,7 +6,7 @@ import javafx.scene.control.ContextMenu;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.TableView;
 import javafx.stage.WindowEvent;
-import ru.gb.simplenas.common.structs.TableFileInfo;
+import ru.gb.simplenas.client.structs.TableFileInfo;
 
 public class ContextMenuManager
 {

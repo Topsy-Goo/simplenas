@@ -1,8 +1,6 @@
 package ru.gb.simplenas.common.structs;
 
 import com.sun.istack.internal.NotNull;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import ru.gb.simplenas.common.services.FileExtruder;
 import ru.gb.simplenas.common.Factory;
 
@@ -39,7 +37,10 @@ public class NasDialogue
     public NasDialogue (@NotNull NasMsg nm, @NotNull FileExtruder tc)
     {
         this(nm);
-        if (tc == null)   throw new IllegalArgumentException();
+        if (tc == null && DEBUG)
+        {
+            throw new IllegalArgumentException();
+        }
         fileExtruder = tc;
     }
     public NasDialogue (@NotNull NasMsg nm, @NotNull List<FileInfo> infolist)
@@ -88,11 +89,11 @@ public class NasDialogue
 
     public boolean transferStateIsOk()    {   return fileExtruder.getState();   }
 
-    public void dataBytes2File (NasMsg nm)
+    public void writeDataBytes2File (NasMsg nm)
     {
         if (fileExtruder != null)
         {
-            chunks = fileExtruder.dataBytes2File(nm);
+            chunks = fileExtruder.writeDataBytes2File(nm);
         }
     }
 

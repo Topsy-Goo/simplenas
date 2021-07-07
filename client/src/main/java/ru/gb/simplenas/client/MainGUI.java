@@ -22,17 +22,15 @@ public class MainGUI extends Application
     private int minHeight = initialHeight;
     private static final Logger LOGGER = LogManager.getLogger(MainGUI.class.getName());
 
-    public static void main(String[] args)      //+l
+    public static void main(String[] args)
     {
-        LOGGER.fatal("------------------------------------ ");
         LOGGER.info("main(.) start");
         launch(args);
         LOGGER.info("main() end");
     }
 
-    @Override public void start (Stage primaryStage) throws IOException     //+l
+    @Override public void start (Stage primaryStage) throws IOException
     {
-        LOGGER.trace("start() start");
     //инициализируем приложение
         FXMLLoader fxmlLoader = new FXMLLoader (getClass().getResource ("/window.fxml"));
         Parent root = fxmlLoader.load();
@@ -50,7 +48,6 @@ public class MainGUI extends Application
         primaryStage.show();
         primaryStage.setMinWidth (minWidth);
         primaryStage.setMinHeight (minHeight);
-        LOGGER.trace("start() end");
     }
 
-}// class MainGUI
+}

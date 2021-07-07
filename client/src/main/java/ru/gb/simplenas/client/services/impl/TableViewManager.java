@@ -6,14 +6,12 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TablePosition;
 import javafx.scene.control.TableView;
 import javafx.scene.control.cell.TextFieldTableCell;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import ru.gb.simplenas.client.Controller;
 import ru.gb.simplenas.client.services.NetClient;
 import ru.gb.simplenas.client.CFactory;
 import ru.gb.simplenas.common.structs.FileInfo;
 import ru.gb.simplenas.common.structs.NasMsg;
-import ru.gb.simplenas.common.structs.TableFileInfo;
+import ru.gb.simplenas.client.structs.TableFileInfo;
 
 import java.awt.*;
 import java.nio.file.Path;
@@ -22,8 +20,8 @@ import java.util.List;
 
 import static javafx.scene.control.Alert.AlertType.ERROR;
 import static javafx.scene.control.Alert.AlertType.WARNING;
+import static ru.gb.simplenas.client.CFactory.*;
 import static ru.gb.simplenas.common.CommonData.*;
-import static ru.gb.simplenas.common.Factory.rename;
 import static ru.gb.simplenas.common.Factory.sayNoToEmptyStrings;
 import static ru.gb.simplenas.common.structs.OperationCodes.OK;
 
@@ -56,7 +54,7 @@ public class TableViewManager
 
 
 //Обработчик для редактирования «Имени файла». (Источник озарения: https://betacode.net/11079/javafx-tableview )
-    void eventHandlerFolderRenameing (TableColumn.CellEditEvent<TableFileInfo, String> event)       //+
+    void eventHandlerFolderRenameing (TableColumn.CellEditEvent<TableFileInfo, String> event)
     {
         //This event handler will be fired when the user successfully commits their editing.
         TablePosition<TableFileInfo, String> tablePosition = event.getTablePosition();
@@ -71,29 +69,38 @@ public class TableViewManager
         if (ok)
         {   tfi.setFileName (newName);
         }
-        else Controller.messageBox(CFactory.ALERTHEADER_RENAMING, newName, WARNING);
+        else Controller.messageBox (
+                ALERTHEADER_RENAMING,
+                String.format (PROMPT_FORMAT_RENAMING_ALREADY_EXISTS, newName),
+                WARNING);
     }
 
 //пробуем переименовать удалённую папку или файл.
-    boolean doRenameRemoteFolder (int position, FileInfo old, String newName)       //+
+    boolean doRenameRemoteFolder (int position, FileInfo old, String newName)
     {
         boolean ok = false;
         NetClient netClient = controller.getNetClient();
+        String errMsg = ERROR_UNABLE_TO_PERFORM;
 
         if (netClient != null  &&  position >= 0  &&  old != null  &&  sayNoToEmptyStrings(newName))
         {
             NasMsg nm = netClient.rename(old, newName);
             if (nm != null)
+            if (nm.opCode() == OK)
             {
-                ok = nm.opCode() == OK;
+                ok = true;
+            }
+            else if (nm.msg() != null)
+            {
+                errMsg = nm.msg();
             }
         }
-        if (!ok)   Controller.messageBox(CFactory.ALERTHEADER_REMOUTE_STORAGE, ERROR_UNABLE_TO_PERFORM, ERROR);
+        if (!ok)   Controller.messageBox (ALERTHEADER_RENAMING, errMsg, ERROR);
         return ok;
     }
 
 //пробуем переименовать локальные папку или файл
-    boolean doRenameLocalFolder (int position, FileInfo old, String newName)        //+
+    boolean doRenameLocalFolder (int position, FileInfo old, String newName)
     {
         boolean ok = false;
         if (position >= 0  &&  old != null  &&  sayNoToEmptyStrings(newName))
@@ -105,7 +112,7 @@ public class TableViewManager
         return ok;
     }
 
-    public static Point populateTv (@NotNull TableView<TableFileInfo> tv, @NotNull List<FileInfo> infolist)     //+
+    public static Point populateTv (@NotNull TableView<TableFileInfo> tv, @NotNull List<FileInfo> infolist)
     {
         Point point = new Point(0, 0);
         if (tv != null)
@@ -128,7 +135,7 @@ public class TableViewManager
         return point;
     }
 
-    public static Point statisticsTv (@NotNull TableView<TableFileInfo> tv)     //+
+    public static Point statisticsTv (@NotNull TableView<TableFileInfo> tv)
     {
         Point point = new Point(0, 0);
         if (tv != null)
@@ -146,7 +153,7 @@ public class TableViewManager
         return point;
     }
 
-    public static TableFileInfo addItemAsFolder (@NotNull String name, @NotNull TableView<TableFileInfo> tv)    //+
+    public static TableFileInfo addItemAsFolder (@NotNull String name, @NotNull TableView<TableFileInfo> tv)
     {
         ObservableList<TableFileInfo> list = tv.getItems();
 
@@ -158,7 +165,7 @@ public class TableViewManager
         return t;
     }
 
-    public static void deleteTvItem (TableView<TableFileInfo> tv, TableFileInfo t)     //+
+    public static void deleteTvItem (TableView<TableFileInfo> tv, TableFileInfo t)
     {
         ObservableList<TableFileInfo> list = tv.getItems();
         list.remove(t);

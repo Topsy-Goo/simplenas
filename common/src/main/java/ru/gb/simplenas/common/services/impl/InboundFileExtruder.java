@@ -10,10 +10,13 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.FileTime;
 
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
+import static ru.gb.simplenas.common.Factory.print;
+import static ru.gb.simplenas.common.CommonData.WF_;
 
 public class InboundFileExtruder implements FileExtruder
 {
@@ -26,11 +29,11 @@ public class InboundFileExtruder implements FileExtruder
     private static final Logger LOGGER = LogManager.getLogger(InboundFileExtruder.class.getName());
 
 
-    @Override public boolean initialize (final NasMsg nm, final String strData)    {   return false;   }
+    @Override public boolean initialize (final NasMsg nm, final String strData) {   return false;   }
 
     @Override public boolean getState() {   return !extrudingError;   }
 
-    @Override public int dataBytes2File (final NasMsg nm)
+    @Override public int writeDataBytes2File (final NasMsg nm)
     {
         int chunks = 0;
         if (!extrudingError)
@@ -40,11 +43,12 @@ public class InboundFileExtruder implements FileExtruder
 
             if (array != null && size > 0)
             {
-                LOGGER.debug("получены данные("+size+").");
+                //LOGGER.debug("получены данные("+size+").");
                 try
                 {   outputStream.write (array, 0, size);
-                    outputStream.flush();   //< этот flush() частично решил проблему скачивания больших файлов
-                    LOGGER.debug("данные записаны.");
+                    outputStream.flush();
+                    //LOGGER.debug("данные записаны.");
+                    print(WF_ + size);
                     chunks++;
                 }
                 catch (IOException e)
@@ -61,6 +65,7 @@ public class InboundFileExtruder implements FileExtruder
     @Override public boolean endupExtruding (NasMsg nm)
     {
     //переносим файл из временной папки в папку назначения
+        LOGGER.debug("endupExtruding() start");
         boolean ok = false;
         try
         {
@@ -83,6 +88,7 @@ public class InboundFileExtruder implements FileExtruder
         finally
         {
             cleanup();
+            LOGGER.debug("endupExtruding() end");
         }
         return ok;
     }
@@ -93,6 +99,7 @@ public class InboundFileExtruder implements FileExtruder
 //завершение операции получения файла от клиента + очистка полей, используемых при выполнении такой операции
     protected void cleanup()
     {
+        LOGGER.debug("cleanup() start");
         try {   if (outputStream != null) { outputStream.flush();   outputStream.close(); }
                 if (pFileInTmpFolder != null) Files.deleteIfExists(pFileInTmpFolder);
                 if (pTmpDir != null)          Files.deleteIfExists (pTmpDir);
@@ -105,6 +112,7 @@ public class InboundFileExtruder implements FileExtruder
             pFileInTmpFolder = null;
             pTargetFile = null;
             outputStream = null;
+            LOGGER.debug("cleanup() end");
         }
     }
 

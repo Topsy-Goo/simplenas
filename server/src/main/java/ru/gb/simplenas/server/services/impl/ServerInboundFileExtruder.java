@@ -1,7 +1,5 @@
 package ru.gb.simplenas.server.services.impl;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import ru.gb.simplenas.common.services.impl.InboundFileExtruder;
 import ru.gb.simplenas.common.structs.NasMsg;
 
@@ -12,21 +10,17 @@ import java.nio.file.Paths;
 
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static java.nio.file.StandardOpenOption.WRITE;
-import static ru.gb.simplenas.common.Factory.absolutePathToUserSpace;
+import static ru.gb.simplenas.server.SFactory.absolutePathToUserSpace;
 
 
 public class ServerInboundFileExtruder extends InboundFileExtruder
 {
     private ServerInboundFileExtruder instance;
-    private static final Logger LOGGER = LogManager.getLogger(ServerInboundFileExtruder.class.getName());
 
-    public ServerInboundFileExtruder ()
-    {
-        LOGGER.debug("создан ServerInboundFileExtruder");
-    }
+    public ServerInboundFileExtruder () {}
 
 //подготовка к скачиванию файла от клиента
-    public boolean initialize (final NasMsg nm, final String userName)
+    @Override public boolean initialize (final NasMsg nm, final String userName)
     {
         boolean result = false;
         if (instance == null)
@@ -57,6 +51,7 @@ public class ServerInboundFileExtruder extends InboundFileExtruder
         }
         return result;
     }
+
 
 }
 //---------------------------------------------------------------------------------------------------------------*/

@@ -4,8 +4,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.flywaydb.core.Flyway;
 
-import static ru.gb.simplenas.common.CommonData.STRPATH_CLOUD;
-import static ru.gb.simplenas.common.Factory.createCloudFolder;
+import static ru.gb.simplenas.common.CommonData.STR_CLOUD;
+import static ru.gb.simplenas.server.SFactory.createCloudFolder;
 import static ru.gb.simplenas.server.SFactory.nasProperyManager;
 import static ru.gb.simplenas.server.SFactory.startSеrver;
 
@@ -33,7 +33,7 @@ public class ServerApp
 
         nasProperyManager();
 
-        if (createCloudFolder (STRPATH_CLOUD))
+        if (createCloudFolder(STR_CLOUD))
         //if (initFlyway())
         //if ()
         //if ()

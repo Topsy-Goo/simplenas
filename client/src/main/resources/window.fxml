@@ -8,7 +8,7 @@
 <?import javafx.scene.text.Text?>
 
 <?import ru.gb.simplenas.client.services.impl.FormattedTableCellFactory?>
-<?import ru.gb.simplenas.common.structs.TableFileInfo?>
+<?import ru.gb.simplenas.client.structs.TableFileInfo?>
 <VBox
         xmlns:fx="http://javafx.com/fxml"
         xmlns="http://javafx.com/javafx"

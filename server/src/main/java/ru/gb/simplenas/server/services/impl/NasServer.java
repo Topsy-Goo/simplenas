@@ -14,6 +14,7 @@ import io.netty.handler.codec.serialization.ObjectEncoder;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import ru.gb.simplenas.common.services.impl.NasMsgInboundHandler;
+import ru.gb.simplenas.common.services.impl.TestInboundHandler;
 import ru.gb.simplenas.server.services.Server;
 
 import java.util.*;
@@ -21,7 +22,6 @@ import java.util.*;
 import static ru.gb.simplenas.common.CommonData.*;
 import static ru.gb.simplenas.common.Factory.lnprint;
 
-//
 public class NasServer implements Server
 {
     private static NasServer instance;
@@ -47,7 +47,7 @@ public class NasServer implements Server
 
     private void run()
     {
-        LOGGER.trace("run(): start");
+        LOGGER.debug("run(): start");
     // В этом методе мы настраиваем сервер на приём клиентов и на обработку других запросов клиентов, а затем запускаем
     // бесконечный цикл ожидания клиентов и обработки их запросов. (Пока непонятно, что именно прерывает этот цикл.)
     // Цикл происходит где-то в недрах объекта ChannelFuture cfuture.
@@ -97,10 +97,14 @@ public class NasServer implements Server
                         // буфера в Netty для данной ситуации.
                         sC.pipeline().addLast (
                                     //new StringDecoder(), new StringEncoder(),
-                                    new ObjectEncoder(), //< An encoder which serializes a Java object into a ByteBuf.
-                                    //new ObjectDecoder(ClassResolvers.cacheDisabled (null)), //< A decoder which deserializes the received ByteBufs into Java objects.
+                                    //An encoder which serializes a Java object into a ByteBuf.
+                                    new ObjectEncoder(),
+                                    //A decoder which deserializes the received ByteBufs into Java objects.
+                                    //new ObjectDecoder(ClassResolvers.cacheDisabled (null)),
+                                    //new ObjectDecoder(MAX_OBJECT_SIZE, ClassResolvers.cacheDisabled (null)), //< A decoder which deserializes the received ByteBufs into Java objects.
                                     new ObjectDecoder (Integer.MAX_VALUE, ClassResolvers.weakCachingConcurrentResolver(null)), //< то же самое, но конкурентно и с небольшим кэшированием
                                     new NasMsgInboundHandler (new NasServerManipulator (sC))
+                                    //new TestInboundHandler (new NasServerManipulator (sC))
                                     );
                         LOGGER.trace("initChannel() end");
 
@@ -143,13 +147,13 @@ public class NasServer implements Server
     // Future — позволяет зарегистрировать слушателя, который будет уведомлен о выполнении операции.
     // ChannelFuture — может блокировать выполнение потока до окончания выполнения операции.
         }
-        catch (Exception e)   {   LOGGER.error("run(): ", e);   }
+        catch (Exception e){e.printStackTrace();}
         finally
         {   // В конце работы сервера освобождаем ресурсы и потоки, которыми пользовались циклы событий (иначе
             //  программа не завершиться):
             groupParent.shutdownGracefully();
             groupChild.shutdownGracefully();
-            LOGGER.trace("run(): end");
+            LOGGER.debug("run(): end");
             instance = null;
         }
     }
@@ -180,7 +184,7 @@ public class NasServer implements Server
 
 //---------------------------------------------------------------------------------------------------------------*/
 
-    @Override public boolean clientsListAdd (NasServerManipulator manipulator, String userName)     //+l
+    @Override public boolean clientsListAdd (NasServerManipulator manipulator, String userName)
     {
         boolean ok = false;
         if (!CHANNELS.containsKey (userName))
@@ -203,7 +207,7 @@ public class NasServer implements Server
         }
     }
 
-    private void closeAllClientConnections()    //+
+    private void closeAllClientConnections()
     {
         Set<Map.Entry<String, NasServerManipulator>> entries = CHANNELS.entrySet();
 

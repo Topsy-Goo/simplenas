@@ -28,7 +28,7 @@ import static java.nio.file.StandardOpenOption.*;
 import static ru.gb.simplenas.common.CommonData.*;
 import static ru.gb.simplenas.common.Factory.*;
 import static ru.gb.simplenas.common.structs.OperationCodes.*;
-import static ru.gb.simplenas.server.SFactory.clientsListRemove;
+import static ru.gb.simplenas.server.SFactory.*;
 
 //NasServerManipulator — это несколько больше, чем ChannelHandler, т.к. ему нужно быть посредником между сервером и
 //  клиентом: хранить данные клиента, .
@@ -42,7 +42,7 @@ public class NasServerManipulator implements Manipulator
     private static final Logger LOGGER = LogManager.getLogger(NasServerManipulator.class.getName());
 
 
-    public NasServerManipulator (SocketChannel sC)      //+l
+    public NasServerManipulator (SocketChannel sC)
     {
         socketChannel = sC;
         buildMethodMaps();
@@ -51,9 +51,9 @@ public class NasServerManipulator implements Manipulator
 
 //---------------------------------------------------------------------------------------------------------------*/
 
-    @Override public void handle (@NotNull ChannelHandlerContext ctx, @NotNull NasMsg nm)       //+l
+    @Override public void handle (@NotNull ChannelHandlerContext ctx, @NotNull NasMsg nm)
     {
-        LOGGER.trace("\nhandle(): start");
+        //LOGGER.trace("\nhandle(): start");
         if (ctx != null  &&  checkMethodInvocationContext4Handle(nm))
         {
             nm.setinbound (INBOUND);
@@ -65,12 +65,12 @@ public class NasServerManipulator implements Manipulator
                 }
             catch(IllegalArgumentException | ReflectiveOperationException e){LOGGER.error("handle(): ", e);}
         }
-        LOGGER.trace("handle(): end\n");
+        //LOGGER.trace("handle(): end\n");
     }
 
 //вынесли все проверки из начала метода handle() в отдельный метод. Разбрасывать этот метод по нескольким
 //  методам не буду!
-    private boolean checkMethodInvocationContext4Handle (NasMsg nm)     //+
+    private boolean checkMethodInvocationContext4Handle (NasMsg nm)
     {
         if (mapManipulateMetods != null)
         if (nm != null)
@@ -83,7 +83,7 @@ public class NasServerManipulator implements Manipulator
     }
 
     @ManipulateMethod (opcodes = {OK, ERROR})
-    private void manipulateEndups (NasMsg nm)       //+
+    private void manipulateEndups (NasMsg nm)
     {
         if (mapEndupMetods != null && dialogue != null)
         try {
@@ -95,10 +95,12 @@ public class NasServerManipulator implements Manipulator
 
 //------------------------------- LOAD2SERVER -------------------------------------------------------------------*/
 
-    @ManipulateMethod (opcodes = {OperationCodes.LOAD2SERVER})
-    private void manipulateLoad2ServerRequest (NasMsg nm)       //+l
+//nm.msg — папка на стороне сервера (относит. путь).
+//nm.fileInfo.fileNAme — имя файла, котрый нужно создать.
+    @ManipulateMethod (opcodes = {LOAD2SERVER})
+    private void manipulateLoad2ServerRequest (NasMsg nm)
     {
-        LOGGER.trace("manipulateFileInfoRequest(): start");
+        //LOGGER.trace("manipulateFileInfoRequest(): start");
 
         if (nm.fileInfo() == null || !sayNoToEmptyStrings (nm.msg(), nm.fileInfo().getFileName()))
         {
@@ -120,15 +122,15 @@ public class NasServerManipulator implements Manipulator
             // то прерывать клиента не будем, чтобы не усложнять процесс, — пусть передаст всё, а потом, когда
             // от клиента придёт сообщений об окончании передачи данных, мы сообщим о результате в ответном
             // сообщении -- сделаем это в endupLoad2ServerRequest().
-            dialogue.dataBytes2File(nm);
+            dialogue.writeDataBytes2File(nm);
             //if (dialogue != null)   < не будем записывать эти сообщения, т.к. их запись фактически равносильна
             //    dialogue.add(nm);     записи передаваемого файла ещё и в dialogue.
             //                          TODO : убедиться, что запись не ведётся и добавить в эту проверку в тэсты.
         }
-        LOGGER.trace("manipulateFileInfoRequest(): end");
+        //LOGGER.trace("manipulateFileInfoRequest(): end");
     }
 
-    private void informClientWithOperationCode (NasMsg nm, OperationCodes opcode)       //+l
+    private void informClientWithOperationCode (NasMsg nm, OperationCodes opcode)
     {
         if (socketChannel != null)
         {
@@ -138,28 +140,32 @@ public class NasServerManipulator implements Manipulator
             {
                 dialogue.add(nm);
             }
-            LOGGER.trace(">>>>>>>>"+nm.opCode()+">>>>>>> "+nm);
+            //LOGGER.trace(">>>>>>>>"+nm.opCode()+">>>>>>> "+nm);
             socketChannel.writeAndFlush(nm);
         }
     }
 
     @EndupMethod (opcodes = {LOAD2SERVER})
-    private void endupLoad2ServerRequest (NasMsg nm)        //+l
+    private void endupLoad2ServerRequest (NasMsg nm)
     {
-        LOGGER.trace("endupLoad2ServerRequest(): start");
+        //LOGGER.trace("endupLoad2ServerRequest(): start");
         boolean ok = false;
         if (dialogue != null)
         {
             dialogue.add(nm);
-            if (nm.opCode() == OK  &&  dialogue.endupExtruding(nm))
+            if (nm.opCode() == OK)
             {
-                informOnSuccessfulDataTrabsfer (nm);
-                ok = true;
+                if (dialogue.endupExtruding(nm))
+                {
+                    informOnSuccessfulDataTrabsfer (nm);
+                    ok = true;
+                }
             }
         }
-        if (!ok) replyWithErrorMessage (ERROR_UNABLE_TO_PERFORM); //< это должно остаться в endupLoad2ServerRequest() как часть обработки сообщения OK от клиента
+        if (!ok)
+            replyWithErrorMessage (ERROR_UNABLE_TO_PERFORM + " endupLoad2ServerRequest"); //< это должно остаться в endupLoad2ServerRequest() как часть обработки сообщения OK от клиента
         stopTalking();
-        LOGGER.trace("endupLoad2ServerRequest(): end");
+        //LOGGER.trace("endupLoad2ServerRequest(): end");
     }
 
 //------------------------------- LOAD2LOCAL --------------------------------------------------------------------*/
@@ -167,14 +173,12 @@ public class NasServerManipulator implements Manipulator
     private boolean canLoadToLoacal;
 
     @ManipulateMethod (opcodes = {LOAD2LOCAL})
-    private void manipulateLoad2LocalRequest (NasMsg nm)        //+l
+    private void manipulateLoad2LocalRequest (NasMsg nm)
     {
-        LOGGER.trace("manipulateLoad2LocalRequest(): start");
+        //LOGGER.trace("manipulateLoad2LocalRequest(): start");
         if (nm.fileInfo() == null || !sayNoToEmptyStrings (nm.msg(), nm.fileInfo().getFileName()))
-        {
-            LOGGER.error("manipulateLoad2LocalRequest(): illegal arguments");
             return;
-        }
+
         boolean result = false;
         canLoadToLoacal = true;
 
@@ -209,41 +213,38 @@ public class NasServerManipulator implements Manipulator
         if (result) informOnSuccessfulDataTrabsfer (nm);
         else
         replyWithErrorMessage (errMsg);
-        LOGGER.trace("manipulateLoad2LocalRequest(): end");
+        //LOGGER.trace("manipulateLoad2LocalRequest(): end");
     }
 
-    private boolean sendFileToClient (NasMsg nm, InputStream is) throws IOException     //+l
+    private boolean sendFileToClient (NasMsg nm, InputStream istream) throws IOException
     {
-        if (is == null || !canLoadToLoacal || nm.fileInfo() == null || socketChannel == null)
-        {
-            LOGGER.error("sendFileToClient(): illegal arguments");
-            return false;
-        }
         boolean result = false;
+        if (istream == null || !canLoadToLoacal || nm.fileInfo() == null || socketChannel == null)
+            return false;
+
         final long size = nm.fileInfo().getFilesize();
         long read = 0L;
         long rest = size;
-        byte[] array = new byte[MAX_BUFFER_SIZE];
+
+        final int bufferSize = (int)Math.min(INT_MAX_BUFFER_SIZE, size);
+        byte[] array = new byte[bufferSize];
 
         nm.setinbound (OUTBOUND);
         nm.setdata(array);
 
-        LOGGER.trace("sendAllTheFile(): начало пересылки данных >>>>>>>>>>>>>>>>");
+        //LOGGER.trace("sendAllTheFile(): начало пересылки данных >>>>>>>>>>>>>>>>");
+        print("\n");
         while (rest > 0 && canLoadToLoacal)
         {
-            read = is.read (array, 0, MAX_BUFFER_SIZE); //< блокирующая операция; вернёт -1, если достугнут конец файла
+            read = istream.read(array, 0, bufferSize); //< блокирующая операция; вернёт -1, если достугнут конец файла
             if (read <= 0)
-            {
                 break;
-            }
             rest -= read;
+            print(RF_ + read);
             nm.fileInfo().setFilesize (read);   //< пусть nm.fileInfo.filesize содержит количество считанных байтов
             socketChannel.writeAndFlush (nm);
         }
-        LOGGER.trace("sendAllTheFile(): >>>>>>>>>>>>>>>> конец пересылки данных");
-
-        //if (size > 0)
-        //    channel.flush();
+        //LOGGER.trace("sendAllTheFile(): >>>>>>>>>>>>>>>> конец пересылки данных");
 
         nm.fileInfo().setFilesize (size);
         result = canLoadToLoacal && rest == 0L;
@@ -251,12 +252,12 @@ public class NasServerManipulator implements Manipulator
     }
 
 
-//---------------------------------------------------------------------------------------------------------------*/
+//---------------------------- LOGIN, FILEINFO, COUNTITEMS, CREATE, RENAME, DELETE ------------------------------*/
 
     @ManipulateMethod (opcodes = {LOGIN})
-    private boolean manipulateLoginRequest (@NotNull NasMsg nm, ChannelHandlerContext ctx)      //+l
+    private boolean manipulateLoginRequest (@NotNull NasMsg nm, ChannelHandlerContext ctx)
     {
-        LOGGER.trace("manipulateLoginRequest(): start");
+        //LOGGER.trace("manipulateLoginRequest(): start");
         if (userName != null)
         {
             LOGGER.debug("manipulateLoginRequest(): userName = "+ userName);
@@ -265,13 +266,17 @@ public class NasServerManipulator implements Manipulator
         String  name = nm.msg();
         String  errMsg = ERROR_UNABLE_TO_PERFORM;
 
-        if (!checkUserNameValid (name) || !SFactory.clientsListAdd(this, name))
+        if (!isUserNameValid(name))
         {
-            errMsg = String.format("Авторизация отклонена. Возможно, пользователь\n%s\nуже подключен.", name);
+            errMsg = String.format (ERR_FORMAT_UNALLOWABLE_USERNAME, name);
+        }
+        else if (!SFactory.clientsListAdd(this, name))
+        {
+            errMsg = String.format (ERR_FORMAT_LOGIN_REJECTED, name);
         }
         else
         {
-            pathCurrentAbsolute = constructAbsoluteUserPath (name);
+            pathCurrentAbsolute = constructAbsoluteUserRoot (name);
             if (checkUserFolder (name) && pathCurrentAbsolute != null)
             {
                 userName = name;
@@ -283,16 +288,16 @@ public class NasServerManipulator implements Manipulator
         {
             replyWithErrorMessage (errMsg);
             socketChannel.close();
-            ctx.disconnect();//close(); //TODO : соединение завершают оба вызова.
+            ctx.disconnect();
         }
-        LOGGER.trace("manipulateLoginRequest(): end");
+        //LOGGER.trace("manipulateLoginRequest(): end");
         return result;
     }
 
     @ManipulateMethod (opcodes = {OperationCodes.FILEINFO})
-    private void manipulateFileInfoRequest (NasMsg nm)      //+l
+    private void manipulateFileInfoRequest (NasMsg nm)
     {
-        LOGGER.trace("manipulateFileInfoRequest(): start");
+        //LOGGER.trace("manipulateFileInfoRequest(): start");
         boolean ok = false;
         if (nm.fileInfo() != null && sayNoToEmptyStrings (nm.msg(), nm.fileInfo().getFileName()))
         {
@@ -305,13 +310,13 @@ public class NasServerManipulator implements Manipulator
             }
         }
         if (!ok) replyWithErrorMessage (ERROR_UNABLE_TO_PERFORM);
-        LOGGER.trace("manipulateFileInfoRequest(): end");
+        //LOGGER.trace("manipulateFileInfoRequest(): end");
     }
 
     @ManipulateMethod (opcodes = {OperationCodes.COUNTITEMS})
-    private void manipulateCountEntriesRequest (NasMsg nm)      //+l
+    private void manipulateCountEntriesRequest (NasMsg nm)
     {
-        LOGGER.trace("manipulateCountEntriesRequest(): start");
+        //LOGGER.trace("manipulateCountEntriesRequest(): start");
         int result = -1;
         if (nm.fileInfo() != null && sayNoToEmptyStrings (nm.msg(), nm.fileInfo().getFileName()))
         {
@@ -320,9 +325,9 @@ public class NasServerManipulator implements Manipulator
 
             if (valid != null)
             {
-                result = countDirectoryEntries (valid);
+                result = safeCountDirectoryEntries (valid, userName);
             }
-            LOGGER.trace("manipulateCountEntriesRequest(): папка <"+p.toString()+"> содержит "+result+" элементов.");
+            //LOGGER.trace("manipulateCountEntriesRequest(): папка <"+p.toString()+"> содержит "+result+" элементов.");
             if (result >= 0)
             {
                 nm.fileInfo().setFilesize (result);
@@ -330,13 +335,13 @@ public class NasServerManipulator implements Manipulator
             }
         }
         if (result < 0) replyWithErrorMessage (ERROR_UNABLE_TO_PERFORM);
-        LOGGER.trace("manipulateCountEntriesRequest(): end");
+        //LOGGER.trace("manipulateCountEntriesRequest(): end");
     }
 
     @ManipulateMethod (opcodes = {OperationCodes.CREATE})
-    private void manipulateCreateRequest (NasMsg nm)        //+l
+    private void manipulateCreateRequest (NasMsg nm)
     {
-        LOGGER.trace("manipulateCreateRequest(): start");
+        //LOGGER.trace("manipulateCreateRequest(): start");
         boolean ok = false;
         if (sayNoToEmptyStrings(nm.msg()))
         {
@@ -349,18 +354,18 @@ public class NasServerManipulator implements Manipulator
             }
         }
         if (!ok) replyWithErrorMessage (ERROR_UNABLE_TO_PERFORM);
-        LOGGER.trace("manipulateCreateRequest(): end");
+        //LOGGER.trace("manipulateCreateRequest(): end");
     }
 
     @ManipulateMethod (opcodes = {OperationCodes.RENAME})
-    private void manipulateRenameRequest (NasMsg nm)        //+l
+    private void manipulateRenameRequest (NasMsg nm)
     {
-        LOGGER.trace("manipulateRenameRequest(): start");
+        //LOGGER.trace("manipulateRenameRequest(): start");
         boolean ok = false;
         if (sayNoToEmptyStrings(nm.msg()) && nm.fileInfo() != null)
         {
             String newName = nm.msg();
-            FileInfo fi = rename (pathCurrentAbsolute, nm.fileInfo().getFileName(), newName);
+            FileInfo fi = safeRename (pathCurrentAbsolute, nm.fileInfo().getFileName(), newName, userName);
             if (fi != null)
             {
                 nm.setmsg (relativizeByUserName (userName, pathCurrentAbsolute).toString());   //< эту строку клиент должен отобразить в соотв. поле ввода.
@@ -369,35 +374,35 @@ public class NasServerManipulator implements Manipulator
             }
         }
         if (!ok) replyWithErrorMessage (ERROR_UNABLE_TO_PERFORM);
-        LOGGER.trace("manipulateRenameRequest(): end");
+        //LOGGER.trace("manipulateRenameRequest(): end");
     }
 
     @ManipulateMethod (opcodes = {OperationCodes.DELETE})
-    private void manipulateDeleteRequest (NasMsg nm)        //+l
+    private void manipulateDeleteRequest (NasMsg nm)
     {
-        LOGGER.trace("manipulateDeleteRequest(): start");
+        //LOGGER.trace("manipulateDeleteRequest(): start");
         boolean result = false;
         if (nm.fileInfo() != null && sayNoToEmptyStrings (nm.msg(), nm.fileInfo().getFileName()))
         {
             Path p = Paths.get (nm.msg(), nm.fileInfo().getFileName());
             Path valid = absolutePathToUserSpace (userName, p, nm.fileInfo().isDirectory());
 
-            if (result = valid != null && deleteFileOrDirectory (valid))
+            if (result = valid != null && safeDeleteFileOrDirectory (valid, userName))
             {
                 informClientWithOperationCode (nm, OK);
             }
         }
         if (!result) replyWithErrorMessage (ERROR_UNABLE_TO_PERFORM);
-        LOGGER.trace("manipulateDeleteRequest(): end");
+        //LOGGER.trace("manipulateDeleteRequest(): end");
     }
 
 //---------------------------------- LIST -----------------------------------------------------------------------*/
 
 //список элементов запрошенной папки отсылаем клиенту отдельными сообщениями (запрошеный относительный путь — в nm.msg).
     @ManipulateMethod (opcodes = {LIST})
-    private void manipulateListRequest (@NotNull NasMsg nm)      //+l
+    private void manipulateListRequest (@NotNull NasMsg nm)
     {
-        LOGGER.trace("manipulateListRequest(): start");
+        //LOGGER.trace("manipulateListRequest(): start");
         if (socketChannel != null)
         {
             Path valid = absolutePathToUserSpace (userName, Paths.get(nm.msg()), FOLDER);
@@ -411,10 +416,10 @@ public class NasServerManipulator implements Manipulator
             }
             else replyWithErrorMessage(SFactory.ERROR_INVALID_FILDER_SPECIFIED);
         }
-        LOGGER.trace("manipulateListRequest(): end");
+        //LOGGER.trace("manipulateListRequest(): end");
     }
 
-    private void sendFileInfoList (@NotNull List<FileInfo> flist)     //+l
+    private void sendFileInfoList (@NotNull List<FileInfo> flist)
     {
         if (socketChannel != null && flist != null)
         {
@@ -424,7 +429,7 @@ public class NasServerManipulator implements Manipulator
             {
                 newnm.setfileInfo (fi);
                 counter ++;
-                LOGGER.trace("sendFileInfoList(): >>>>>>>>>>>>>>>> "+ newnm.toString());
+                //LOGGER.trace("sendFileInfoList(): >>>>>>>>>>>>>>>> "+ newnm.toString());
                 socketChannel.writeAndFlush (newnm);
             }
             LOGGER.debug("sendFileInfoList(): отправлено сообщений: "+ counter);
@@ -435,20 +440,20 @@ public class NasServerManipulator implements Manipulator
 //---------------------------------------------------------------------------------------------------------------*/
 
 // информирует клиента об успешно оправке или об успешном получении файла.
-    private void informOnSuccessfulDataTrabsfer (NasMsg nm)     //+
+    private void informOnSuccessfulDataTrabsfer (NasMsg nm)
     {
         nm.setdata (null);
         informClientWithOperationCode (nm, OK);
     }
 
 //Отсылем клиенту сообщение об ошибке.
-    public void replyWithErrorMessage (String errMsg)       //+l
+    public void replyWithErrorMessage (String errMsg)
     {
         if (socketChannel != null)
         {
             if (errMsg == null)
             {
-                errMsg = ERROR_UNABLE_TO_PERFORM;
+                errMsg = ERROR_SERVER_UNABLE_TO_PERFORM;
             }
             NasMsg nm = new NasMsg (ERROR, errMsg, OUTBOUND);
 
@@ -456,13 +461,13 @@ public class NasServerManipulator implements Manipulator
             {
                 dialogue.add(nm);
             }
-            LOGGER.trace("replyWithErrorMessage() >>>>>>>>"+nm.opCode()+">>>>>>> "+nm);
+            //LOGGER.trace("replyWithErrorMessage() >>>>>>>>"+nm.opCode()+">>>>>>> "+nm);
             socketChannel.writeAndFlush (nm);
         }
     }
 
 //пара методов для создания dialogue.
-    private void newDialogue (@NotNull NasMsg nm)   //+
+    private void newDialogue (@NotNull NasMsg nm)
     {
         if (dialogue != null)
         {
@@ -474,7 +479,7 @@ public class NasServerManipulator implements Manipulator
         }
     }
 
-    private boolean newDialogue (@NotNull NasMsg nm, @NotNull FileExtruder tc)      //+l
+    private boolean newDialogue (@NotNull NasMsg nm, @NotNull FileExtruder tc)
     {
         boolean ok = false;
         if (dialogue != null)
@@ -491,9 +496,9 @@ public class NasServerManipulator implements Manipulator
     }
 
 //закрываем dialogue
-    private void stopTalking()      //+
+    private void stopTalking()
     {
-        LOGGER.trace("\t\t\t\tstopTalking() call");
+        //LOGGER.trace("\t\t\t\tstopTalking() call");
         if (dialogue != null)
         {
             dialogue.close();
@@ -502,26 +507,26 @@ public class NasServerManipulator implements Manipulator
     }
 
 //Возможно, эти три метода нужно будет похерить, но это будет видно позже.
-    @Override public void onChannelActive (@NotNull ChannelHandlerContext ctx)      //+l
+    @Override public void onChannelActive (@NotNull ChannelHandlerContext ctx)
     {
-        LOGGER.trace("onChannelActive(): открыто соединение: ctx: "+ ctx);
+        //LOGGER.trace("onChannelActive(): открыто соединение: ctx: "+ ctx);
         if (socketChannel == null)
         {
             socketChannel = (SocketChannel) ctx.channel();
         }
     }
-    @Override public void onChannelInactive (@NotNull ChannelHandlerContext ctx)        //+l
+    @Override public void onChannelInactive (@NotNull ChannelHandlerContext ctx)
     {
-        LOGGER.trace("onChannelInactive(): закрыто соединение: ctx: "+ ctx);
+        //LOGGER.trace("onChannelInactive(): закрыто соединение: ctx: "+ ctx);
         if (userName != null)
         {
             clientsListRemove(this, userName);
             userName = null;
         }
     }
-    @Override public void onExceptionCaught (@NotNull ChannelHandlerContext ctx, @NotNull Throwable cause)      //+l
+    @Override public void onExceptionCaught (@NotNull ChannelHandlerContext ctx, @NotNull Throwable cause)
     {
-        LOGGER.trace("onExceptionCaught(): аварийное закрытие соединения: ctx: "+ ctx);
+        //LOGGER.trace("onExceptionCaught(): аварийное закрытие соединения: ctx: "+ ctx);
         if (userName != null)
         {
             clientsListRemove(this, userName);
@@ -529,38 +534,29 @@ public class NasServerManipulator implements Manipulator
         }
     }
 
-
-//---------------------------------------------------------------------------------------------------------------*/
-
-//эти методы нужны NetClient'у для общения с Manipulator'ом.
-    @Override public boolean startLoad2LocalRequest (String toLocalFolder, NasMsg nm)  {LOGGER.error("startLoad2LocalRequest(): Unsupported Operation");  return false;}
-    @Override public boolean startLoad2ServerRequest (String toServerFolder, NasMsg nm){LOGGER.error("startLoad2ServerRequest(): Unsupported Operation"); return false;}
-    @Override public boolean startListRequest (NasMsg nm)   {LOGGER.error("startListRequest(): Unsupported Operation");   return false;}
-    @Override public boolean startSimpleRequest (NasMsg nm) {LOGGER.error("startSimpleRequest(): Unsupported Operation"); return false;}
 
 //----------------------------------- EXIT ----------------------------------------------------------------------*/
 
 //Сообщаем клиенту, что мы разрываем соединение.
-    @Override public void startExitRequest (NasMsg nm)      //+l
+    @Override public void startExitRequest (NasMsg nm)
     {
-        LOGGER.trace("startExitRequest(): start");
         if (socketChannel != null)
         {
             discardCurrentOperation();
             if (nm == null)
-            {   nm = new NasMsg (OperationCodes.EXIT, PROMPT_CONNECTION_GETTING_CLOSED, OUTBOUND);
-            }
+                nm = new NasMsg (OperationCodes.EXIT, PROMPT_CONNECTION_GETTING_CLOSED, OUTBOUND);
+
             socketChannel.writeAndFlush (nm);
             socketChannel.disconnect();
+            LOGGER.info("Отправлено сообщение "+OperationCodes.EXIT);
         }
-        LOGGER.trace("startExitRequest(): end");
     }
 
 //обработка сообщения от клиента
     @ManipulateMethod (opcodes = {OperationCodes.EXIT})
-    private void manipulateExitRequest (NasMsg nm, ChannelHandlerContext ctx)       //+l
+    private void manipulateExitRequest (NasMsg nm, ChannelHandlerContext ctx)
     {
-        LOGGER.trace("manipulateExitRequest(): start");
+        LOGGER.info("Получено сообщение "+OperationCodes.EXIT);
         if (sayNoToEmptyStrings(userName) && socketChannel != null)
         {
             discardCurrentOperation();
@@ -568,11 +564,10 @@ public class NasServerManipulator implements Manipulator
             socketChannel.disconnect();
             ctx.disconnect();//close(); //TODO : соединение завершают оба вызова.
         }
-        LOGGER.trace("manipulateExitRequest(): end");
     }
 
 //вызывается из обработчиков EXIT с целью прервать текущую операцию
-    private void discardCurrentOperation()      //+
+    private void discardCurrentOperation()
     {
         if (dialogue != null)
         {
@@ -590,9 +585,9 @@ public class NasServerManipulator implements Manipulator
         }
     }
 
-    private void buildMethodMaps()      //+l
+    private void buildMethodMaps()
     {
-        LOGGER.trace("buildMethodMaps(): start");
+        //LOGGER.trace("buildMethodMaps(): start");
         mapManipulateMetods = new HashMap<>();
         mapEndupMetods = new HashMap<>();
         Method[] methods = NasServerManipulator.class.getDeclaredMethods ();
@@ -618,7 +613,7 @@ public class NasServerManipulator implements Manipulator
                 }
             }
         }
-        LOGGER.trace("buildMethodMaps(): end");
+        //LOGGER.trace("buildMethodMaps(): end");
     }
 
 //---------------------------------------------------------------------------------------------------------------*/
@@ -629,6 +624,14 @@ public class NasServerManipulator implements Manipulator
     //    SeekableByteChannel sbc = Files.newByteChannel(Paths.get("sss"), CREATE_NEW);
     //    sbc.write(null);
     //    sbc.size();
+    //}
+
+    //public static void test() throws IOException
+    //{
+    //    Path path = Paths.get("46546");
+    //    byte[] bytes = new byte[54546565];
+    //    //зписывает изакрывает. Умолчальные опции == CREATE, TRUNCATE_EXISTING, and WRITE
+    //    Files.write(path, bytes, StandardOpenOption.APPEND);
     //}
 
 }// class NasServerManipulator

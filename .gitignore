@@ -8,3 +8,12 @@
 /server/target/classes/заметки.txt
 /common/target/classes/заметки.txt
 /client/target/classes/заметки.txt
+/common/logs/client.log
+/server/logs/client.log
+/common/logs/common.log
+/server/logs/common.log
+/common/logs/server.log
+/server/logs/server.log
+/hs_err_pid11064.log
+/replay_pid11064.log
+/common/src/main/java/ru/gb/simplenas/common/services/impl/TestInboundHandler.java

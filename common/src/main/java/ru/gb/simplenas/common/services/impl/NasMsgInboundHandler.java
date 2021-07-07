@@ -20,21 +20,20 @@ public class NasMsgInboundHandler extends SimpleChannelInboundHandler<NasMsg>// 
     }
 
 
+//«SimpleChannelInboundHandler автоматически освобождает ресурсы…»
+    @Override protected void channelRead0 (ChannelHandlerContext ctx, NasMsg nm) throws Exception
+    {
+        if (nm != null)
+            manipulator.handle (ctx, nm);
+    }
+
+//---------------------------------------------------------------------------------------------------------------*/
+
 //срабатывает, когда клиент подключается
     @Override public void channelActive (ChannelHandlerContext ctx) throws Exception
     {
         //super.channelActive(ctx);
         manipulator.onChannelActive (ctx);
-    }
-
-//«SimpleChannelInboundHandler автоматически освобождает ресурсы…»
-    @Override protected void channelRead0 (ChannelHandlerContext ctx, NasMsg nm) throws Exception
-    {
-        if (nm instanceof NasMsg)
-        {
-            print(".");
-            manipulator.handle (ctx, nm);
-        }
     }
 
 //срабатывает, когда клиент отключается
@@ -54,4 +53,4 @@ public class NasMsgInboundHandler extends SimpleChannelInboundHandler<NasMsg>// 
     }
 
 }
- //---------------------------------------------------------------------------------------------------------------*/
+//---------------------------------------------------------------------------------------------------------------*/

@@ -9,7 +9,7 @@ public interface FileExtruder
 
     boolean getState();
 
-    int dataBytes2File (final NasMsg nm);
+    int writeDataBytes2File (final NasMsg nm);
 
     boolean endupExtruding (NasMsg nm);
 
