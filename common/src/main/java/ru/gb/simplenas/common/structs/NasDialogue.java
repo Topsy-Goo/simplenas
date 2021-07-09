@@ -34,14 +34,10 @@ public class NasDialogue
         if (nm == null)   throw new IllegalArgumentException();
         conversation.add(nm);
     }
-    public NasDialogue (@NotNull NasMsg nm, @NotNull FileExtruder tc)
+    public NasDialogue (@NotNull NasMsg nm, @NotNull FileExtruder extruder)
     {
         this(nm);
-        if (tc == null && DEBUG)
-        {
-            throw new IllegalArgumentException();
-        }
-        fileExtruder = tc;
+        fileExtruder = extruder;
     }
     public NasDialogue (@NotNull NasMsg nm, @NotNull List<FileInfo> infolist)
     {
@@ -78,14 +74,14 @@ public class NasDialogue
 
 //------------------------------ методы для работы с FileExtruder'ом -----------------------------------------*/
 
-    public boolean initializeFileExtruder (NasMsg nm, String userName)
-    {
-        if (fileExtruder != null)
-        {
-            return fileExtruder.initialize(nm, userName);
-        }
-        return false;
-    }
+    //public boolean initializeFileExtruder (Path ptargetfile)
+    //{
+    //    if (fileExtruder != null)
+    //    {
+    //        return
+    //    }
+    //    return false;
+    //}
 
     public boolean transferStateIsOk()    {   return fileExtruder.getState();   }
 
@@ -107,7 +103,7 @@ public class NasDialogue
         return ok;
     }
 
-    public void discardExtruding ()
+    public void discardExtruding()
     {
         if (fileExtruder != null)
         {
@@ -115,7 +111,7 @@ public class NasDialogue
         }
     }
 
-    public void cleanupFileExtruder ()
+    public void cleanupFileExtruder()
     {
         fileExtruder.close();
         fileExtruder = null;

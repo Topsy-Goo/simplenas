@@ -10,11 +10,11 @@ import ru.gb.simplenas.common.annotations.EndupMethod;
 import ru.gb.simplenas.common.annotations.ManipulateMethod;
 import ru.gb.simplenas.common.NasCallback;
 import ru.gb.simplenas.common.services.FileExtruder;
+import ru.gb.simplenas.common.services.impl.InboundFileExtruder;
 import ru.gb.simplenas.common.structs.FileInfo;
 import ru.gb.simplenas.common.structs.NasDialogue;
 import ru.gb.simplenas.common.structs.NasMsg;
 import ru.gb.simplenas.common.structs.OperationCodes;
-import ru.gb.simplenas.server.ServerApp;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -51,7 +51,8 @@ public class NasClientManipulator implements ClientManipulator
         this.callbackMsgIncoming = callbackMsgIncoming;
         this.callbackInfo = callbackInfo;
         this.schannel = sC;
-        new Thread(this::buildMethodMaps).start(); // javafx must die !!!
+        buildMethodsMaps();
+        LOGGER.debug("создан NasClientManipulator");
     }
 
     void callbackDummy (Object ... objects){}
@@ -167,11 +168,19 @@ public class NasClientManipulator implements ClientManipulator
     @Override public boolean startLoad2LocalRequest (String toLocalFolder, NasMsg nm)       //OUT
     {
         boolean result = false;
-        if (nm != null && schannel != null && newDialogue(nm, new ClientInboundFileExtruder(), toLocalFolder))
+        if (nm != null && schannel != null && nm.fileInfo() != null)
         {
-            schannel.writeAndFlush(nm);
-            lnprint("M:отправлено сообщение: "+ nm.opCode() +"\n");
-            result = true;
+            String fileName = nm.fileInfo().getFileName();
+            if (sayNoToEmptyStrings (toLocalFolder, fileName, nm.msg()))
+            {
+                Path ptargetfile = Paths.get(toLocalFolder, fileName);
+                if (newDialogue(nm, new InboundFileExtruder(ptargetfile)))
+                {
+                    schannel.writeAndFlush(nm);
+                    lnprint("M:отправлено сообщение: "+ nm.opCode() +"\n");
+                    result = true;
+                }
+            }
         }
         return result;
     }
@@ -388,7 +397,7 @@ public class NasClientManipulator implements ClientManipulator
         return dialogue != null;
     }
 
-    private boolean newDialogue (@NotNull NasMsg nm, @NotNull FileExtruder fe, @NotNull String toLocalFolder)
+    private boolean newDialogue (@NotNull NasMsg nm, @NotNull FileExtruder fe)
     {
         boolean ok = false;
         if (dialogue != null)
@@ -396,10 +405,10 @@ public class NasClientManipulator implements ClientManipulator
             lnprint("M:newDialogue("+nm.opCode()+", fe, str): "+ ERROR_OLD_DIALOGUE_STILL_RUNNING);
             ok = false;
         }
-        else if (fe != null && sayNoToEmptyStrings (toLocalFolder))
+        else if (fe != null)
         {
-            dialogue = new NasDialogue(nm, fe);
-            ok = dialogue.initializeFileExtruder(nm, toLocalFolder);
+            dialogue = new NasDialogue (nm, fe);
+            ok = true;
         }
         return ok;
     }
@@ -431,7 +440,7 @@ public class NasClientManipulator implements ClientManipulator
     }
 
  //Составление списков методов, чтобы использовать эти спики вместо switch-case'ов.
-    private void buildMethodMaps()
+    private void buildMethodsMaps ()
     {
         mapManipulateMetods = new HashMap<>();
         mapEndupMetods = new HashMap<>();

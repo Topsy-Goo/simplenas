@@ -2,10 +2,12 @@ package ru.gb.simplenas.common.services;
 
 import ru.gb.simplenas.common.structs.NasMsg;
 
+import java.nio.file.Path;
+
 
 public interface FileExtruder
 {
-    boolean initialize (final NasMsg nm, final String strData);
+    boolean initialize (Path ptargetfile);
 
     boolean getState();
 

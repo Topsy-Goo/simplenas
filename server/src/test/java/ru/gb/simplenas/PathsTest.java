@@ -4,13 +4,14 @@ import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import ru.gb.simplenas.server.services.ServerFileManager;
 
 import static ru.gb.simplenas.common.CommonData.*;
-import static ru.gb.simplenas.server.SFactory.constructAbsoluteUserRoot;
-import static ru.gb.simplenas.server.SFactory.isUserNameValid;
-import static ru.gb.simplenas.server.services.impl.ServerFileManager.getSafeAbsolutePathBy;
+import static ru.gb.simplenas.server.SFactory.*;
+import static ru.gb.simplenas.server.SFactory.getServerFileManager;
 
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
@@ -18,16 +19,21 @@ import java.util.stream.Stream;
 //класс для проверки возможности пользователя выйти за пределлы своего дискового пространства на сервере.
 public class PathsTest
 {
+    private static Path cloud;
+    private static final String strCloudName = "cloudtest";
+    private static ServerFileManager sfm;
+
+
     @BeforeAll static void initAll()
     {
-        if (CLOUD == null || !CLOUD.isAbsolute() || strFileSeparator == null || strFileSeparator.isEmpty())
+        cloud = Paths.get(strCloudName).toAbsolutePath();
+
+        if (strFileSeparator == null || strFileSeparator.isEmpty())
         {
             Assertions.fail();
         }
+        sfm = getServerFileManager (cloud);
     }
-    //@AfterAll static void finishAll() {}
-    //@BeforeEach void initEach() {}
-    //@AfterEach void finishEach() {}
 
 //------------------------- проверка корректности имени пользователя --------------------------------------------*/
 
@@ -64,7 +70,7 @@ public class PathsTest
     @MethodSource ("generator4UserNameValidityTest")
     public void testUserNameValidity (boolean ok, String name)
     {
-        Assertions.assertEquals (ok, isUserNameValid (name));
+        Assertions.assertEquals(ok, isNameValid(name));
     }
 
 //------------------------- проверка генерирования абсолютного пути к корневой папке ДПП ------------------------*/
@@ -73,7 +79,7 @@ public class PathsTest
     {
         List<Arguments> list = new ArrayList<>();
         list.add (Arguments.arguments (true, "user1"));
-        list.add (Arguments.arguments (true, STR_CLOUD));   //< сейчас юзер может выбрать себе такой логин
+        list.add(Arguments.arguments(true, strCloudName));   //< сейчас юзер может выбрать себе такой логин
         list.add (Arguments.arguments (false, ".."+strFileSeparator+"user1"));
         list.add (Arguments.arguments (false, ".."+strFileSeparator+".."+strFileSeparator+"user1"));
         list.add (Arguments.arguments (false, ".."+strFileSeparator+".."+strFileSeparator));
@@ -92,11 +98,11 @@ public class PathsTest
     @MethodSource ("generator4ServerUserRootPathTest")
     public void testServerUserRootPath (boolean ok, String name)
     {
-        Path path = constructAbsoluteUserRoot (name);
+        Path path = sfm.constructAbsoluteUserRoot (name);
         Assertions.assertEquals (ok,
             path != null
-            && path.startsWith(CLOUD)
-            && CLOUD.relativize(path).getNameCount() == 1
+            && path.startsWith(cloud)
+            && cloud.relativize(path).getNameCount() == 1
             && path.getFileName().toString().equals(name));
     }
 
@@ -105,20 +111,20 @@ public class PathsTest
     public static Stream<Arguments> generator4ServerPathValidityTest()
     {
         List<Arguments> list = new ArrayList<>();
-        list.add (Arguments.arguments (true,  "user1", CLOUD.resolve("user1")));
-        list.add (Arguments.arguments (true,  "user1", CLOUD.resolve("user1").resolve("docs")));
-        list.add (Arguments.arguments (true,  "user1", CLOUD.resolve("user1").resolve("docs").resolve("..")));
-        list.add (Arguments.arguments (true,  "user1", CLOUD.resolve("user1").resolve(".")));
-        list.add (Arguments.arguments (false, "user1", CLOUD.resolve(".")));
-        list.add (Arguments.arguments (false, "user1", CLOUD.resolve("..")));
-        list.add (Arguments.arguments (false, "user1", CLOUD.resolve("..").resolve("..")));
-        list.add (Arguments.arguments (false, "user1", CLOUD.resolve("user1").resolve("..").resolve("..")));
-        list.add (Arguments.arguments (false, "user1", CLOUD.resolve("user1").resolve("..").resolve("docs")));
-        list.add (Arguments.arguments (false, "user1", CLOUD.resolve("")));
-        list.add (Arguments.arguments (false, "user1", CLOUD.resolve("User2")));
-        list.add (Arguments.arguments (false, "user1", CLOUD));
-        list.add (Arguments.arguments (false, "user1", CLOUD.getRoot()));
-        list.add (Arguments.arguments (false, "user1", CLOUD.getParent()));
+        list.add(Arguments.arguments(true, "user1", cloud.resolve("user1")));
+        list.add(Arguments.arguments(true, "user1", cloud.resolve("user1").resolve("docs")));
+        list.add(Arguments.arguments(true, "user1", cloud.resolve("user1").resolve("docs").resolve("..")));
+        list.add(Arguments.arguments(true, "user1", cloud.resolve("user1").resolve(".")));
+        list.add(Arguments.arguments(false, "user1", cloud.resolve(".")));
+        list.add(Arguments.arguments(false, "user1", cloud.resolve("..")));
+        list.add(Arguments.arguments(false, "user1", cloud.resolve("..").resolve("..")));
+        list.add(Arguments.arguments(false, "user1", cloud.resolve("user1").resolve("..").resolve("..")));
+        list.add(Arguments.arguments(false, "user1", cloud.resolve("user1").resolve("..").resolve("docs")));
+        list.add(Arguments.arguments(false, "user1", cloud.resolve("")));
+        list.add(Arguments.arguments(false, "user1", cloud.resolve("User2")));
+        list.add(Arguments.arguments(false, "user1", cloud));
+        list.add(Arguments.arguments(false, "user1", cloud.getRoot()));
+        list.add(Arguments.arguments(false, "user1", cloud.getParent()));
         return list.stream();
     }
 
@@ -127,14 +133,14 @@ public class PathsTest
     @MethodSource ("generator4ServerPathValidityTest")
     public void testServerPathValidity (boolean ok, String name, Path path)
     {
-        Path userroot = constructAbsoluteUserRoot (name);
+        Path userroot = sfm.constructAbsoluteUserRoot (name);
         if (userroot == null)
         {
             Assertions.fail();
         }
         else
         {
-            Path result = getSafeAbsolutePathBy (path, name);
+            Path result = sfm.getSafeAbsolutePathBy (path, name);
             Assertions.assertEquals (ok,
                 result != null
                 && result.isAbsolute()

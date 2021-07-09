@@ -14,13 +14,17 @@ import io.netty.handler.codec.serialization.ObjectEncoder;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import ru.gb.simplenas.common.services.impl.NasMsgInboundHandler;
-import ru.gb.simplenas.common.services.impl.TestInboundHandler;
+import ru.gb.simplenas.server.services.ProperyManager;
 import ru.gb.simplenas.server.services.Server;
+import ru.gb.simplenas.server.services.ServerFileManager;
 
+import java.nio.file.Path;
 import java.util.*;
 
-import static ru.gb.simplenas.common.CommonData.*;
+import static ru.gb.simplenas.common.CommonData.DEBUG;
 import static ru.gb.simplenas.common.Factory.lnprint;
+import static ru.gb.simplenas.server.SFactory.getProperyManager;
+import static ru.gb.simplenas.server.SFactory.getServerFileManager;
 
 public class NasServer implements Server
 {
@@ -30,10 +34,22 @@ public class NasServer implements Server
     private boolean serverGettingOff;
     private Channel channelOfChannelFuture;
     public static final String CMD_EXIT = "exit";
+    private final ServerFileManager fileNamager;
+    private final int publicPort;
+
     private static final Logger LOGGER = LogManager.getLogger(NasServer.class.getName());
 
 
-    private NasServer() {}
+    private NasServer()
+    {
+        ProperyManager properyManager = getProperyManager();
+        publicPort = properyManager.getPublicPort();
+        fileNamager = getServerFileManager(
+                        properyManager.getCloudPath(),
+                        properyManager.getWelcomeFolders(), //< папки, которые должны быть в папке у нового пользователя.
+                        properyManager.getWelcomeFiles());  //< файлы, которые должны быть в папке у нового пользователя.
+        LOGGER.debug("создан NasServer");
+    }
 
     public static Server getInstance()
     {
@@ -47,7 +63,7 @@ public class NasServer implements Server
 
     private void run()
     {
-        LOGGER.debug("run(): start");
+        LOGGER.info("run(): start");
     // В этом методе мы настраиваем сервер на приём клиентов и на обработку других запросов клиентов, а затем запускаем
     // бесконечный цикл ожидания клиентов и обработки их запросов. (Пока непонятно, что именно прерывает этот цикл.)
     // Цикл происходит где-то в недрах объекта ChannelFuture cfuture.
@@ -87,15 +103,15 @@ public class NasServer implements Server
 
                 .childHandler (new ChannelInitializer<SocketChannel>()	//< когда к нам кто-то подключиться, …
                 {   @Override
-                    protected void initChannel (SocketChannel sC) throws Exception //< … мы его инициализируем в этом методе
+                    protected void initChannel (SocketChannel socketChannel) throws Exception //< … мы его инициализируем в этом методе
                     {
-                        LOGGER.trace("\t{}.initChannel (SocketChannel "+ sC.toString()+") start");
+                        LOGGER.trace("\t{}.initChannel (SocketChannel "+ socketChannel.toString()+") start");
                         // ChannelPipeline (конвейер канала) будет передавать данные на обработку всем обработчикам в том порядке,
                         // в котором они были добавлены. Каждому последующему обработчику передаются данные, уже обработанные в
                         // предыдущем.
                         // Первому обработчику на конвейере всегда данные предоставляются в виде ByteBuf. Это умолчальный тип
                         // буфера в Netty для данной ситуации.
-                        sC.pipeline().addLast (
+                        socketChannel.pipeline().addLast (
                                     //new StringDecoder(), new StringEncoder(),
                                     //An encoder which serializes a Java object into a ByteBuf.
                                     new ObjectEncoder(),
@@ -103,7 +119,7 @@ public class NasServer implements Server
                                     //new ObjectDecoder(ClassResolvers.cacheDisabled (null)),
                                     //new ObjectDecoder(MAX_OBJECT_SIZE, ClassResolvers.cacheDisabled (null)), //< A decoder which deserializes the received ByteBufs into Java objects.
                                     new ObjectDecoder (Integer.MAX_VALUE, ClassResolvers.weakCachingConcurrentResolver(null)), //< то же самое, но конкурентно и с небольшим кэшированием
-                                    new NasMsgInboundHandler (new NasServerManipulator (sC))
+                                    new NasMsgInboundHandler (new NasServerManipulator (fileNamager, socketChannel))
                                     //new TestInboundHandler (new NasServerManipulator (sC))
                                     );
                         LOGGER.trace("initChannel() end");
@@ -111,10 +127,10 @@ public class NasServer implements Server
                     }
                 });
     // ChannelFuture.sync() запускает исполнение.
-            ChannelFuture cfuture = sbts.bind(PORT).sync();
+            ChannelFuture cfuture = sbts.bind (publicPort).sync();
 
             LOGGER.debug("run(): ChannelFuture "+ cfuture.toString());
-            lnprint("\n\t\t*** Ready to getting clients. ***\n");
+            lnprint("\n\t\t*** Ready to getting clients ("+publicPort+"). ***\n");
             channelOfChannelFuture = cfuture.channel();
             if (consoleReader == null)
             {
@@ -153,7 +169,7 @@ public class NasServer implements Server
             //  программа не завершиться):
             groupParent.shutdownGracefully();
             groupChild.shutdownGracefully();
-            LOGGER.debug("run(): end");
+            LOGGER.info("run(): end");
             instance = null;
         }
     }
@@ -181,6 +197,8 @@ public class NasServer implements Server
         consoleReader = null;
         LOGGER.trace("runConsoleReader(): end");
     }
+
+//--------------------гетеры и сетеры ---------------------------------------------------------------------------*/
 
 //---------------------------------------------------------------------------------------------------------------*/
 

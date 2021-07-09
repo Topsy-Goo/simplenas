@@ -8,8 +8,13 @@ import javafx.stage.Stage;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Properties;
 
+import static ru.gb.simplenas.client.CFactory.STR_DEF_FOLDER;
 import static ru.gb.simplenas.common.CommonData.*;
 import static ru.gb.simplenas.common.Factory.lnprint;
 
@@ -25,6 +30,7 @@ public class MainGUI extends Application
     public static void main(String[] args)
     {
         LOGGER.info("main(.) start");
+
         launch(args);
         LOGGER.info("main() end");
     }

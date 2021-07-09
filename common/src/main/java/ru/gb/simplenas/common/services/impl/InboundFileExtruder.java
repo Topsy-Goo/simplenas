@@ -15,6 +15,8 @@ import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.FileTime;
 
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
+import static java.nio.file.StandardOpenOption.CREATE_NEW;
+import static java.nio.file.StandardOpenOption.WRITE;
 import static ru.gb.simplenas.common.Factory.print;
 import static ru.gb.simplenas.common.CommonData.WF_;
 
@@ -28,8 +30,48 @@ public class InboundFileExtruder implements FileExtruder
     protected boolean extrudingError;
     private static final Logger LOGGER = LogManager.getLogger(InboundFileExtruder.class.getName());
 
+    private InboundFileExtruder instance;
 
-    @Override public boolean initialize (final NasMsg nm, final String strData) {   return false;   }
+    public InboundFileExtruder (Path ptargetfile)
+    {
+        if (ptargetfile != null)
+            initialize (ptargetfile);
+        else throw new IllegalArgumentException();
+    }
+
+    //@Override public boolean initialize (Path ptargetfile) {   return false;   }
+
+//подготовка к скачиванию файла от клиента
+    @Override public boolean initialize (Path ptargetfile)
+    {
+        boolean result = false;
+        if (instance == null && ptargetfile != null)
+        {
+            instance = this;
+            this.pTargetFile = ptargetfile;
+            try
+            {
+                pTargetDir = pTargetFile.getParent();
+                pTmpDir = Files.createTempDirectory (pTargetDir, null);
+
+                pFileInTmpFolder = pTmpDir.resolve (pTargetFile.getFileName());
+                outputStream = Files.newOutputStream (pFileInTmpFolder, CREATE_NEW, WRITE/*, SYNC*/);
+                result = true;
+            }
+            catch (IOException e) {e.printStackTrace();}
+            finally
+            {
+                if (!result)
+                {
+                    cleanup();
+                }
+                extrudingError = !result;
+            }
+        }
+        return result;
+    }
+
+
 
     @Override public boolean getState() {   return !extrudingError;   }
 

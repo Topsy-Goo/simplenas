@@ -4,10 +4,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.flywaydb.core.Flyway;
 
-import static ru.gb.simplenas.common.CommonData.STR_CLOUD;
-import static ru.gb.simplenas.server.SFactory.createCloudFolder;
-import static ru.gb.simplenas.server.SFactory.nasProperyManager;
-import static ru.gb.simplenas.server.SFactory.startSеrver;
+import static ru.gb.simplenas.server.SFactory.*;
 
 
 public class ServerApp
@@ -15,14 +12,13 @@ public class ServerApp
     private static final Logger LOGGER = LogManager.getLogger(ServerApp.class.getName());
 
 
-    public static void main(String[] args)
+    public static void main (String[] args)
     {
         LOGGER.fatal("------------------------------------ ");
         LOGGER.info("main(): Начало работы сервера");
         if (initApplication())
         {
-            startSеrver();
-            freeAppData();
+            startServer();
         }
         LOGGER.info("main(): Сервер прекратил работу");
     }
@@ -31,9 +27,6 @@ public class ServerApp
     {
         boolean ok = false;
 
-        nasProperyManager();
-
-        if (createCloudFolder(STR_CLOUD))
         //if (initFlyway())
         //if ()
         //if ()
@@ -53,10 +46,6 @@ public class ServerApp
         // Start the migration
         flyway.migrate();
         return true;
-    }
-
-    private static void freeAppData()
-    {
     }
 
 }

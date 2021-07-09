@@ -30,8 +30,11 @@ import java.nio.file.Paths;
 
 import static ru.gb.simplenas.client.Controller.messageBox;
 import static ru.gb.simplenas.common.CommonData.*;
+import static ru.gb.simplenas.common.Factory.lnprint;
 import static ru.gb.simplenas.common.Factory.sayNoToEmptyStrings;
 import static ru.gb.simplenas.common.structs.OperationCodes.*;
+import static ru.gb.simplenas.client.CFactory.PORT;
+import static ru.gb.simplenas.client.CFactory.SERVER_ADDRESS;
 
 public class NasNetClient implements NetClient
 {
@@ -55,6 +58,7 @@ public class NasNetClient implements NetClient
     {
         callbackOnDisconnection = cbDisconnection;
         javafx = Thread.currentThread();
+        LOGGER.debug("создан NasNetClient");
     }
 
 //----------------------- колбэки для связи с манипулятором -----------------------------------------------------*/
@@ -177,6 +181,8 @@ public class NasNetClient implements NetClient
             this.channelOfChannelFuture = cfuture.channel();
             this.connected = true;
 
+            lnprint("\n\t\t*** Connected ("+PORT+"). ***\n");
+
             synchronized (syncObj4ConnectionOnly)
             {   // это продолжит исполнение NasNetClient.connect(), если соединение установлено.
                 syncObj4ConnectionOnly.notify();
@@ -211,12 +217,13 @@ public class NasNetClient implements NetClient
             sendExitMessage();
             schannel.disconnect();
         }
-
         if (channelOfChannelFuture != null && channelOfChannelFuture.isOpen())
         {
             //закрытие желательно, иначе закрытие канала происходит заметно дольше.
             ChannelFuture cf = channelOfChannelFuture.closeFuture();
         }
+
+        lnprint("\n\t\t*** Disconnected. ***\n");
 
         connected = false;
         schannel = null;
@@ -339,6 +346,7 @@ public class NasNetClient implements NetClient
         {
             result = new NasMsg (ERROR, ERROR_UNABLE_TO_PERFORM, OUTBOUND);
             NasMsg nm =     new NasMsg (opcode, strServerFolder, OUTBOUND);
+
             nm.setfileInfo (fileInfo);
             synchronized (syncObj)
             {

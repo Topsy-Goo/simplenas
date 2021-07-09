@@ -13,6 +13,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
 
+import static ru.gb.simplenas.common.CommonData.MAX_USERNAME_LENGTH;
 import static ru.gb.simplenas.common.Factory.sayNoToEmptyStrings;
 
 /*  Класс-родитель для классов ClientFileManager и ServerFileManager
@@ -186,6 +187,28 @@ public class NasFileManager
             catch (IOException | DirectoryIteratorException e) {e.printStackTrace();}
         }
         return infolist;
+    }
+
+//разрешаем юзеру использовать только буквы и цыфры при указании логина. (Предполагаем, что буквы и цифры разрешены
+// в именах папок на всех платформах.)
+    public static boolean isNameValid (@NotNull String userName)    //fm, ServerManipulator, PathsTest, ServerProperyManager
+    {
+        boolean boolOk = false;
+        if (sayNoToEmptyStrings(userName) && userName.length() <= MAX_USERNAME_LENGTH)
+        {
+            for (Character ch : userName.toCharArray())
+            {
+                boolOk = Character.isAlphabetic(ch) || Character.isDigit(ch);
+                if (!boolOk)
+                    break;
+            }
+        }
+        return boolOk;
+    }
+
+    public static boolean createCloudFolder (@NotNull Path pCloudFolder)    //ServerProperyManager
+    {
+        return null != createFolder (pCloudFolder);
     }
 
 

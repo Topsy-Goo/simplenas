@@ -110,16 +110,16 @@ public class Controller implements Initializable
     {
         javafx = Thread.currentThread();
 
-        strCurrentLocalPath = System.getProperty(CFactory.STR_DEF_FOLDER);
-        sbarSetDefaultText(STR_EMPTY, CFactory.SBAR_TEXT_SERVER_NOCONNECTION);
+        strCurrentLocalPath = System.getProperty (STR_DEF_FOLDER);
+        sbarSetDefaultText(STR_EMPTY, SBAR_TEXT_SERVER_NOCONNECTION);
 
         tableViewManager = new TableViewManager (this);
         populateTableView (listFolderContents (strCurrentLocalPath), LOCAL);
         textfieldCurrentPath_Client.setText (strCurrentLocalPath);
-        textfieldCurrentPath_Server.setPromptText(CFactory.TEXTFIELD_SERVER_PROMPTTEXT_DOCONNECT);
+        textfieldCurrentPath_Server.setPromptText(TEXTFIELD_SERVER_PROMPTTEXT_DOCONNECT);
 
-        CFactory.setContextMenuEventHandler_OnShoing(menuClientTableActions, tvClientSide);
-        CFactory.setContextMenuEventHandler_OnShoing(menuServerTableActions, tvServerSide);
+        setContextMenuEventHandler_OnShoing (menuClientTableActions, tvClientSide);
+        setContextMenuEventHandler_OnShoing (menuServerTableActions, tvServerSide);
 
         extraInitialisationIsDone = false;
         enableUsersInput (ENABLE);

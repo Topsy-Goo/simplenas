@@ -9,11 +9,13 @@ import ru.gb.simplenas.common.annotations.EndupMethod;
 import ru.gb.simplenas.common.annotations.ManipulateMethod;
 import ru.gb.simplenas.common.services.Manipulator;
 import ru.gb.simplenas.common.services.FileExtruder;
+import ru.gb.simplenas.common.services.impl.InboundFileExtruder;
 import ru.gb.simplenas.common.structs.FileInfo;
 import ru.gb.simplenas.common.structs.NasDialogue;
 import ru.gb.simplenas.common.structs.NasMsg;
 import ru.gb.simplenas.common.structs.OperationCodes;
 import ru.gb.simplenas.server.SFactory;
+import ru.gb.simplenas.server.services.ServerFileManager;
 
 import java.io.*;
 import java.lang.reflect.Method;
@@ -34,6 +36,7 @@ import static ru.gb.simplenas.server.SFactory.*;
 //  клиентом: хранить данные клиента, .
 public class NasServerManipulator implements Manipulator
 {
+    private ServerFileManager sfm;
     private SocketChannel socketChannel;
     private String userName;
     private Path pathCurrentAbsolute; //< абсолютный путь к текущей папке пользователя
@@ -42,10 +45,11 @@ public class NasServerManipulator implements Manipulator
     private static final Logger LOGGER = LogManager.getLogger(NasServerManipulator.class.getName());
 
 
-    public NasServerManipulator (SocketChannel sC)
+    public NasServerManipulator (ServerFileManager sfm, SocketChannel socketChannel)
     {
-        socketChannel = sC;
-        buildMethodMaps();
+        this.sfm = sfm;
+        this.socketChannel = socketChannel;
+        buildMethodsMaps();
         LOGGER.debug("создан NasServerManipulator");
     }
 
@@ -108,7 +112,9 @@ public class NasServerManipulator implements Manipulator
         }
         else if (nm.data() == null) //< Клиент запрашивает подтверждение готовности.
         {
-            if (newDialogue(nm, new ServerInboundFileExtruder()))
+            Path ptargetfile = getSafeTargetFilePath (nm);
+            if (ptargetfile != null)
+            if (newDialogue(nm, new InboundFileExtruder(ptargetfile)))
             {
                 informClientWithOperationCode (nm, LOAD2SERVER);
             }
@@ -128,6 +134,23 @@ public class NasServerManipulator implements Manipulator
             //                          TODO : убедиться, что запись не ведётся и добавить в эту проверку в тэсты.
         }
         //LOGGER.trace("manipulateFileInfoRequest(): end");
+    }
+
+    private Path getSafeTargetFilePath (NasMsg nm)
+    {
+        Path ptargetfile = null;
+        if (nm != null && nm.fileInfo() != null)
+        {
+            String fileName = nm.fileInfo().getFileName();
+            String folderName = nm.msg();
+
+            if (sayNoToEmptyStrings (userName, folderName, fileName))
+            {
+                Path pRequestedTarget = Paths.get (folderName, fileName);
+                ptargetfile = sfm.absolutePathToUserSpace (userName, pRequestedTarget, nm.fileInfo().isDirectory());
+            }
+        }
+        return ptargetfile;
     }
 
     private void informClientWithOperationCode (NasMsg nm, OperationCodes opcode)
@@ -185,7 +208,7 @@ public class NasServerManipulator implements Manipulator
     // Файл с именем nm.fileInfo.fileName отдаём не из текущей папки, а из папки, на которую указывает nm.msg.
         FileInfo fi = nm.fileInfo();
         Path p = Paths.get (nm.msg(), fi.getFileName());
-        Path valid = absolutePathToUserSpace (userName, p, fi.isDirectory());
+        Path valid = sfm.absolutePathToUserSpace (userName, p, fi.isDirectory());
         String errMsg = "Не удалось прочитать указанный файл. ";
 
     //помещаем в nm.fileInfo всю информацию, которую сервер собрал о файле.
@@ -266,7 +289,7 @@ public class NasServerManipulator implements Manipulator
         String  name = nm.msg();
         String  errMsg = ERROR_UNABLE_TO_PERFORM;
 
-        if (!isUserNameValid(name))
+        if (!isNameValid(name))
         {
             errMsg = String.format (ERR_FORMAT_UNALLOWABLE_USERNAME, name);
         }
@@ -276,8 +299,8 @@ public class NasServerManipulator implements Manipulator
         }
         else
         {
-            pathCurrentAbsolute = constructAbsoluteUserRoot (name);
-            if (checkUserFolder (name) && pathCurrentAbsolute != null)
+            pathCurrentAbsolute = sfm.constructAbsoluteUserRoot (name);
+            if (sfm.checkUserFolder (name) && pathCurrentAbsolute != null)
             {
                 userName = name;
                 informClientWithOperationCode (nm, OK);
@@ -301,7 +324,7 @@ public class NasServerManipulator implements Manipulator
         boolean ok = false;
         if (nm.fileInfo() != null && sayNoToEmptyStrings (nm.msg(), nm.fileInfo().getFileName()))
         {
-            FileInfo fi = getSafeFileInfo (userName, nm.msg(), nm.fileInfo().getFileName());
+            FileInfo fi = sfm.getSafeFileInfo (userName, nm.msg(), nm.fileInfo().getFileName());
             if (fi != null)
             {
                 nm.setfileInfo(fi);
@@ -321,11 +344,11 @@ public class NasServerManipulator implements Manipulator
         if (nm.fileInfo() != null && sayNoToEmptyStrings (nm.msg(), nm.fileInfo().getFileName()))
         {
             Path p = Paths.get(nm.msg(), nm.fileInfo().getFileName());
-            Path valid = absolutePathToUserSpace (userName, p, nm.fileInfo().isDirectory());
+            Path valid = sfm.absolutePathToUserSpace (userName, p, nm.fileInfo().isDirectory());
 
             if (valid != null)
             {
-                result = safeCountDirectoryEntries (valid, userName);
+                result = sfm.safeCountDirectoryEntries (valid, userName);
             }
             //LOGGER.trace("manipulateCountEntriesRequest(): папка <"+p.toString()+"> содержит "+result+" элементов.");
             if (result >= 0)
@@ -345,10 +368,10 @@ public class NasServerManipulator implements Manipulator
         boolean ok = false;
         if (sayNoToEmptyStrings(nm.msg()))
         {
-            nm.setfileInfo (createSubfolder4User (pathCurrentAbsolute, userName, nm.msg()));
+            nm.setfileInfo (sfm.createSubfolder4User (pathCurrentAbsolute, userName, nm.msg()));
             if (nm.fileInfo() != null)
             {
-                nm.setmsg (relativizeByUserName (userName, pathCurrentAbsolute).toString());   //< эту строку клиент должен отобразить в соотв. поле ввода.
+                nm.setmsg (sfm.relativizeByUserName (userName, pathCurrentAbsolute).toString());   //< эту строку клиент должен отобразить в соотв. поле ввода.
                 informClientWithOperationCode (nm, OK);
                 ok = true;
             }
@@ -365,10 +388,10 @@ public class NasServerManipulator implements Manipulator
         if (sayNoToEmptyStrings(nm.msg()) && nm.fileInfo() != null)
         {
             String newName = nm.msg();
-            FileInfo fi = safeRename (pathCurrentAbsolute, nm.fileInfo().getFileName(), newName, userName);
+            FileInfo fi = sfm.safeRename (pathCurrentAbsolute, nm.fileInfo().getFileName(), newName, userName);
             if (fi != null)
             {
-                nm.setmsg (relativizeByUserName (userName, pathCurrentAbsolute).toString());   //< эту строку клиент должен отобразить в соотв. поле ввода.
+                nm.setmsg (sfm.relativizeByUserName (userName, pathCurrentAbsolute).toString());   //< эту строку клиент должен отобразить в соотв. поле ввода.
                 informClientWithOperationCode (nm, OK);
                 ok = true;
             }
@@ -385,9 +408,9 @@ public class NasServerManipulator implements Manipulator
         if (nm.fileInfo() != null && sayNoToEmptyStrings (nm.msg(), nm.fileInfo().getFileName()))
         {
             Path p = Paths.get (nm.msg(), nm.fileInfo().getFileName());
-            Path valid = absolutePathToUserSpace (userName, p, nm.fileInfo().isDirectory());
+            Path valid = sfm.absolutePathToUserSpace (userName, p, nm.fileInfo().isDirectory());
 
-            if (result = valid != null && safeDeleteFileOrDirectory (valid, userName))
+            if (result = valid != null && sfm.safeDeleteFileOrDirectory (valid, userName))
             {
                 informClientWithOperationCode (nm, OK);
             }
@@ -405,13 +428,13 @@ public class NasServerManipulator implements Manipulator
         //LOGGER.trace("manipulateListRequest(): start");
         if (socketChannel != null)
         {
-            Path valid = absolutePathToUserSpace (userName, Paths.get(nm.msg()), FOLDER);
+            Path valid = sfm.absolutePathToUserSpace (userName, Paths.get(nm.msg()), FOLDER);
             if (valid != null && Files.exists(valid))
             {
                 pathCurrentAbsolute = valid;
                 sendFileInfoList (listFolderContents (valid));
 
-                nm.setmsg (relativizeByUserName (userName, valid).toString());  //< эту строку клиент должен отобразить в соотв. поле ввода.
+                nm.setmsg (sfm.relativizeByUserName (userName, valid).toString());  //< эту строку клиент должен отобразить в соотв. поле ввода.
                 informClientWithOperationCode (nm, OK);
             }
             else replyWithErrorMessage(SFactory.ERROR_INVALID_FILDER_SPECIFIED);
@@ -479,19 +502,18 @@ public class NasServerManipulator implements Manipulator
         }
     }
 
-    private boolean newDialogue (@NotNull NasMsg nm, @NotNull FileExtruder tc)
+    private boolean newDialogue (@NotNull NasMsg nm, @NotNull FileExtruder fextruder)
     {
         boolean ok = false;
         if (dialogue != null)
         {
             replyWithErrorMessage (ERROR_UNABLE_TO_PERFORM);
         }
-        else if (nm != null && tc != null && sayNoToEmptyStrings(userName))
+        else if (fextruder != null)
         {
-            dialogue = new NasDialogue(nm, tc);
-            ok = dialogue.initializeFileExtruder(nm, userName);
+            dialogue = new NasDialogue (nm, fextruder);
+            ok = true;
         }
-        else LOGGER.error("newDialogue(): illegal arguments");
         return ok;
     }
 
@@ -509,7 +531,7 @@ public class NasServerManipulator implements Manipulator
 //Возможно, эти три метода нужно будет похерить, но это будет видно позже.
     @Override public void onChannelActive (@NotNull ChannelHandlerContext ctx)
     {
-        //LOGGER.trace("onChannelActive(): открыто соединение: ctx: "+ ctx);
+        LOGGER.info("onChannelActive(): открыто соединение: ctx: "+ ctx);
         if (socketChannel == null)
         {
             socketChannel = (SocketChannel) ctx.channel();
@@ -517,7 +539,7 @@ public class NasServerManipulator implements Manipulator
     }
     @Override public void onChannelInactive (@NotNull ChannelHandlerContext ctx)
     {
-        //LOGGER.trace("onChannelInactive(): закрыто соединение: ctx: "+ ctx);
+        LOGGER.info("onChannelInactive(): закрыто соединение: ctx: "+ ctx);
         if (userName != null)
         {
             clientsListRemove(this, userName);
@@ -526,7 +548,7 @@ public class NasServerManipulator implements Manipulator
     }
     @Override public void onExceptionCaught (@NotNull ChannelHandlerContext ctx, @NotNull Throwable cause)
     {
-        //LOGGER.trace("onExceptionCaught(): аварийное закрытие соединения: ctx: "+ ctx);
+        LOGGER.info("onExceptionCaught(): аварийное закрытие соединения: ctx: "+ ctx);
         if (userName != null)
         {
             clientsListRemove(this, userName);
@@ -560,7 +582,9 @@ public class NasServerManipulator implements Manipulator
         if (sayNoToEmptyStrings(userName) && socketChannel != null)
         {
             discardCurrentOperation();
-            clientsListRemove (this, userName);
+            if (userName != null)
+                clientsListRemove (this, userName);
+            userName = null;
             socketChannel.disconnect();
             ctx.disconnect();//close(); //TODO : соединение завершают оба вызова.
         }
@@ -585,7 +609,7 @@ public class NasServerManipulator implements Manipulator
         }
     }
 
-    private void buildMethodMaps()
+    private void buildMethodsMaps ()
     {
         //LOGGER.trace("buildMethodMaps(): start");
         mapManipulateMetods = new HashMap<>();

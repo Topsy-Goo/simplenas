@@ -9,7 +9,7 @@ import ru.gb.simplenas.client.services.impl.ContextMenuManager;
 import ru.gb.simplenas.client.services.impl.NasNetClient;
 import ru.gb.simplenas.client.services.impl.TableViewManager;
 import ru.gb.simplenas.common.NasCallback;
-import ru.gb.simplenas.server.services.impl.ServerFileManager;
+import ru.gb.simplenas.server.services.impl.NasServerFileManager;
 import ru.gb.simplenas.common.structs.FileInfo;
 import ru.gb.simplenas.client.structs.TableFileInfo;
 
@@ -22,6 +22,9 @@ import static ru.gb.simplenas.common.CommonData.MAINWND_TITLE;
 
 public class CFactory
 {
+    public static final int PORT = 8289;
+    public static final String SERVER_ADDRESS = "localhost";
+
     public static final String STR_DEF_FOLDER = "user.dir"; //< текущая папка юзера;   "user.home" < папка в учётной записи
     public static final String SBAR_TEXT_SERVER_NOCONNECTION = "Соединение с сервером отсутствует.";
     public static final String SBAR_TEXT_SERVER_ONAIR = "Есть подключение к серверу.";
@@ -132,7 +135,7 @@ public class CFactory
 
     public static boolean deleteFileOrDirectory (@NotNull Path path)
     {
-        return ServerFileManager.deleteFileOrDirectory(path);
+        return NasServerFileManager.deleteFileOrDirectory(path);
     }
 
 
