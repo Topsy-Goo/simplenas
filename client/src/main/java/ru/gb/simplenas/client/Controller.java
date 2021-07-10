@@ -14,6 +14,7 @@ import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import ru.gb.simplenas.client.services.LocalPropertyManager;
 import ru.gb.simplenas.client.services.NetClient;
 import ru.gb.simplenas.client.services.impl.TableViewManager;
 import ru.gb.simplenas.common.structs.FileInfo;
@@ -76,10 +77,10 @@ public class Controller implements Initializable
     private final Object syncObj = new Object();
     private boolean extraInitialisationIsDone = false;
     private TableViewManager tableViewManager;
+    private LocalPropertyManager localPropertyManager;
     private static final Logger LOGGER = LogManager.getLogger(Controller.class.getName());
 
 
-//TODO : Тесты
 //TODO : Проперти
 //TODO : авторизация + БД + флайвэй
 //TODO : наблюдение за изменениями в локальной папке.
@@ -110,8 +111,11 @@ public class Controller implements Initializable
     {
         javafx = Thread.currentThread();
 
-        strCurrentLocalPath = System.getProperty (STR_DEF_FOLDER);
-        sbarSetDefaultText(STR_EMPTY, SBAR_TEXT_SERVER_NOCONNECTION);
+        localPropertyManager = getProperyManager();
+        strCurrentLocalPath = localPropertyManager.getLastLocalPathString();
+        //strCurrentServerPath = localPropertyManager.getLastRemotePathString();
+
+        sbarSetDefaultText (STR_EMPTY, SBAR_TEXT_SERVER_NOCONNECTION);
 
         tableViewManager = new TableViewManager (this);
         populateTableView (listFolderContents (strCurrentLocalPath), LOCAL);
@@ -145,11 +149,18 @@ public class Controller implements Initializable
 
     private boolean connect()
     {
-        netClient = newNetClient((ooo)->callbackOnNetClientDisconnection());
-        boolean result = netClient.connect();
-        if (!result)
+        boolean result = false;
+        if (localPropertyManager != null)
         {
-            netClient = null;
+            netClient = newNetClient (
+                            (ooo)->callbackOnNetClientDisconnection(),
+                            localPropertyManager.getRemotePort(),
+                            localPropertyManager.getHostString());
+            result = netClient.connect();
+            if (!result)
+            {
+                netClient = null;
+            }
         }
         return result;
     }
@@ -180,30 +191,48 @@ public class Controller implements Initializable
     private void updateControlsOnSuccessfulLogin()
     {
         textfieldCurrentPath_Server.clear();
-        textfieldCurrentPath_Server.setText(STR_EMPTY);
-        textfieldCurrentPath_Server.setPromptText(CFactory.TEXTFIELD_SERVER_PROMPTTEXT_LOGGEDIN);
-        sbarSetDefaultText(null, CFactory.SBAR_TEXT_SERVER_ONAIR);
+        textfieldCurrentPath_Server.setText (STR_EMPTY);
+        textfieldCurrentPath_Server.setPromptText (TEXTFIELD_SERVER_PROMPTTEXT_LOGGEDIN);
+        sbarSetDefaultText (null, SBAR_TEXT_SERVER_ONAIR);
 
-        messageBox (CFactory.ALERTHEADER_AUTHENTIFICATION,
-                    String.format(CFactory.STRFORMAT_YOUARE_LOGGEDIN, userName),
+        messageBox (ALERTHEADER_AUTHENTIFICATION,
+                    String.format(STRFORMAT_YOUARE_LOGGEDIN, userName),
                     INFORMATION);
-        if (!workUpAListRequestResult (netClient.list (userName)))
+
+        if (localPropertyManager != null)
+            strCurrentServerPath = localPropertyManager.getLastRemotePathString();
+
+        String strRemotePath = Paths.get(userName, strCurrentServerPath).toString();
+        if (!workUpAListRequestResult (netClient.list (strRemotePath)))
+        {
             messageBox (ALERTHEADER_REMOUTE_STORAGE,
                         String.format(PROMPT_FORMAT_UNABLE_LIST, userName),
                         ERROR);
+        }
         updateMainWndTitleWithUserName();
     }
 
 // Наш обработчик события primaryStage.setOnCloseRequest.
     void closeSession()
     {
+        storeProperties();  //< это нужно сделать до того, как userName станет == null
         if (netClient != null)
         {
             netClient.disconnect();  //< это приведёт к разрыву соединения с сервером (к закрытию канала) и к вызову onNetClientDisconnection()
         }
     }
 
-    void onMainWndShowing (Stage primaryStage)
+    private void storeProperties()
+    {
+        if (localPropertyManager != null)
+        {
+            localPropertyManager.setLastLocalPathString (strCurrentLocalPath);
+            localPropertyManager.setLastRemotePathString(relativizeByFolderName(userName, strCurrentServerPath));
+            localPropertyManager.close();
+        }
+    }
+
+    void onMainWndShowing (Stage primaryStage) //< не надо делать этот метод private!
     {
         this.primaryStage = primaryStage;
     }
@@ -381,6 +410,8 @@ public class Controller implements Initializable
 //Переходим в родительскую папку, если таковая существует.
     @FXML public void onactionButton_Client_LevelUp (ActionEvent actionEvent)
     {
+            //String s = relativizeByUserName (userName, strCurrentLocalPath);
+
         // !!! Игнорируем содержимое поля ввода textfieldCurrentPath_Client)
         String strParent = stringPath2StringAbsoluteParentPath (strCurrentLocalPath);
 

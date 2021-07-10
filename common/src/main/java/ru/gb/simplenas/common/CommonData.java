@@ -19,6 +19,7 @@ public class CommonData
     public static final TimeUnit filetimeUnits = TimeUnit.SECONDS;
     public static final String FILETIME_FORMAT_PATTERN = " yyyy-MM-dd | HH:mm:ss ";
 
+    public static final String PROPFILE_COMMENT = "Этот файл настроек сгенерирован/обновлён автоматически.";
     public static final long FILESIZE_KILOBYTE = 1024L;
     public static final String MAINWND_TITLE = "Simple.NAS client";
     public static final String strFileSeparator = FileSystems.getDefault().getSeparator();

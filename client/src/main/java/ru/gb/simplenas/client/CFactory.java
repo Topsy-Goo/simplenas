@@ -3,11 +3,9 @@ package ru.gb.simplenas.client;
 import com.sun.istack.internal.NotNull;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.TableView;
+import ru.gb.simplenas.client.services.LocalPropertyManager;
 import ru.gb.simplenas.client.services.NetClient;
-import ru.gb.simplenas.client.services.impl.ClientFileManager;
-import ru.gb.simplenas.client.services.impl.ContextMenuManager;
-import ru.gb.simplenas.client.services.impl.NasNetClient;
-import ru.gb.simplenas.client.services.impl.TableViewManager;
+import ru.gb.simplenas.client.services.impl.*;
 import ru.gb.simplenas.common.NasCallback;
 import ru.gb.simplenas.server.services.impl.NasServerFileManager;
 import ru.gb.simplenas.common.structs.FileInfo;
@@ -22,8 +20,14 @@ import static ru.gb.simplenas.common.CommonData.MAINWND_TITLE;
 
 public class CFactory
 {
-    public static final int PORT = 8289;
-    public static final String SERVER_ADDRESS = "localhost";
+    public static final int DEFAULT_PORT_NUMBER = 8289;
+    //public static final int PORT = 8289;
+    public static final String PROPERTY_FILE_NAME_CLIENT = "local.properties";   //< файл настроек (property file)
+    public static final String DEFAULT_HOST_NAME = "localhost";
+    public static final String PROPNAME_PORT = "PORT";
+    public static final String PROPNAME_HOST = "HOST";
+    public static final String PROPNAME_PATH_LOCAL = "MRU.PATH.LOCAL";
+    public static final String PROPNAME_PATH_REMOTE = "MRU.PATH.REMOTE";
 
     public static final String STR_DEF_FOLDER = "user.dir"; //< текущая папка юзера;   "user.home" < папка в учётной записи
     public static final String SBAR_TEXT_SERVER_NOCONNECTION = "Соединение с сервером отсутствует.";
@@ -69,7 +73,10 @@ public class CFactory
 
     private CFactory () {}
 
-    static NetClient newNetClient (NasCallback cbDisconnection)   {   return new NasNetClient (cbDisconnection);   }
+    static NetClient newNetClient (NasCallback cbDisconnection, int port, String hostName)
+    {
+        return new NasNetClient (cbDisconnection, port, hostName);
+    }
 
 //-------------------------- методы для работы с контекстным меню -----------------------------------------------*/
 
@@ -138,5 +145,12 @@ public class CFactory
         return NasServerFileManager.deleteFileOrDirectory(path);
     }
 
+//--------------------------------- LocalPropertyManager --------------------------------------------------------*/
+
+    public static LocalPropertyManager getProperyManager()
+    {
+        return ClientPropertyManager.getInstance();
+    }
 
 }
+//---------------------------------------------------------------------------------------------------------------*/

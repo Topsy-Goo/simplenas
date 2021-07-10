@@ -33,7 +33,7 @@ public class Factory
 //---------------------------------------------------------------------------------------------------------------*/
 
 //Возвращает true, если ни одна из строк lines не пустая и не равна null.
-    public static boolean sayNoToEmptyStrings (String ... lines)    //+
+    public static boolean sayNoToEmptyStrings (String ... lines)
     {
         boolean result = lines != null;
         if (result)
@@ -46,15 +46,25 @@ public class Factory
     }
 
 //К сожалению, метод print (см. sun.misc) зарезервирован для служебных целей. Исправляю этот недостаток.
-    public static void print (String s)   {   System.out.print(s);   }        //+
+    public static void print (String s)   {   System.out.print(s);   }
 
 //Предпочитаю, чтобы мои строки по умолчанию выводились с новой строки, а не являлись продолжением неизвестно какого текста.
-    public static void lnprint (String s)   {   System.out.print("\n"+s);   }       //+
+    public static void lnprint (String s)   {   System.out.print("\n"+s);   }
+
+    public static void printf (String strFormat, Object ... args)
+    {
+        System.out.format(strFormat, args);
+    }
+
+    public static void errprintf (String strFormat, Object ... args)
+    {
+        System.err.format(strFormat, args);
+    }
 
 //Унифицируем создание коллекции для списка файлов.
-    public static List<FileInfo> newInfolist ()    {   return new ArrayList<>();   }        //+
+    public static List<FileInfo> newInfolist ()    {   return new ArrayList<>();   }
 
-//---------------------------------------------------------------------------------------------------------------*/
+//--------------------------------- NasFileManager --------------------------------------------------------------*/
 
     public static BasicFileAttributes readBasicFileAttributes2 (@NotNull Path path)
     {
@@ -71,5 +81,19 @@ public class Factory
         return NasFileManager.listFolderContents(folder);
     }
 
+    public static boolean createFile (@NotNull Path pFile)
+    {
+        return NasFileManager.createFile (pFile);
+    }
+
+    public static boolean createFile (@NotNull String strFile)
+    {
+        return NasFileManager.createFile (strFile);
+    }
+
+    public static String relativizeByFolderName (@NotNull String folderName, @NotNull String strPath)
+    {
+        return NasFileManager.relativizeByFolderName(folderName, strPath);
+    }
 }
 //---------------------------------------------------------------------------------------------------------------*/

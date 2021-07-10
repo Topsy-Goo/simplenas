@@ -36,7 +36,7 @@ import static ru.gb.simplenas.server.SFactory.*;
 //  клиентом: хранить данные клиента, .
 public class NasServerManipulator implements Manipulator
 {
-    private ServerFileManager sfm;
+    private final ServerFileManager sfm;
     private SocketChannel socketChannel;
     private String userName;
     private Path pathCurrentAbsolute; //< абсолютный путь к текущей папке пользователя

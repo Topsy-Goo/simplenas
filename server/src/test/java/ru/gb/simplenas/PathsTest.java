@@ -1,20 +1,22 @@
 package ru.gb.simplenas;
 
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import ru.gb.simplenas.server.services.ServerFileManager;
 
-import static ru.gb.simplenas.common.CommonData.*;
-import static ru.gb.simplenas.server.SFactory.*;
-import static ru.gb.simplenas.server.SFactory.getServerFileManager;
-
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
+
+import static ru.gb.simplenas.common.CommonData.STR_EMPTY;
+import static ru.gb.simplenas.common.CommonData.strFileSeparator;
+import static ru.gb.simplenas.server.SFactory.getServerFileManager;
+import static ru.gb.simplenas.server.SFactory.isNameValid;
 
 //класс для проверки возможности пользователя выйти за пределлы своего дискового пространства на сервере.
 public class PathsTest
@@ -26,13 +28,11 @@ public class PathsTest
 
     @BeforeAll static void initAll()
     {
-        cloud = Paths.get(strCloudName).toAbsolutePath();
-
+        sfm = getServerFileManager (strCloudName);
         if (strFileSeparator == null || strFileSeparator.isEmpty())
         {
             Assertions.fail();
         }
-        sfm = getServerFileManager (cloud);
     }
 
 //------------------------- проверка корректности имени пользователя --------------------------------------------*/

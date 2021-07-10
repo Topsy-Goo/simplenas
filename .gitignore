@@ -17,3 +17,5 @@
 /hs_err_pid11064.log
 /replay_pid11064.log
 /common/src/main/java/ru/gb/simplenas/common/services/impl/TestInboundHandler.java
+/local.properties
+/server.properties

@@ -18,6 +18,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import ru.gb.simplenas.client.CFactory;
 import ru.gb.simplenas.client.services.ClientManipulator;
+import ru.gb.simplenas.client.services.LocalPropertyManager;
 import ru.gb.simplenas.client.services.NetClient;
 import ru.gb.simplenas.common.NasCallback;
 import ru.gb.simplenas.common.services.impl.NasMsgInboundHandler;
@@ -33,8 +34,8 @@ import static ru.gb.simplenas.common.CommonData.*;
 import static ru.gb.simplenas.common.Factory.lnprint;
 import static ru.gb.simplenas.common.Factory.sayNoToEmptyStrings;
 import static ru.gb.simplenas.common.structs.OperationCodes.*;
-import static ru.gb.simplenas.client.CFactory.PORT;
-import static ru.gb.simplenas.client.CFactory.SERVER_ADDRESS;
+//import static ru.gb.simplenas.client.CFactory.PORT;
+//import static ru.gb.simplenas.client.CFactory.DEFAULT_HOST_NAME;
 
 public class NasNetClient implements NetClient
 {
@@ -51,13 +52,17 @@ public class NasNetClient implements NetClient
     private final Object syncObj4ConnectionOnly = new Object();
     private NasMsg nmSyncResult;    //< для передачи сообщений между синхронизированными потоками
     private NasDialogue closedDialogue;
+    private final int port;
+    private final String hostName;
     private static final Logger LOGGER = LogManager.getLogger(NasNetClient.class.getName());
 
 
-    public NasNetClient (NasCallback cbDisconnection)
+    public NasNetClient (NasCallback cbDisconnection, int port, String hostName)
     {
         callbackOnDisconnection = cbDisconnection;
         javafx = Thread.currentThread();
+        this.port = port;
+        this.hostName = hostName;
         LOGGER.debug("создан NasNetClient");
     }
 
@@ -177,11 +182,11 @@ public class NasNetClient implements NetClient
     //      cfuture.channel(),
     //      NasClientManipulator.channelActive().ctx.channel
 
-            ChannelFuture cfuture = b.connect (SERVER_ADDRESS, PORT).sync();
+            ChannelFuture cfuture = b.connect (hostName, port).sync();
             this.channelOfChannelFuture = cfuture.channel();
             this.connected = true;
 
-            lnprint("\n\t\t*** Connected ("+PORT+"). ***\n");
+            lnprint("\n\t\t*** Connected ("+port+"). ***\n");
 
             synchronized (syncObj4ConnectionOnly)
             {   // это продолжит исполнение NasNetClient.connect(), если соединение установлено.

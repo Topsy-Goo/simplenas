@@ -2,13 +2,13 @@ package ru.gb.simplenas.server;
 
 import com.sun.istack.internal.NotNull;
 import ru.gb.simplenas.common.services.impl.NasFileManager;
-import ru.gb.simplenas.server.services.ProperyManager;
+import ru.gb.simplenas.server.services.PropertyManager;
 import ru.gb.simplenas.server.services.Server;
 import ru.gb.simplenas.server.services.ServerFileManager;
 import ru.gb.simplenas.server.services.impl.NasServer;
 import ru.gb.simplenas.server.services.impl.NasServerFileManager;
 import ru.gb.simplenas.server.services.impl.NasServerManipulator;
-import ru.gb.simplenas.server.services.impl.ServerProperyManager;
+import ru.gb.simplenas.server.services.impl.ServerPropertyManager;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -20,13 +20,14 @@ public class SFactory
     public static final String ERR_FORMAT_UNALLOWABLE_USERNAME = "Недопустимое имя пользователя:\n\n%s";
     public static final String ERROR_SERVER_UNABLE_TO_PERFORM = "Сервер не смог выполнить операцию!";
 
-    public static final String PROPERTY_FILE_NAME = "server.cfg";   //< файл настроек (property file)
+    public static final String PROPERTY_FILE_NAME_SERVER = "server.properties";   //< файл настроек (property file)
     public static final int DEFAULT_PUBLIC_PORT_NUMBER = 8289;
     public static final String DEFUALT_CLOUD_NAME = "cloud";
+    public static final String DEFUALT_WELCOM_FOLDERS_STRING = "documentes, pictures";
     public static final String PROPNAME_CLOUD_NAME = "CLOUD.NAME";
     public static final String PROPNAME_PUBLIC_PORT = "PUBLIC.PORT.NUMBER";
-    public static final String PROPNAME_WELCOM_FOLDERS = "WELCOM.FOLDERS";
-    public static final String PROPNAME_WELCOM_FILES = "WELCOM.FILES";
+    public static final String PROPNAME_WELCOM_FOLDERS = "WELCOME.FOLDERS";
+    public static final String PROPNAME_WELCOM_FILES = "WELCOME.FILES";
 
     private SFactory (){}
 
@@ -52,29 +53,24 @@ public class SFactory
 
 //-------------------------------------- NasServerPropertyManager -----------------------------------------------*/
 
-    public static ProperyManager getProperyManager()
+    public static PropertyManager getProperyManager ()
     {
-        return ServerProperyManager.getInstance();
+        return ServerPropertyManager.getInstance();
     }
 
 //--------------------------------- NasServerFileManager --------------------------------------------------------------*/
 
-    public static ServerFileManager getServerFileManager (@NotNull Path cloud)
+    public static ServerFileManager getServerFileManager (@NotNull String strCloud)
     {
-        return new NasServerFileManager (cloud);
+        return new NasServerFileManager (strCloud);
     }
 
-    public static ServerFileManager getServerFileManager (@NotNull Path cloud, @NotNull List<String> welcomeFolders, @NotNull List<String> welcomeFiles)
+    public static ServerFileManager getServerFileManager (@NotNull String strCloud, @NotNull List<String> welcomeFolders, @NotNull List<String> welcomeFiles)
     {
-        return new NasServerFileManager (cloud, welcomeFolders, welcomeFiles);
+        return new NasServerFileManager (strCloud, welcomeFolders, welcomeFiles);
     }
 
 //---------------------------------- NasFileManager -------------------------------------------------------------*/
-
-    public static boolean createCloudFolder (@NotNull Path pCloudFolder)
-    {
-        return NasFileManager.createCloudFolder(pCloudFolder);
-    }
 
     public static boolean isNameValid (@NotNull String userName)
     {

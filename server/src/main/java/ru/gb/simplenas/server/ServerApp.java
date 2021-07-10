@@ -14,7 +14,7 @@ public class ServerApp
 
     public static void main (String[] args)
     {
-        LOGGER.fatal("------------------------------------ ");
+        LOGGER.info("------------------------------------ ");
         LOGGER.info("main(): Начало работы сервера");
         if (initApplication())
         {

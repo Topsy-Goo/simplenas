@@ -3,13 +3,13 @@ package ru.gb.simplenas.server.services;
 import java.nio.file.Path;
 import java.util.List;
 
-public interface ProperyManager
+public interface PropertyManager
 {
     void initialize();
 
     int getPublicPort();
 
-    Path getCloudPath();
+    String getCloudName();
 
     List<String> getWelcomeFolders();
 

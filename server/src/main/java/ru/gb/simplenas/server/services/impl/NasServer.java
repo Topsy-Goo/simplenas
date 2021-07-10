@@ -14,11 +14,10 @@ import io.netty.handler.codec.serialization.ObjectEncoder;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import ru.gb.simplenas.common.services.impl.NasMsgInboundHandler;
-import ru.gb.simplenas.server.services.ProperyManager;
+import ru.gb.simplenas.server.services.PropertyManager;
 import ru.gb.simplenas.server.services.Server;
 import ru.gb.simplenas.server.services.ServerFileManager;
 
-import java.nio.file.Path;
 import java.util.*;
 
 import static ru.gb.simplenas.common.CommonData.DEBUG;
@@ -36,18 +35,17 @@ public class NasServer implements Server
     public static final String CMD_EXIT = "exit";
     private final ServerFileManager fileNamager;
     private final int publicPort;
-
     private static final Logger LOGGER = LogManager.getLogger(NasServer.class.getName());
 
 
     private NasServer()
     {
-        ProperyManager properyManager = getProperyManager();
-        publicPort = properyManager.getPublicPort();
+        PropertyManager propertyManager = getProperyManager();
+        publicPort = propertyManager.getPublicPort();
         fileNamager = getServerFileManager(
-                        properyManager.getCloudPath(),
-                        properyManager.getWelcomeFolders(), //< папки, которые должны быть в папке у нового пользователя.
-                        properyManager.getWelcomeFiles());  //< файлы, которые должны быть в папке у нового пользователя.
+                propertyManager.getCloudName(),
+                propertyManager.getWelcomeFolders(), //< папки, которые должны быть в папке у нового пользователя.
+                propertyManager.getWelcomeFiles());  //< файлы, которые должны быть в папке у нового пользователя.
         LOGGER.debug("создан NasServer");
     }
 

@@ -29,8 +29,8 @@ public class MainGUI extends Application
 
     public static void main(String[] args)
     {
+        LOGGER.info("------------------------------------ ");
         LOGGER.info("main(.) start");
-
         launch(args);
         LOGGER.info("main() end");
     }

@@ -3,7 +3,6 @@ package ru.gb.simplenas.server.services.impl;
 import com.sun.istack.internal.NotNull;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import ru.gb.simplenas.common.CommonData;
 import ru.gb.simplenas.common.services.impl.NasFileManager;
 import ru.gb.simplenas.common.structs.FileInfo;
 import ru.gb.simplenas.server.services.ServerFileManager;
@@ -22,29 +21,51 @@ import static ru.gb.simplenas.common.Factory.sayNoToEmptyStrings;
 */
 public class NasServerFileManager extends NasFileManager implements ServerFileManager
 {
-    private final Path cloud;
+    private Path cloud;
     private List<String> welcomeFolders; //< папки, которые должны быть в папке у нового пользователя.
     private List<String> welcomeFiles; //< файлы, которые должны быть в папке у нового пользователя.
 
     private static final Logger LOGGER = LogManager.getLogger(NasServerFileManager.class.getName());
 
 
-    public NasServerFileManager (Path cloud)
+//Этот конструктор для тестов, где существование папки cloud не обязательно.
+    public NasServerFileManager (String strCloud)
     {
-        if (cloud == null)
+        if (!sayNoToEmptyStrings(strCloud))
             throw new IllegalArgumentException();
-        this.cloud = cloud;
+
+        this.cloud = Paths.get(strCloud).toAbsolutePath().normalize();
         LOGGER.debug("создан NasServerFileManager");
     }
-    public NasServerFileManager (Path cloud, List<String> welcomeFolders, List<String> welcomeFiles)
+//Этот конструктор для работы.
+    public NasServerFileManager (String strCloudName, List<String> welcomeFolders, List<String> welcomeFiles)
     {
-        this(cloud);
+        this(strCloudName);
+        if (!checkCloudFolder())
+            throw new IllegalArgumentException();
+
         if (welcomeFolders == null) welcomeFolders = new ArrayList<>();
         this.welcomeFolders = welcomeFolders;
         if (welcomeFiles == null)   welcomeFiles = new ArrayList<>();
         this.welcomeFiles = welcomeFiles;
     }
 
+
+//пытается создать папку cloud, если она отсутствует
+    private boolean checkCloudFolder ()    //sfm
+    {
+        if (cloud == null)
+            return false;
+
+        boolean exists = Files.exists(cloud);
+        if (!exists)
+        {
+            cloud = createFolder (cloud);
+            if (cloud != null)
+                exists = Files.exists(cloud);
+        }
+        return exists && Files.isDirectory (cloud);
+    }
 
 //вернёт FileInfo, только если указанный файл находится в дисковом пространстве юзера
     @Override public FileInfo getSafeFileInfo (@NotNull String userName, @NotNull String folder, @NotNull String file)   //ServerManipulator
@@ -98,7 +119,7 @@ public class NasServerFileManager extends NasFileManager implements ServerFileMa
         return result;
     }
 
-    private void createNewUserFolders (Path userroot) throws IOException     //fm
+    private void createNewUserFolders (Path userroot) throws IOException     //sfm
     {
         if (userroot != null && welcomeFolders != null)
         for (String s : welcomeFolders)    //< список стандартных папок
@@ -108,7 +129,7 @@ public class NasServerFileManager extends NasFileManager implements ServerFileMa
         }
     }
 
-    private void createNewUserFiles (@NotNull Path user) throws IOException     //fm
+    private void createNewUserFiles (@NotNull Path user) throws IOException     //sfm
     {
         if (user != null && welcomeFiles != null)
         for (String s : welcomeFiles)      //< список стандартных файлов
@@ -126,7 +147,7 @@ public class NasServerFileManager extends NasFileManager implements ServerFileMa
     }
 
 //Из аргументов составляем такой абсолютный путь, который будет указывать внутрь дискового пространства пользователя.
-    @Override public Path absolutePathToUserSpace (@NotNull String userName, @NotNull Path path, boolean mustBeFolder)     //ServerManipulator, ServerInboundFileExtruder
+    @Override public Path absolutePathToUserSpace (@NotNull String userName, @NotNull Path path, boolean mustBeFolder)     //ServerManipulator
     {
         Path result = null;
         if (path != null)
@@ -141,7 +162,7 @@ public class NasServerFileManager extends NasFileManager implements ServerFileMa
     }
 
 //Переименовываем файл или папку, если они находятся в дисковом пространстве пользователя (ДПП).
-    @Override public FileInfo safeRename (@NotNull Path pParent, @NotNull String oldName, @NotNull String newName, @NotNull String userName)   //ServerManipulator,
+    @Override public FileInfo safeRename (@NotNull Path pParent, @NotNull String oldName, @NotNull String newName, @NotNull String userName)   //ServerManipulator
     {
         FileInfo result = null;
         if ((pParent = getSafeAbsolutePathBy (pParent, userName)) != null)
@@ -152,7 +173,7 @@ public class NasServerFileManager extends NasFileManager implements ServerFileMa
     }
 
 //Вычисляем абсолютный путь к папке STRPATH_CLOUD\\userName.
-    @Override public Path constructAbsoluteUserRoot (@NotNull String userName)     //fm, ServerManipulator, PathsTest
+    @Override public Path constructAbsoluteUserRoot (@NotNull String userName)     //sfm, ServerManipulator, PathsTest
     {
         Path userroot = null;
 
@@ -255,12 +276,9 @@ public class NasServerFileManager extends NasFileManager implements ServerFileMa
 
 
 }
-//---------------------------------------------------------------------------------------------------------------*/
 //------------------------------ вызываются из клиента ----------------------------------------------------------*/
 
 
 //------------------------------ вызываются из сервера ----------------------------------------------------------*/
 
-
-//---------------------------------------------------------------------------------------------------------------*/
 

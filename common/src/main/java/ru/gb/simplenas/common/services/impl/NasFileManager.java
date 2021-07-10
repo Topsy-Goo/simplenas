@@ -11,9 +11,11 @@ import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 import static ru.gb.simplenas.common.CommonData.MAX_USERNAME_LENGTH;
+import static ru.gb.simplenas.common.CommonData.STR_EMPTY;
 import static ru.gb.simplenas.common.Factory.sayNoToEmptyStrings;
 
 /*  Класс-родитель для классов ClientFileManager и ServerFileManager
@@ -24,7 +26,7 @@ public class NasFileManager
 
     private static final Logger LOGGER = LogManager.getLogger(NasFileManager.class.getName());
 
-    protected static Path createFolder (@NotNull Path pFolder)    //fm
+    protected static Path createFolder (@NotNull Path pFolder)    //fm, sfm
     {
         Path result = null;
         if (pFolder != null)
@@ -42,6 +44,31 @@ public class NasFileManager
                 LOGGER.trace("createFolder(): создана папка: "+ pFolder.toString());
             }
             catch (IOException e){e.printStackTrace();}
+        }
+        return result;
+    }
+
+    public static boolean createFile (@NotNull String strFile)
+    {
+        if (!sayNoToEmptyStrings(strFile))
+            return false;
+        return createFile (Paths.get(strFile));
+    }
+
+    public static boolean createFile (@NotNull Path pFile)
+    {
+        boolean result = false;
+        if (pFile != null)
+        {
+            if (!Files.exists(pFile))
+            {
+                try {
+                    Files.createFile(pFile);
+                    result = true;
+                    }
+                catch(IOException e){e.printStackTrace();}
+            }
+            else result = true;
         }
         return result;
     }
@@ -191,7 +218,7 @@ public class NasFileManager
 
 //разрешаем юзеру использовать только буквы и цыфры при указании логина. (Предполагаем, что буквы и цифры разрешены
 // в именах папок на всех платформах.)
-    public static boolean isNameValid (@NotNull String userName)    //fm, ServerManipulator, PathsTest, ServerProperyManager
+    public static boolean isNameValid (@NotNull String userName)    //fm, sfm, PathsTest
     {
         boolean boolOk = false;
         if (sayNoToEmptyStrings(userName) && userName.length() <= MAX_USERNAME_LENGTH)
@@ -206,10 +233,35 @@ public class NasFileManager
         return boolOk;
     }
 
-    public static boolean createCloudFolder (@NotNull Path pCloudFolder)    //ServerProperyManager
+    public static String relativizeByFolderName (@NotNull String FolderName, @NotNull String strPath)
     {
-        return null != createFolder (pCloudFolder);
+        String result = STR_EMPTY;
+        Path path = Paths.get(strPath);
+        Path subpath = null;
+        int firstFoundIndex = -1;
+        int counter = 0;
+        int lenth = path.getNameCount();
+
+        for (Path p : path)
+        {
+            if (p.toString().equals(FolderName))
+            {
+                firstFoundIndex = counter;
+                break;
+            }
+            counter ++;
+        }
+        if (firstFoundIndex >= 0)
+        {
+            if (lenth > 1)  //sun.nio.fs.WindowsPath.subpath() не любит, когда beginIndex == endIndex
+            {
+                subpath = path.subpath (firstFoundIndex +1, lenth);
+                result = subpath.toString();
+            }
+        }
+        return result;
     }
+
 
 
 }
