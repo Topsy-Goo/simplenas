@@ -58,7 +58,6 @@
 
     <!-- Панели (панели расталкивают отстальные элементы управления к границам окна). maxWidth="10" minWidth="10" prefWidth="10"  -->
 	<SplitPane VBox.vgrow="ALWAYS" >
-<!--    <HBox HBox.hgrow="ALWAYS">-->
 
 		<!-- Client TableView -->
 		<TableView fx:id="tvClientSide" minWidth="100" editable="true" onMouseClicked="#tvOnMouseClickedClient"> <!--   -->
