@@ -127,9 +127,9 @@ public class NasDialogue
         if (inputStream != null)    inputStream.close();
             }
         catch(IOException e){e.printStackTrace();}
-        finally
-        {   //LOGGER.debug("удален NasDialogue");
-        }
+        //finally
+        //{   //LOGGER.debug("удален NasDialogue");
+        //}
     }
 
 //---------------------------------------------------------------------------------------------------------------*/

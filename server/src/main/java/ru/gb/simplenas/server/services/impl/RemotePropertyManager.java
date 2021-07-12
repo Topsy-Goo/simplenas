@@ -3,7 +3,7 @@ package ru.gb.simplenas.server.services.impl;
 import com.sun.istack.internal.NotNull;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import ru.gb.simplenas.server.services.PropertyManager;
+import ru.gb.simplenas.server.services.ServerPropertyManager;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -19,28 +19,28 @@ import static ru.gb.simplenas.common.CommonData.*;
 import static ru.gb.simplenas.common.Factory.*;
 import static ru.gb.simplenas.server.SFactory.*;
 
-public class ServerPropertyManager implements PropertyManager
+public class RemotePropertyManager implements ServerPropertyManager
 {
-    private static ServerPropertyManager instance;
+    private static RemotePropertyManager instance;
     private Properties properties;
     private int publicPort;
     private String strPathCloud;
     private List<String> welcomeFiles;   //< файлы, которые должны быть в папке у нового пользователя.
     private List<String> welcomeFolders; //< папки, которые должны быть в папке у нового пользователя.
     private static final String REGEX = "[,;\\p{Blank}]";   //\p{Punct}
-    private static final Logger LOGGER = LogManager.getLogger(ServerPropertyManager.class.getName());
+    private static final Logger LOGGER = LogManager.getLogger(RemotePropertyManager.class.getName());
 
 
-    private ServerPropertyManager ()
+    private RemotePropertyManager ()
     {
         initialize();
     }
 
-    public static PropertyManager getInstance ()
+    public static ServerPropertyManager getInstance ()
     {
         if (instance == null)
         {
-            instance = new ServerPropertyManager();
+            instance = new RemotePropertyManager();
         }
         return instance;
     }
@@ -89,7 +89,7 @@ public class ServerPropertyManager implements PropertyManager
                     flist.add(s);
             }
         }
-        printf("PropertyManager: %s : %s", strPropertyName, flist.toString());
+        printf("ServerPropertyManager: %s : %s", strPropertyName, flist.toString());
         return flist;
     }
 
@@ -97,14 +97,14 @@ public class ServerPropertyManager implements PropertyManager
     {
         String strPort = this.properties.getProperty (PROPNAME_PUBLIC_PORT, String.valueOf(publicPort));
         int result = Integer.parseInt(strPort);
-        printf("\nPropertyManager: %s : %d", PROPNAME_PUBLIC_PORT, result);
+        printf("\nServerPropertyManager: %s : %d", PROPNAME_PUBLIC_PORT, result);
         return result;
     }
 
     private String readCloudName()
     {
         String strCloudName = this.properties.getProperty (PROPNAME_CLOUD_NAME, DEFUALT_CLOUD_NAME);
-        printf("\nPropertyManager: %s : <%s>", PROPNAME_CLOUD_NAME, strCloudName);
+        printf("\nServerPropertyManager: %s : <%s>", PROPNAME_CLOUD_NAME, strCloudName);
         return strCloudName;
     }
 

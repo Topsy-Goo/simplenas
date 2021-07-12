@@ -61,7 +61,7 @@
 <!--    <HBox HBox.hgrow="ALWAYS">-->
 
 		<!-- Client TableView -->
-		<TableView fx:id="tvClientSide" minWidth="100" editable="true" onMouseClicked="#tvClientOnMouseClicked"> <!--   -->
+		<TableView fx:id="tvClientSide" minWidth="100" editable="true" onMouseClicked="#tvOnMouseClickedClient"> <!--   -->
 
             <HBox.margin><Insets top="5" bottom="3" right="5" left="10"/></HBox.margin>
 
@@ -102,11 +102,11 @@
 				<ContextMenu fx:id="menuClientTableActions">
 					<items>
 						<!-- userData показывает для каких объектов каталога предназначен пункт. -->
-						<MenuItem text="Открыть папку" 				userData="dir" onAction="#onactionMenuClient_OpenFolder" mnemonicParsing="false"/>
-						<MenuItem text="Отправить файл на сервер"	userData="file" onAction="#onactionUpload" mnemonicParsing="false"/>
-						<MenuItem text="Создать папку"							onAction="#onactionMenuClient_CreateFolder" mnemonicParsing="false"/>
+						<MenuItem text="Открыть папку" 				userData="dir"  onAction="#onactionMenuClient_OpenFolder" mnemonicParsing="false"/>
+						<MenuItem text="Отправить файл на сервер"	userData="file" onAction="#onactionMenuClient_Upload" mnemonicParsing="false"/>
+						<MenuItem text="Создать папку"								onAction="#onactionMenuClient_CreateFolder" mnemonicParsing="false"/>
 						<SeparatorMenuItem/>
-						<MenuItem text="Удалить"					userData="any"	onAction="#onactionClientDelete" mnemonicParsing="false"/>
+						<MenuItem text="Удалить"					userData="any"  onAction="#onactionMenuClient_Delete" mnemonicParsing="false"/>
 					</items>
 				</ContextMenu>
 			</contextMenu>
@@ -114,7 +114,7 @@
 		</TableView>
 
 		<!-- Server TableView -->
-		<TableView fx:id="tvServerSide" minWidth="100" editable="true" onMouseClicked="#tvServerOnMouseClicked"> <!--   -->
+		<TableView fx:id="tvServerSide" minWidth="100" editable="true" onMouseClicked="#tvOnMouseClickedServer"> <!--   -->
 
             <HBox.margin><Insets top="5" bottom="3" right="5" left="10"/></HBox.margin>
 
@@ -155,12 +155,12 @@
 				<ContextMenu fx:id="menuServerTableActions">
 					<items>
 						<MenuItem text="Открыть папку"			userData="dir"	onAction="#onactionMenuServer_OpenFolder" mnemonicParsing="false"/>
-						<MenuItem text="Отправить файл клиенту"	userData="file"	onAction="#onactionDownload" mnemonicParsing="false"/>
+						<MenuItem text="Отправить файл клиенту" userData="file" onAction="#onactionMenu_Download" mnemonicParsing="false"/>
 						<MenuItem text="Создать папку"							onAction="#onactionMenuServer_CreateFolder" mnemonicParsing="false"/>
 						<SeparatorMenuItem/>
-						<MenuItem text="Удалить" userData="any" onAction="#onactionServerDelete" mnemonicParsing="false"/>
-						<MenuItem text="Вырезать"		visible="false"	onAction="#onactionMenuServer_CutFolder" mnemonicParsing="false"/>
-						<MenuItem text="Вставить"		visible="false"	onAction="#onactionMenuServer_PasteFolder" mnemonicParsing="false"/>
+						<MenuItem text="Удалить"				userData="any"  onAction="#onactionMenuServer_Delete" mnemonicParsing="false"/>
+<!--					<MenuItem text="Вырезать"	visible="false"	onAction="#onactionMenuServer_CutFolder" mnemonicParsing="false"/>-->
+<!--					<MenuItem text="Вставить"	visible="false"	onAction="#onactionMenuServer_PasteFolder" mnemonicParsing="false"/>-->
 					</items>
 				</ContextMenu>
 			</contextMenu>
@@ -175,13 +175,13 @@
         <HBox HBox.hgrow="ALWAYS" alignment="CENTER">
             <Button text="Отправить на сервер &gt;"
                     fx:id="buttonUpload"
-                    onAction="#onactionUpload"
+                    onAction="#onactionMenuClient_Upload"
                     alignment="CENTER" prefWidth="200" prefHeight="35"/>
         </HBox>
         <HBox HBox.hgrow="ALWAYS" alignment="CENTER">
             <Button text="&lt; Загрузить с сервера"
                     fx:id="buttonDownload"
-                    onAction="#onactionDownload"
+                    onAction="#onactionMenu_Download"
                     alignment="CENTER" prefWidth="200" prefHeight="35"/>
         </HBox>
         <VBox.margin><Insets top="5" bottom="3" right="10" left="10"/></VBox.margin>

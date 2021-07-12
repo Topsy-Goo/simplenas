@@ -3,7 +3,7 @@ package ru.gb.simplenas.server.services;
 import java.nio.file.Path;
 import java.util.List;
 
-public interface PropertyManager
+public interface ServerPropertyManager
 {
     void initialize();
 

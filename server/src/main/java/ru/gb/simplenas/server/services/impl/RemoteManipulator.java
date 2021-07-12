@@ -32,9 +32,9 @@ import static ru.gb.simplenas.common.Factory.*;
 import static ru.gb.simplenas.common.structs.OperationCodes.*;
 import static ru.gb.simplenas.server.SFactory.*;
 
-//NasServerManipulator — это несколько больше, чем ChannelHandler, т.к. ему нужно быть посредником между сервером и
+//RemoteManipulator — это несколько больше, чем ChannelHandler, т.к. ему нужно быть посредником между сервером и
 //  клиентом: хранить данные клиента, .
-public class NasServerManipulator implements Manipulator
+public class RemoteManipulator implements Manipulator
 {
     private final ServerFileManager sfm;
     private SocketChannel socketChannel;
@@ -42,15 +42,15 @@ public class NasServerManipulator implements Manipulator
     private Path pathCurrentAbsolute; //< абсолютный путь к текущей папке пользователя
     private NasDialogue dialogue;
     private Map<OperationCodes, Method> mapManipulateMetods, mapEndupMetods;
-    private static final Logger LOGGER = LogManager.getLogger(NasServerManipulator.class.getName());
+    private static final Logger LOGGER = LogManager.getLogger(RemoteManipulator.class.getName());
 
 
-    public NasServerManipulator (ServerFileManager sfm, SocketChannel socketChannel)
+    public RemoteManipulator (ServerFileManager sfm, SocketChannel socketChannel)
     {
         this.sfm = sfm;
         this.socketChannel = socketChannel;
         buildMethodsMaps();
-        LOGGER.debug("создан NasServerManipulator");
+        LOGGER.debug("создан RemoteManipulator");
     }
 
 //---------------------------------------------------------------------------------------------------------------*/
@@ -614,7 +614,7 @@ public class NasServerManipulator implements Manipulator
         //LOGGER.trace("buildMethodMaps(): start");
         mapManipulateMetods = new HashMap<>();
         mapEndupMetods = new HashMap<>();
-        Method[] methods = NasServerManipulator.class.getDeclaredMethods ();
+        Method[] methods = RemoteManipulator.class.getDeclaredMethods();
 
         for (Method m : methods)
         {
@@ -658,7 +658,7 @@ public class NasServerManipulator implements Manipulator
     //    Files.write(path, bytes, StandardOpenOption.APPEND);
     //}
 
-}// class NasServerManipulator
+}// class RemoteManipulator
 
     //NasMsg newnm = buildNasMsg (OperationCodes.TEST, p.getFileName().toString(), OUTBOUND);
     //channel.writeAndFlush (newnm);

@@ -1,8 +1,6 @@
 package ru.gb.simplenas.client.services;
 
-import java.io.Closeable;
-
-public interface LocalPropertyManager
+public interface ClientPropertyManager
 {
 
     void initialize();

@@ -4,26 +4,27 @@ import com.sun.istack.internal.NotNull;
 import ru.gb.simplenas.common.CommonData;
 import ru.gb.simplenas.common.services.impl.NasFileManager;
 
-import java.nio.file.Files;
-import java.nio.file.InvalidPathException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.io.IOException;
+import java.nio.file.*;
 import java.nio.file.attribute.FileTime;
 import java.text.DecimalFormat;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
+import static java.nio.file.StandardWatchEventKinds.*;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static ru.gb.simplenas.common.Factory.sayNoToEmptyStrings;
 
 /*  Отличительной чертой этих методов и причиной их вынесения в отдельный класс является то, что они не
     содержат проверку на выход из дискового пространства пользователя (ДПП). Они предназначены для работы
     на локальном ПК пользователя.
 */
-public class ClientFileManager extends NasFileManager
+public class LocalFileManager extends NasFileManager
 {
 
-    private ClientFileManager () {}
+    private LocalFileManager () {}
 
     public static boolean isStringOfRealPath (@NotNull String string, String ... strings)   //Controller
     {
@@ -91,6 +92,54 @@ public class ClientFileManager extends NasFileManager
             result = createFolder (pChild);
         }
         return result;
+    }
+
+
+//    @SuppressWarnings("unchecked")
+    void run() throws IOException
+    {
+        Path p = Paths.get("qq");
+        WatchService watcher = FileSystems.getDefault().newWatchService();
+//  Закрытие службы приведёт к тому, что поток, ожидающий событий, получит
+//  ClosedWatchServiceException, а её ключи станут недействительными.
+        WatchKey key = p.register(watcher, ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY);
+        //(Когда ключ создаётся, его состояние == ready.)
+        while (true)
+        {
+        //(Когда появятся события, ключ перейёдт в состояние signaled.)
+            try
+            {   key = watcher.poll (100, MILLISECONDS); // ждём события (блокирующая операция?)
+                //можно использовать :
+                //  - take() - ждать бесконечно или до прихода ClosedWatchServiceException
+                //  - poll() - возращает сразу (очередь событий или null, если событий нет)
+                //  - poll(100, TimeUnit.MILLISECONDS) - возвращает то же самое, но ожидает
+                //         событий указанное время, или до прихода ClosedWatchServiceException.
+            }
+            catch (InterruptedException x) {  return; }
+            //catch (ClosedWatchServiceException e) {;} < unchecked (приходит, когда закрывается весь сервис)
+
+            for (WatchEvent<?> event : key.pollEvents()) //обрабатываем полученные события
+            {
+                WatchEvent.Kind<?> kind = event.kind();
+                if (kind == OVERFLOW)
+                    continue;
+
+                WatchEvent<Path> ev = (WatchEvent<Path>)event;
+                Path filename = ev.context(); //< файл, с которым связано событие
+/*  следующий фрагмент проверяет тип файла на тип «простой текстовый файл»
+                try  {  Path child = p.resolve(filename);
+                        if (Files.probeContentType(child).equals("text/plain"))
+                            System.out.println("...");//< тут что-то делаем
+                } catch (IOException e){e.printStackTrace();}                   */
+            }
+            //возвращаемся к наблюдению (переводим ключ в состояние ready), если ключ всё еще
+            // действительный. (Ключ становится недействительным, если объект наблюдения
+            // становится недоступен, закрывается WatchService, или процесс вызвал для ключа
+            // метод cancel().)
+            boolean valid = key.reset();
+            if (!valid)
+                break; //< ключ в состоянии invalid (теперь он бесполезен)
+        }
     }
 
 }

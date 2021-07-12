@@ -31,7 +31,7 @@ import static ru.gb.simplenas.common.CommonData.*;
 import static ru.gb.simplenas.common.Factory.*;
 import static ru.gb.simplenas.common.structs.OperationCodes.*;
 
-public class NasClientManipulator implements ClientManipulator
+public class LocalManipulator implements ClientManipulator
 {
     private final SocketChannel schannel;
     private NasDialogue dialogue;
@@ -40,19 +40,19 @@ public class NasClientManipulator implements ClientManipulator
     protected NasCallback callbackInfo = this::callbackDummy;           //< для сообщений, которых никто не ждёт
     private Map<OperationCodes, Method> mapManipulateMetods, mapEndupMetods;
     private static final String ERROR_OLD_DIALOGUE_STILL_RUNNING = "Не могу начать новый диалог, — предыдущий ещё не закрыт.";
-    private static final Logger LOGGER = LogManager.getLogger(NasClientManipulator.class.getName());
+    private static final Logger LOGGER = LogManager.getLogger(LocalManipulator.class.getName());
 
-    public NasClientManipulator (NasCallback callbackChannelActive,
-                                 NasCallback callbackMsgIncoming,
-                                 NasCallback callbackInfo,
-                                 SocketChannel sC)
+    public LocalManipulator (NasCallback callbackChannelActive,
+                             NasCallback callbackMsgIncoming,
+                             NasCallback callbackInfo,
+                             SocketChannel sC)
     {
         this.callbackChannelActive = callbackChannelActive;
         this.callbackMsgIncoming = callbackMsgIncoming;
         this.callbackInfo = callbackInfo;
         this.schannel = sC;
         buildMethodsMaps();
-        LOGGER.debug("создан NasClientManipulator");
+        LOGGER.debug("создан LocalManipulator");
     }
 
     void callbackDummy (Object ... objects){}
@@ -444,7 +444,7 @@ public class NasClientManipulator implements ClientManipulator
     {
         mapManipulateMetods = new HashMap<>();
         mapEndupMetods = new HashMap<>();
-        Method[] methods = NasClientManipulator.class.getDeclaredMethods();
+        Method[] methods = LocalManipulator.class.getDeclaredMethods();
 
         for (Method m : methods)
         {
@@ -489,5 +489,5 @@ public class NasClientManipulator implements ClientManipulator
         //       не с первого раза, что подтверждает догадку.
     }
 
-}// class NasClientManipulator
+}// class LocalManipulator
 //---------------------------------------------------------------------------------------------------------------*/

@@ -3,11 +3,10 @@ package ru.gb.simplenas.client;
 import com.sun.istack.internal.NotNull;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.TableView;
-import ru.gb.simplenas.client.services.LocalPropertyManager;
+import ru.gb.simplenas.client.services.ClientPropertyManager;
 import ru.gb.simplenas.client.services.NetClient;
 import ru.gb.simplenas.client.services.impl.*;
 import ru.gb.simplenas.common.NasCallback;
-import ru.gb.simplenas.server.services.impl.NasServerFileManager;
 import ru.gb.simplenas.common.structs.FileInfo;
 import ru.gb.simplenas.client.structs.TableFileInfo;
 
@@ -34,7 +33,9 @@ public class CFactory
     public static final String SBAR_TEXT_SERVER_ONAIR = "Есть подключение к серверу.";
     public static final String SBAR_TEXT_FOLDER_READING_IN_PROGRESS = "Выполняется чтение содержимого папки.";
     public static final String SBAR_TEXTFORMAT_STATISTICS = "%s  •••  %s";
-    public static final String SBAR_TEXTFORMAT_FOLDER_STATISTICS = "Папка содержит: %d папок, %d файлов.";
+    public static final String SBAR_TEXTFORMAT_FOLDER_STATISTICS = "%s папка содержит: %d папок, %d файлов.";
+    public static final String STR_PREFIX_LOCAL = "Локальная";
+    public static final String STR_PREFIX_REMOTE = "Удалённая";
     public static final String TEXTFIELD_SERVER_PROMPTTEXT_DOCONNECT = "Для подключения к серверу введите имя пользователя и нажмите ENTER.";
     public static final String TEXTFIELD_SERVER_PROMPTTEXT_LOGGEDIN = "Укажите папку на сервере, с которой хотите начать работать, и нажмите ENTER.";
     public static final String STRFORMAT_YOUARE_LOGGEDIN = "Вы успешно авторизованы как\n\n%s";
@@ -75,7 +76,7 @@ public class CFactory
 
     static NetClient newNetClient (NasCallback cbDisconnection, int port, String hostName)
     {
-        return new NasNetClient (cbDisconnection, port, hostName);
+        return new LocalNetClient(cbDisconnection, port, hostName);
     }
 
 //-------------------------- методы для работы с контекстным меню -----------------------------------------------*/
@@ -108,49 +109,56 @@ public class CFactory
     }
 
 
-//--------------------------------- ClientFileManager ------------------------------------------------------------*/
+//--------------------------------- LocalFileManager ------------------------------------------------------------*/
 
     public static boolean isStringOfRealPath (@NotNull String string, String ... strings)
     {
-        return ClientFileManager.isStringOfRealPath(string, strings);
+        return LocalFileManager.isStringOfRealPath(string, strings);
     }
 
     public static String stringPath2StringAbsoluteParentPath (@NotNull String s)
     {
-        return ClientFileManager.stringPath2StringAbsoluteParentPath(s);
+        return LocalFileManager.stringPath2StringAbsoluteParentPath(s);
     }
 
     public static String formatFileTime (long time)
     {
-        return ClientFileManager.formatFileTime(time);
+        return LocalFileManager.formatFileTime(time);
     }
 
     public static Path createSubfolder (Path parent, String strChild)
     {
-        return ClientFileManager.createSubfolder(parent, strChild);
+        return LocalFileManager.createSubfolder(parent, strChild);
     }
 
     public static FileInfo rename (@NotNull Path pathParentAbsolute, @NotNull String oldName, @NotNull String newName)
     {
-        return ClientFileManager.rename(pathParentAbsolute, oldName, newName);
+        return LocalFileManager.rename(pathParentAbsolute, oldName, newName);
     }
 
     public static int countDirectoryEntries (@NotNull Path pFolder)
     {
-        return ClientFileManager.countDirectoryEntries(pFolder);
+        return LocalFileManager.countDirectoryEntries(pFolder);
     }
 
     public static boolean deleteFileOrDirectory (@NotNull Path path)
     {
-        return NasServerFileManager.deleteFileOrDirectory(path);
+        return LocalFileManager.deleteFileOrDirectory(path);
     }
 
-//--------------------------------- LocalPropertyManager --------------------------------------------------------*/
+//--------------------------------- ClientPropertyManager --------------------------------------------------------*/
 
-    public static LocalPropertyManager getProperyManager()
+    public static ClientPropertyManager getProperyManager ()
     {
-        return ClientPropertyManager.getInstance();
+        return LocalPropertyManager.getInstance();
     }
 
+
+//--------------------------------- LocalWatchService -----------------------------------------------------------*/
+
+    //public static ClientWatchService getClientWatchService()
+    //{
+    //    return LocalWatchService.getClientWatchService();
+    //}
 }
 //---------------------------------------------------------------------------------------------------------------*/

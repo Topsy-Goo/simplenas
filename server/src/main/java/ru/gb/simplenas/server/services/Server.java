@@ -1,14 +1,12 @@
 package ru.gb.simplenas.server.services;
-import ru.gb.simplenas.server.services.impl.NasServerManipulator;
-
-import java.nio.file.Path;
+import ru.gb.simplenas.server.services.impl.RemoteManipulator;
 
 public interface Server
 {
 
-    boolean clientsListAdd (NasServerManipulator manipulator, String userName);
+    boolean clientsListAdd (RemoteManipulator manipulator, String userName);
 
-    void clientsListRemove (NasServerManipulator manipulator, String userName);
+    void clientsListRemove (RemoteManipulator manipulator, String userName);
 
     //Path getCloudPath ();
 

@@ -3,7 +3,7 @@ package ru.gb.simplenas.client.services.impl;
 import com.sun.istack.internal.NotNull;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import ru.gb.simplenas.client.services.LocalPropertyManager;
+import ru.gb.simplenas.client.services.ClientPropertyManager;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -18,9 +18,9 @@ import static ru.gb.simplenas.common.CommonData.PROPFILE_COMMENT;
 import static ru.gb.simplenas.common.CommonData.STR_EMPTY;
 import static ru.gb.simplenas.common.Factory.*;
 
-public class ClientPropertyManager implements LocalPropertyManager
+public class LocalPropertyManager implements ClientPropertyManager
 {
-    private static ClientPropertyManager instance;
+    private static LocalPropertyManager instance;
     private Properties properties;
     private int port;
     private String hostName;
@@ -28,19 +28,19 @@ public class ClientPropertyManager implements LocalPropertyManager
     private String strRemotePath;
     private Path pPropertyFile;
     private boolean needUpdate;
-    private static final Logger LOGGER = LogManager.getLogger(ClientPropertyManager.class.getName());
+    private static final Logger LOGGER = LogManager.getLogger(LocalPropertyManager.class.getName());
 
 
-   private ClientPropertyManager ()
+   private LocalPropertyManager ()
     {
         initialize();
     }
 
-    public static LocalPropertyManager getInstance()
+    public static ClientPropertyManager getInstance ()
     {
         if (instance == null)
         {
-            instance = new ClientPropertyManager();
+            instance = new LocalPropertyManager();
         }
         return instance;
     }
@@ -97,14 +97,14 @@ public class ClientPropertyManager implements LocalPropertyManager
             needUpdate = true;
             strLocalPath = System.getProperty (STR_DEF_FOLDER);
         }
-        if (!sayNoToEmptyStrings (strRemotePath))
+        if (strRemotePath == null)
         {
             properties.setProperty (PROPNAME_PATH_REMOTE, STR_EMPTY);
             needUpdate = true;
             strRemotePath = STR_EMPTY;
         }
         if (needUpdate)
-            LOGGER.error(String.format("\nНе удалось (частично или полностью) прочитать файл настроек: <%s>\n", pPropertyFile));
+            LOGGER.error(String.format("\nНе удалось (частично или полностью) прочитать файл настроек: <%s>", pPropertyFile));
     }
 
     private boolean writeProperties (@NotNull Path pPropertyFile)
@@ -160,5 +160,3 @@ public class ClientPropertyManager implements LocalPropertyManager
     }
 }
 //---------------------------------------------------------------------------------------------------------------*/
-
-

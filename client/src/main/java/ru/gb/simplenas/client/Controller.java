@@ -14,8 +14,10 @@ import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import ru.gb.simplenas.client.services.LocalPropertyManager;
+import ru.gb.simplenas.client.services.ClientPropertyManager;
+import ru.gb.simplenas.client.services.ClientWatchService;
 import ru.gb.simplenas.client.services.NetClient;
+import ru.gb.simplenas.client.services.impl.LocalWatchService;
 import ru.gb.simplenas.client.services.impl.TableViewManager;
 import ru.gb.simplenas.common.structs.FileInfo;
 import ru.gb.simplenas.common.structs.NasMsg;
@@ -24,13 +26,16 @@ import ru.gb.simplenas.client.structs.TableFileInfo;
 
 import java.awt.*;
 import java.net.URL;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
 import java.util.List;
 import java.util.Optional;
 import java.util.ResourceBundle;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static javafx.scene.control.Alert.AlertType.*;
 import static javafx.scene.control.Alert.AlertType.ERROR;
 import static ru.gb.simplenas.client.CFactory.*;
@@ -77,13 +82,13 @@ public class Controller implements Initializable
     private final Object syncObj = new Object();
     private boolean extraInitialisationIsDone = false;
     private TableViewManager tableViewManager;
-    private LocalPropertyManager localPropertyManager;
+    private ClientPropertyManager propMan;
+    private ClientWatchService clientWatcher;
+    private Lock lockOnWatching;
     private static final Logger LOGGER = LogManager.getLogger(Controller.class.getName());
 
 
-//TODO : Проперти
 //TODO : авторизация + БД + флайвэй
-//TODO : наблюдение за изменениями в локальной папке.
 //TODO : DnD
 //TODO : Грэдл
 //
@@ -111,16 +116,19 @@ public class Controller implements Initializable
     {
         javafx = Thread.currentThread();
 
-        localPropertyManager = getProperyManager();
-        strCurrentLocalPath = localPropertyManager.getLastLocalPathString();
-        //strCurrentServerPath = localPropertyManager.getLastRemotePathString();
+        propMan = getProperyManager();
+        strCurrentLocalPath = propMan.getLastLocalPathString();
+
+        lockOnWatching = new ReentrantLock();
+        clientWatcher = new LocalWatchService ((ooo)->callbackOnCurrentFolderEvents(), lockOnWatching);
+        clientWatcher.startWatchingOnFolder(strCurrentLocalPath);
 
         sbarSetDefaultText (STR_EMPTY, SBAR_TEXT_SERVER_NOCONNECTION);
 
         tableViewManager = new TableViewManager (this);
-        populateTableView (listFolderContents (strCurrentLocalPath), LOCAL);
         textfieldCurrentPath_Client.setText (strCurrentLocalPath);
         textfieldCurrentPath_Server.setPromptText(TEXTFIELD_SERVER_PROMPTTEXT_DOCONNECT);
+        populateTableView (listFolderContents (strCurrentLocalPath), LOCAL);
 
         setContextMenuEventHandler_OnShoing (menuClientTableActions, tvClientSide);
         setContextMenuEventHandler_OnShoing (menuServerTableActions, tvServerSide);
@@ -128,6 +136,8 @@ public class Controller implements Initializable
         extraInitialisationIsDone = false;
         enableUsersInput (ENABLE);
     }
+
+//---------------------------------------------------------------------------------------------------------------*/
 
     void onCmdConnectAndLogin (String name)
     {
@@ -150,12 +160,12 @@ public class Controller implements Initializable
     private boolean connect()
     {
         boolean result = false;
-        if (localPropertyManager != null)
+        if (propMan != null)
         {
-            netClient = newNetClient (
-                            (ooo)->callbackOnNetClientDisconnection(),
-                            localPropertyManager.getRemotePort(),
-                            localPropertyManager.getHostString());
+            netClient = newNetClient(
+                    (ooo)->callbackOnNetClientDisconnection(),
+                    propMan.getRemotePort(),
+                    propMan.getHostString());
             result = netClient.connect();
             if (!result)
             {
@@ -170,7 +180,7 @@ public class Controller implements Initializable
         NasMsg nm = null;
         if (netClient == null || (null == (nm = netClient.login (name))))
         {
-            messageBox(CFactory.ALERTHEADER_AUTHENTIFICATION, ERROR_UNABLE_TO_PERFORM, ERROR);
+            messageBox (ALERTHEADER_AUTHENTIFICATION, ERROR_UNABLE_TO_PERFORM, ERROR);
         }
         else if (nm.opCode() == OK)
         {
@@ -184,7 +194,7 @@ public class Controller implements Initializable
             {
                 strErr = ERROR_UNABLE_TO_PERFORM;
             }
-            messageBox(CFactory.ALERTHEADER_AUTHENTIFICATION, strErr, WARNING);
+            messageBox (ALERTHEADER_AUTHENTIFICATION, strErr, WARNING);
         }
     }
 
@@ -199,8 +209,8 @@ public class Controller implements Initializable
                     String.format(STRFORMAT_YOUARE_LOGGEDIN, userName),
                     INFORMATION);
 
-        if (localPropertyManager != null)
-            strCurrentServerPath = localPropertyManager.getLastRemotePathString();
+        if (propMan != null)
+            strCurrentServerPath = propMan.getLastRemotePathString();
 
         String strRemotePath = Paths.get(userName, strCurrentServerPath).toString();
         if (!workUpAListRequestResult (netClient.list (strRemotePath)))
@@ -217,18 +227,25 @@ public class Controller implements Initializable
     {
         storeProperties();  //< это нужно сделать до того, как userName станет == null
         if (netClient != null)
+        {   //это приведёт к разрыву соединения с сервером (к закрытию канала) и к вызову onNetClientDisconnection()
+            netClient.disconnect();
+        }
+        if (clientWatcher != null)
         {
-            netClient.disconnect();  //< это приведёт к разрыву соединения с сервером (к закрытию канала) и к вызову onNetClientDisconnection()
+            clientWatcher.close();
         }
     }
 
     private void storeProperties()
     {
-        if (localPropertyManager != null)
+        if (propMan != null)
         {
-            localPropertyManager.setLastLocalPathString (strCurrentLocalPath);
-            localPropertyManager.setLastRemotePathString(relativizeByFolderName(userName, strCurrentServerPath));
-            localPropertyManager.close();
+            propMan.setLastLocalPathString (strCurrentLocalPath);
+            if (sayNoToEmptyStrings (strCurrentServerPath))  //< чтобы не сбрасывалось, если во время сессии не было подключения
+            {
+                propMan.setLastRemotePathString (relativizeByFolderName (userName, strCurrentServerPath));
+            }
+            propMan.close();
         }
     }
 
@@ -238,7 +255,7 @@ public class Controller implements Initializable
     }
 
 //callback. Вызывается из netClient при закрытии соединения с сервером. Может вызываться дважды для закрытия одной и той же сессии.
-    void callbackOnNetClientDisconnection()
+    private void callbackOnNetClientDisconnection()
     {
         netClient = null;
         userName = null;
@@ -246,6 +263,11 @@ public class Controller implements Initializable
         //    messageBox(CFactory.ALERTHEADER_REMOUTE_STORAGE, PROMPT_CONNECTION_GETTING_CLOSED, WARNING);  //< вызов не из потока javafx вызывает исключение
         //                      });
         sbarSetDefaultText(null, CFactory.SBAR_TEXT_SERVER_NOCONNECTION);
+    }
+
+    private void callbackOnCurrentFolderEvents()
+    {
+        applyStringAsNewLocalPath (strCurrentLocalPath);
     }
 
     private void updateMainWndTitleWithUserName()
@@ -285,34 +307,26 @@ public class Controller implements Initializable
     @FXML public void onactionMenuClient_CreateFolder (ActionEvent actionEvent)
     {
         String name = generateDefaultFolderName (tvClientSide);
+        Path pSubfolder = createSubfolder (Paths.get(strCurrentLocalPath), name);
 
-        if (null != createSubfolder (Paths.get(strCurrentLocalPath), name))
-        {
-            addTvItemAsFolder(name, LOCAL);
-        }
-        else messageBox (ALERTHEADER_FOLDER_CREATION, ERROR_UNABLE_TO_PERFORM, ERROR);
+        if (null == pSubfolder)
+            messageBox (ALERTHEADER_FOLDER_CREATION, ERROR_UNABLE_TO_PERFORM, ERROR);
     }
 
 //в текущей клиентской папке удаляем выбранный элемент (файл или папку).
-    @FXML public void onactionClientDelete (ActionEvent actionEvent)
+    @FXML public void onactionMenuClient_Delete (ActionEvent actionEvent)
     {
         TableFileInfo tfi = tvClientSide.getSelectionModel().getSelectedItem();
         String errMsg = null;
 
-        if (tfi == null)
-        {
-            errMsg = ERROR_UNABLE_TO_PERFORM;
-        }
-        else if (deleteLocalEntryByTfi (tfi))
-        {
-            deleteTvItem (tvClientSide, tfi);
-            collectStatistics (tvClientSide);
-        }
-        if (errMsg != null) messageBox(ALERTHEADER_DELETION, errMsg, ERROR);
+        if (tfi != null)
+            deleteLocalEntryByTfi (tfi);
+        else
+            messageBox (ALERTHEADER_DELETION, ERROR_UNABLE_TO_PERFORM, ERROR);
     }
 
 //в текущей серверной папке удаляем выбранный элемент (файл или папку).
-    @FXML public void onactionServerDelete (ActionEvent actionEvent)
+    @FXML public void onactionMenuServer_Delete (ActionEvent actionEvent)
     {
         TableFileInfo tfi = tvServerSide.getSelectionModel().getSelectedItem();
         String errMsg = null;
@@ -335,7 +349,7 @@ public class Controller implements Initializable
     }
 
 //Загрузка одного выбранного элемента-файла с сервера в текущую локальную папку
-    @FXML public void onactionDownload (ActionEvent actionEvent)
+    @FXML public void onactionMenu_Download (ActionEvent actionEvent)
     {
         TableFileInfo tfi;
         String errMsg = null;
@@ -351,7 +365,7 @@ public class Controller implements Initializable
             //загрузка папок (даже пустых) не реализована
             if (tfi.getFolder())
             {
-                errMsg = CFactory.PROMPT_FOLDERS_EXCHANGE_NOT_SUPPORTED;
+                errMsg = PROMPT_FOLDERS_EXCHANGE_NOT_SUPPORTED;
                 alertType = INFORMATION;
             }
             else errMsg = downloadFileByTfi (tfi);
@@ -360,7 +374,7 @@ public class Controller implements Initializable
     }
 
 //Выгрузка одного выбранного элемента-файла из локальной папки на сервер в текущую папку
-    @FXML public void onactionUpload (ActionEvent actionEvent)
+    @FXML public void onactionMenuClient_Upload (ActionEvent actionEvent)
     {
         TableFileInfo tfi;
         String errMsg = null;
@@ -387,7 +401,12 @@ public class Controller implements Initializable
 //В поле ввода textfieldCurrentPath_Client нажат ENTER.
     @FXML public void onactionTextField_Client_ApplyAsPath (ActionEvent actionEvent)
     {
-        applyStringAsNewLocalPath (textfieldCurrentPath_Client.getText());
+        lockOnWatching.lock();
+        {
+            applyStringAsNewLocalPath (textfieldCurrentPath_Client.getText());
+            clientWatcher.startWatchingOnFolder (strCurrentLocalPath);
+        }
+        lockOnWatching.unlock();
     }
 
 //В поле ввода textfieldCurrentPath_Server нажат ENTER.
@@ -403,15 +422,15 @@ public class Controller implements Initializable
         {   //если подключение уже установлено, то текст явялется папкой на сервере, которую нужно выбрать
             NasMsg nm = netClient.goTo (text);
             if (!workUpAListRequestResult (nm))
+            {
                 messageBox(ALERTHEADER_UNABLE_APPLY_AS_PATH, text, ERROR);
+            }
         }
     }
 
 //Переходим в родительскую папку, если таковая существует.
     @FXML public void onactionButton_Client_LevelUp (ActionEvent actionEvent)
     {
-            //String s = relativizeByUserName (userName, strCurrentLocalPath);
-
         // !!! Игнорируем содержимое поля ввода textfieldCurrentPath_Client)
         String strParent = stringPath2StringAbsoluteParentPath (strCurrentLocalPath);
 
@@ -419,13 +438,16 @@ public class Controller implements Initializable
         if (strParent.isEmpty())
         {
             messageBox (ALERTHEADER_LOCAL_STORAGE,
-                        String.format(CFactory.PROMPT_FORMAT_ROOT_FOLDER, strCurrentLocalPath),
+                        sformat (PROMPT_FORMAT_ROOT_FOLDER, strCurrentLocalPath),
                         INFORMATION);
         }
-        else
-        {   populateTableView (listFolderContents(strParent), LOCAL);
+        else if (tryLock (1000, MILLISECONDS))
+        {
+            populateTableView (listFolderContents (strParent), LOCAL);
             strCurrentLocalPath = strParent;
             textfieldCurrentPath_Client.setText(strCurrentLocalPath);
+            clientWatcher.startWatchingOnFolder (strCurrentLocalPath);
+            lockOnWatching.unlock();
         }
     }
 
@@ -458,21 +480,20 @@ public class Controller implements Initializable
         openFolderOnServerSide();
     }
 
-    @FXML public void tvClientOnMouseClicked (MouseEvent mouseEvent)
+//двойной щелчок ЛКМ по пункту-папке открывает соттв. ему папку
+    @FXML public void tvOnMouseClickedClient (MouseEvent mouseEvent)
     {
         if (mouseEvent.getClickCount() == 2)
+        {
            openFolderOnClientSide();
+        }
     }
 
-    @FXML public void tvServerOnMouseClicked (MouseEvent mouseEvent)
+    @FXML public void tvOnMouseClickedServer (MouseEvent mouseEvent)
     {
         if (mouseEvent.getClickCount() == 2)
             openFolderOnServerSide();
     }
-
-    @FXML public void onactionMenuServer_CutFolder (ActionEvent actionEvent)    {   if (DEBUG) lnprint ("!!!!!!! onactionMenuServer_CutFolder");    }
-    @FXML public void onactionMenuServer_PasteFolder (ActionEvent actionEvent)  {   if (DEBUG) lnprint ("!!!!!!! onactionMenuServer_PasteFolder");    }
-
 
 //-------------------------- гетеры и сетеры --------------------------------------------------------------------*/
 
@@ -486,53 +507,55 @@ public class Controller implements Initializable
 //-------------------------- методы для работы с GUI ------------------------------------------------------------*/
 
 //Заполняем таблицу элементами списка infolist.
-    void populateTableView (@NotNull List<FileInfo> infolist, boolean local)    //+
+    void populateTableView (@NotNull List<FileInfo> infolist, boolean local)
     {
         if (infolist != null)
         {
             long folders = 0L,  files = 0L;
             TableView<TableFileInfo> tv = local ? tvClientSide : tvServerSide;
+            String strPrefix = local ? STR_PREFIX_LOCAL : STR_PREFIX_REMOTE;
 
-            String s = CFactory.SBAR_TEXT_FOLDER_READING_IN_PROGRESS;
+            String s = SBAR_TEXT_FOLDER_READING_IN_PROGRESS;
             if (local)  sbarSetDefaultText (s, null);
             else        sbarSetDefaultText (null, s);
             enableUsersInput (DISABLE);
 
-            Point p = CFactory.populateTv(tv, infolist);
+            Point p = populateTv(tv, infolist);
             folders = p.x;
             files = p.y;
 
             enableUsersInput (ENABLE);
-            s = String.format(CFactory.SBAR_TEXTFORMAT_FOLDER_STATISTICS, folders, files);
+            s = String.format (SBAR_TEXTFORMAT_FOLDER_STATISTICS, strPrefix, folders, files);
             if (local)  sbarSetDefaultText (s, null);
             else        sbarSetDefaultText (null, s);
         }
     }
 
 //Подсчитываем количества папок и файлов в указанной таблице и помещаем в строку состояния текст с полученной информацией.
-    void collectStatistics (TableView<TableFileInfo> tv)        //+
+    void collectStatistics (TableView<TableFileInfo> tv)
     {
         long folders = 0L,  files = 0L;
         boolean local = tv == tvClientSide;
+        String strPrefix = local ? STR_PREFIX_LOCAL : STR_PREFIX_REMOTE;
 
         String s = CFactory.SBAR_TEXT_FOLDER_READING_IN_PROGRESS;
         if (local)  sbarSetDefaultText (s, null);
         else        sbarSetDefaultText (null, s);
         enableUsersInput (DISABLE);
 
-        Point point = CFactory.statisticsTv(tv);
+        Point point = statisticsTv(tv);
         folders = point.x;
         files = point.y;
 
         enableUsersInput (ENABLE);
-        s = String.format(CFactory.SBAR_TEXTFORMAT_FOLDER_STATISTICS, folders, files);
+        s = String.format(CFactory.SBAR_TEXTFORMAT_FOLDER_STATISTICS, strPrefix, folders, files);
         if (local)  sbarSetDefaultText (s, null);
         else        sbarSetDefaultText (null, s);
     }
 
 //Формируем текст, который будет по умолчанию отображаться в строке состояния. Левая часть отображает состояние клиента,
 // правая — сервера. В качестве любого из параметров можно передать null, если соответствующую подстроку изменять не нужно.
-    void sbarSetDefaultText (String local, String server)       //+
+    void sbarSetDefaultText (String local, String server)
     {
         if (local != null) sbarLocalStatistics = local;
         if (server != null) sbarServerStatistics = server;
@@ -541,7 +564,7 @@ public class Controller implements Initializable
     }
 
 //Запрещаем или разрешаем использование элементов управления. (Используется во время выполнения длительных операций.)
-    void enableUsersInput (boolean enable)        //+
+    void enableUsersInput (boolean enable)
     {
         textfieldCurrentPath_Client.setDisable(!enable);
         textfieldCurrentPath_Server.setDisable(!enable);
@@ -610,10 +633,10 @@ public class Controller implements Initializable
     }
 
 //считая указанную строку путём к каталогу, пытаемся отобразить содержимое этого каталога в «клиентской» панели.
-    private void applyStringAsNewLocalPath (String strPath)
+    void applyStringAsNewLocalPath (String strPath)
     {
-        if (strPath == null || strPath.isEmpty())
-            strPath = System.getProperty(CFactory.STR_DEF_FOLDER);
+        if (!sayNoToEmptyStrings(strPath))
+            strPath = System.getProperty (STR_DEF_FOLDER);
 
         if (isStringOfRealPath (strPath))
         {
@@ -630,9 +653,14 @@ public class Controller implements Initializable
         TableFileInfo tfi = tvClientSide.getSelectionModel().getSelectedItem();
         if (tfi != null && tfi.getFolder())
         {
-            String strPath = Paths.get (strCurrentLocalPath, tfi.getFileName()).toString();
-            applyStringAsNewLocalPath (strPath);
-            textfieldCurrentPath_Client.setText (strPath);
+            lockOnWatching.lock();
+            {
+                String strPath = Paths.get (strCurrentLocalPath, tfi.getFileName()).toString();
+                applyStringAsNewLocalPath (strPath);
+                textfieldCurrentPath_Client.setText (strPath);
+                clientWatcher.startWatchingOnFolder (strCurrentLocalPath);
+            }
+            lockOnWatching.unlock();
         }
     }
 
@@ -697,9 +725,10 @@ public class Controller implements Initializable
         boolean canDelete = false;
         if (entries > 0)
         {
-            canDelete = messageBoxConfirmation (ALERTHEADER_DELETION,
-                                                String.format(CFactory.PROMPT_FORMAT_FOLDER_DELETION_CONFIRMATION, folderName),
-                                                Alert.AlertType.CONFIRMATION);
+            canDelete = messageBoxConfirmation (
+                            ALERTHEADER_DELETION,
+                            sformat(PROMPT_FORMAT_FOLDER_DELETION_CONFIRMATION, folderName),
+                            CONFIRMATION);
         }
         else canDelete = entries == 0;
         return canDelete;
@@ -727,9 +756,11 @@ public class Controller implements Initializable
         if (ok)
         {
             ok = deleteFileOrDirectory (paim);
+            if (tryLock(1000, MILLISECONDS))
+                lockOnWatching.unlock();
             error = !ok;
         }
-        if (error)  messageBox(ALERTHEADER_DELETION, ERROR_UNABLE_TO_PERFORM, ERROR);
+        if (error)  messageBox (ALERTHEADER_DELETION, ERROR_UNABLE_TO_PERFORM, ERROR);
         return ok;
     }
 
@@ -773,28 +804,34 @@ public class Controller implements Initializable
 //загружаем файл с сервера в текущую локальную папку; если файл уже существует, запрашиваем подтверждение пользователя.
     private String downloadFileByTfi (TableFileInfo tfi)
     {
-        String strTarget = Paths.get(strCurrentLocalPath, tfi.getFileName()).toString();
-        String strErr = ERROR_UNABLE_TO_PERFORM + " @";
-
-        if (isItSafeToDownloadFile (strTarget))
+        String strErr = ERROR_UNABLE_TO_PERFORM;
+        lockOnWatching.lock();  //< чтобы WatchService не реагировала на временную папку, которая создаётся при загрузке.
         {
-            NasMsg nm = netClient.transferFile (strCurrentLocalPath, strCurrentServerPath,
-                                                tfi.toFileInfo(), LOAD2LOCAL);
-            if (nm != null)
-            if (nm.opCode() == OperationCodes.ERROR)
+            String strTarget = Paths.get(strCurrentLocalPath, tfi.getFileName()).toString();
+
+            if (isItSafeToDownloadFile (strTarget))
             {
-                if (nm.msg() != null)
-                    strErr = nm.msg();
-            }
-            else if (nm.opCode() == OK)
-            {
-                applyStringAsNewLocalPath (strCurrentLocalPath);
-                strErr = null;
-                // Из-за ошибки с передачей больших файлов мы не можем просто добавить пункт
-                // в таблицу. Поэтому пойдём длинным путём — обновим список файлов.
-                //TODO : правильнее было бы сделать листенер на текущую папку.
+                NasMsg nm;
+                    nm = netClient.transferFile (strCurrentLocalPath, strCurrentServerPath,
+                                                        tfi.toFileInfo(), LOAD2LOCAL);
+                if (nm != null)
+                if (nm.opCode() == OperationCodes.ERROR)
+                {
+                    if (nm.msg() != null)
+                        strErr = nm.msg();
+                }
+                else if (nm.opCode() == OK)
+                {
+                    // Из-за ошибки с передачей больших файлов мы не можем просто добавить пункт
+                    // в таблицу. Поэтому пойдём длинным путём — обновим список файлов.
+                    applyStringAsNewLocalPath (strCurrentLocalPath);
+                    strErr = null;
+                    //Листенер, как оказалось, тут тоже использовать сложно, т.к. он реагирует на
+                    //  временную папку, которая создаётся при загрузке.
+                }
             }
         }
+        lockOnWatching.unlock();
         return strErr;
     }
 
@@ -849,5 +886,13 @@ public class Controller implements Initializable
                                                                Alert.AlertType.CONFIRMATION);
     }
 
+    private boolean tryLock (long time, TimeUnit timeUnits)
+    {
+        boolean ok = false;
+        try {   ok = lockOnWatching.tryLock (time, timeUnits);
+            }
+        catch (InterruptedException e){e.printStackTrace();}
+        return ok;
+    }
 }
 //---------------------------------------------------------------------------------------------------------------*/

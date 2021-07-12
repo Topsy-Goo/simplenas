@@ -2,15 +2,14 @@ package ru.gb.simplenas.server;
 
 import com.sun.istack.internal.NotNull;
 import ru.gb.simplenas.common.services.impl.NasFileManager;
-import ru.gb.simplenas.server.services.PropertyManager;
+import ru.gb.simplenas.server.services.ServerPropertyManager;
 import ru.gb.simplenas.server.services.Server;
 import ru.gb.simplenas.server.services.ServerFileManager;
-import ru.gb.simplenas.server.services.impl.NasServer;
-import ru.gb.simplenas.server.services.impl.NasServerFileManager;
-import ru.gb.simplenas.server.services.impl.NasServerManipulator;
-import ru.gb.simplenas.server.services.impl.ServerPropertyManager;
+import ru.gb.simplenas.server.services.impl.RemoteServer;
+import ru.gb.simplenas.server.services.impl.RemoteFileManager;
+import ru.gb.simplenas.server.services.impl.RemoteManipulator;
+import ru.gb.simplenas.server.services.impl.RemotePropertyManager;
 
-import java.nio.file.Path;
 import java.util.List;
 
 public class SFactory
@@ -31,43 +30,43 @@ public class SFactory
 
     private SFactory (){}
 
-//-------------------------------------- NasServer --------------------------------------------------------------*/
+//-------------------------------------- RemoteServer --------------------------------------------------------------*/
 
 /*  если название метода просто Server() плохо смтрится в main(), то название startServer()
     плохо смотрится в остальном коде, поэтому пусть будут два одинаковых метода с разными
     названиями. */
-    public static Server startServer ()  {   return NasServer.getInstance();   }
-    public static Server server()  {   return NasServer.getInstance();   }
+    public static Server startServer ()  {   return RemoteServer.getInstance();   }
+    public static Server server()  {   return RemoteServer.getInstance();   }
 
-//-------------------------------------- NasServerManipulator ---------------------------------------------------*/
+//-------------------------------------- RemoteManipulator ---------------------------------------------------*/
 
-    public static boolean clientsListAdd (NasServerManipulator manipulator, String userName)
+    public static boolean clientsListAdd (RemoteManipulator manipulator, String userName)
     {
         return server().clientsListAdd(manipulator, userName);
     }
 
-    public static void clientsListRemove (NasServerManipulator manipulator, String userName)
+    public static void clientsListRemove (RemoteManipulator manipulator, String userName)
     {
         server().clientsListRemove(manipulator, userName);
     }
 
 //-------------------------------------- NasServerPropertyManager -----------------------------------------------*/
 
-    public static PropertyManager getProperyManager ()
+    public static ServerPropertyManager getProperyManager ()
     {
-        return ServerPropertyManager.getInstance();
+        return RemotePropertyManager.getInstance();
     }
 
-//--------------------------------- NasServerFileManager --------------------------------------------------------------*/
+//--------------------------------- RemoteFileManager --------------------------------------------------------------*/
 
     public static ServerFileManager getServerFileManager (@NotNull String strCloud)
     {
-        return new NasServerFileManager (strCloud);
+        return new RemoteFileManager(strCloud);
     }
 
     public static ServerFileManager getServerFileManager (@NotNull String strCloud, @NotNull List<String> welcomeFolders, @NotNull List<String> welcomeFiles)
     {
-        return new NasServerFileManager (strCloud, welcomeFolders, welcomeFiles);
+        return new RemoteFileManager(strCloud, welcomeFolders, welcomeFiles);
     }
 
 //---------------------------------- NasFileManager -------------------------------------------------------------*/

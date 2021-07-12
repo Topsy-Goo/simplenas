@@ -19,26 +19,26 @@ import static ru.gb.simplenas.common.Factory.sayNoToEmptyStrings;
     Основу проверки составляет метод getSafeAbsolutePathBy(…), который в качестве параметра принимает
     имя корневой папки ДПП (фактически, — принимает логин пользователя).
 */
-public class NasServerFileManager extends NasFileManager implements ServerFileManager
+public class RemoteFileManager extends NasFileManager implements ServerFileManager
 {
     private Path cloud;
     private List<String> welcomeFolders; //< папки, которые должны быть в папке у нового пользователя.
     private List<String> welcomeFiles; //< файлы, которые должны быть в папке у нового пользователя.
 
-    private static final Logger LOGGER = LogManager.getLogger(NasServerFileManager.class.getName());
+    private static final Logger LOGGER = LogManager.getLogger(RemoteFileManager.class.getName());
 
 
 //Этот конструктор для тестов, где существование папки cloud не обязательно.
-    public NasServerFileManager (String strCloud)
+    public RemoteFileManager (String strCloud)
     {
         if (!sayNoToEmptyStrings(strCloud))
             throw new IllegalArgumentException();
 
         this.cloud = Paths.get(strCloud).toAbsolutePath().normalize();
-        LOGGER.debug("создан NasServerFileManager");
+        LOGGER.debug("создан RemoteFileManager");
     }
 //Этот конструктор для работы.
-    public NasServerFileManager (String strCloudName, List<String> welcomeFolders, List<String> welcomeFiles)
+    public RemoteFileManager (String strCloudName, List<String> welcomeFolders, List<String> welcomeFiles)
     {
         this(strCloudName);
         if (!checkCloudFolder())
@@ -236,7 +236,7 @@ public class NasServerFileManager extends NasFileManager implements ServerFileMa
     }
 
 //Преобразуем path в абсолютный путь и убеждаемся, что он указывает в ДПП. Путь не обязан существовать.
-    @Override public Path getSafeAbsolutePathBy (@NotNull Path path, @NotNull String userName)    //NasServerFileManager, PathsTest
+    @Override public Path getSafeAbsolutePathBy (@NotNull Path path, @NotNull String userName)    //RemoteFileManager, PathsTest
     {
         Path result = null,
              userroot = constructAbsoluteUserRoot(userName);

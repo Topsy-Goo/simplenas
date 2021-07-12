@@ -14,7 +14,7 @@ import io.netty.handler.codec.serialization.ObjectEncoder;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import ru.gb.simplenas.common.services.impl.NasMsgInboundHandler;
-import ru.gb.simplenas.server.services.PropertyManager;
+import ru.gb.simplenas.server.services.ServerPropertyManager;
 import ru.gb.simplenas.server.services.Server;
 import ru.gb.simplenas.server.services.ServerFileManager;
 
@@ -25,35 +25,35 @@ import static ru.gb.simplenas.common.Factory.lnprint;
 import static ru.gb.simplenas.server.SFactory.getProperyManager;
 import static ru.gb.simplenas.server.SFactory.getServerFileManager;
 
-public class NasServer implements Server
+public class RemoteServer implements Server
 {
-    private static NasServer instance;
-    private final static Map<String, NasServerManipulator> CHANNELS = new HashMap<>();
+    private static RemoteServer instance;
+    private final static Map<String, RemoteManipulator> CHANNELS = new HashMap<>();
     private Thread consoleReader;
     private boolean serverGettingOff;
     private Channel channelOfChannelFuture;
     public static final String CMD_EXIT = "exit";
     private final ServerFileManager fileNamager;
     private final int publicPort;
-    private static final Logger LOGGER = LogManager.getLogger(NasServer.class.getName());
+    private static final Logger LOGGER = LogManager.getLogger(RemoteServer.class.getName());
 
 
-    private NasServer()
+    private RemoteServer ()
     {
-        PropertyManager propertyManager = getProperyManager();
-        publicPort = propertyManager.getPublicPort();
+        ServerPropertyManager serverPropertyManager = getProperyManager();
+        publicPort = serverPropertyManager.getPublicPort();
         fileNamager = getServerFileManager(
-                propertyManager.getCloudName(),
-                propertyManager.getWelcomeFolders(), //< папки, которые должны быть в папке у нового пользователя.
-                propertyManager.getWelcomeFiles());  //< файлы, которые должны быть в папке у нового пользователя.
-        LOGGER.debug("создан NasServer");
+                serverPropertyManager.getCloudName(),
+                serverPropertyManager.getWelcomeFolders(), //< папки, которые должны быть в папке у нового пользователя.
+                serverPropertyManager.getWelcomeFiles());  //< файлы, которые должны быть в папке у нового пользователя.
+        LOGGER.debug("создан RemoteServer");
     }
 
     public static Server getInstance()
     {
         if (instance == null)
         {
-            instance = new NasServer();
+            instance = new RemoteServer();
             instance.run();
         }
         return instance;
@@ -117,8 +117,8 @@ public class NasServer implements Server
                                     //new ObjectDecoder(ClassResolvers.cacheDisabled (null)),
                                     //new ObjectDecoder(MAX_OBJECT_SIZE, ClassResolvers.cacheDisabled (null)), //< A decoder which deserializes the received ByteBufs into Java objects.
                                     new ObjectDecoder (Integer.MAX_VALUE, ClassResolvers.weakCachingConcurrentResolver(null)), //< то же самое, но конкурентно и с небольшим кэшированием
-                                    new NasMsgInboundHandler (new NasServerManipulator (fileNamager, socketChannel))
-                                    //new TestInboundHandler (new NasServerManipulator (sC))
+                                    new NasMsgInboundHandler (new RemoteManipulator(fileNamager, socketChannel))
+                                    //new TestInboundHandler (new RemoteManipulator (sC))
                                     );
                         LOGGER.trace("initChannel() end");
 
@@ -200,7 +200,7 @@ public class NasServer implements Server
 
 //---------------------------------------------------------------------------------------------------------------*/
 
-    @Override public boolean clientsListAdd (NasServerManipulator manipulator, String userName)
+    @Override public boolean clientsListAdd (RemoteManipulator manipulator, String userName)
     {
         boolean ok = false;
         if (!CHANNELS.containsKey (userName))
@@ -212,24 +212,24 @@ public class NasServer implements Server
         return ok;
     }
 
-    @Override public void clientsListRemove (NasServerManipulator manipulator, String userName)
+    @Override public void clientsListRemove (RemoteManipulator manipulator, String userName)
     {
-        if (DEBUG) lnprint("NasServer.clientsListRemove(): call.");
+        if (DEBUG) lnprint("RemoteServer.clientsListRemove(): call.");
         //CHANNELS.remove (userName);
         if (userName != null && CHANNELS.get(userName) == manipulator)
         {
             CHANNELS.remove (userName);
-            if (DEBUG) lnprint("NasServer.clientsListRemove(): клиент <"+userName+"> удалён.");
+            if (DEBUG) lnprint("RemoteServer.clientsListRemove(): клиент <"+userName+"> удалён.");
         }
     }
 
     private void closeAllClientConnections()
     {
-        Set<Map.Entry<String, NasServerManipulator>> entries = CHANNELS.entrySet();
+        Set<Map.Entry<String, RemoteManipulator>> entries = CHANNELS.entrySet();
 
-        for (Map.Entry<String, NasServerManipulator> e : entries)
+        for (Map.Entry<String, RemoteManipulator> e : entries)
         {
-            NasServerManipulator manipulator = e.getValue();
+            RemoteManipulator manipulator = e.getValue();
             manipulator.startExitRequest(null);
         }
     }

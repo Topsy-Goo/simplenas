@@ -28,7 +28,7 @@ public class InboundFileExtruder implements FileExtruder
     protected Path pTargetDir;
     protected Path pTargetFile;
     protected boolean extrudingError;
-    private static final Logger LOGGER = LogManager.getLogger(InboundFileExtruder.class.getName());
+    //private static final Logger LOGGER = LogManager.getLogger(InboundFileExtruder.class.getName());
 
     private InboundFileExtruder instance;
 
@@ -107,7 +107,7 @@ public class InboundFileExtruder implements FileExtruder
     @Override public boolean endupExtruding (NasMsg nm)
     {
     //переносим файл из временной папки в папку назначения
-        LOGGER.debug("endupExtruding() start");
+    //    LOGGER.debug("endupExtruding() start");
         boolean ok = false;
         try
         {
@@ -130,7 +130,7 @@ public class InboundFileExtruder implements FileExtruder
         finally
         {
             cleanup();
-            LOGGER.debug("endupExtruding() end");
+            //LOGGER.debug("endupExtruding() end");
         }
         return ok;
     }
@@ -141,7 +141,7 @@ public class InboundFileExtruder implements FileExtruder
 //завершение операции получения файла от клиента + очистка полей, используемых при выполнении такой операции
     protected void cleanup()
     {
-        LOGGER.debug("cleanup() start");
+        //LOGGER.debug("cleanup() start");
         try {   if (outputStream != null) { outputStream.flush();   outputStream.close(); }
                 if (pFileInTmpFolder != null) Files.deleteIfExists(pFileInTmpFolder);
                 if (pTmpDir != null)          Files.deleteIfExists (pTmpDir);
@@ -154,7 +154,7 @@ public class InboundFileExtruder implements FileExtruder
             pFileInTmpFolder = null;
             pTargetFile = null;
             outputStream = null;
-            LOGGER.debug("cleanup() end");
+            //LOGGER.debug("cleanup() end");
         }
     }
 

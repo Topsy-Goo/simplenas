@@ -22,9 +22,9 @@ import static ru.gb.simplenas.common.Factory.sayNoToEmptyStrings;
 */
 public class NasFileManager
 {
-    protected NasFileManager () {}
-
     private static final Logger LOGGER = LogManager.getLogger(NasFileManager.class.getName());
+
+    protected NasFileManager () {}
 
     protected static Path createFolder (@NotNull Path pFolder)    //fm, sfm
     {

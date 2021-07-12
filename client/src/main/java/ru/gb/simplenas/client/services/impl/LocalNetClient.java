@@ -18,7 +18,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import ru.gb.simplenas.client.CFactory;
 import ru.gb.simplenas.client.services.ClientManipulator;
-import ru.gb.simplenas.client.services.LocalPropertyManager;
 import ru.gb.simplenas.client.services.NetClient;
 import ru.gb.simplenas.common.NasCallback;
 import ru.gb.simplenas.common.services.impl.NasMsgInboundHandler;
@@ -37,7 +36,7 @@ import static ru.gb.simplenas.common.structs.OperationCodes.*;
 //import static ru.gb.simplenas.client.CFactory.PORT;
 //import static ru.gb.simplenas.client.CFactory.DEFAULT_HOST_NAME;
 
-public class NasNetClient implements NetClient
+public class LocalNetClient implements NetClient
 {
     private SocketChannel schannel;
     private Channel channelOfChannelFuture;
@@ -54,16 +53,16 @@ public class NasNetClient implements NetClient
     private NasDialogue closedDialogue;
     private final int port;
     private final String hostName;
-    private static final Logger LOGGER = LogManager.getLogger(NasNetClient.class.getName());
+    private static final Logger LOGGER = LogManager.getLogger(LocalNetClient.class.getName());
 
 
-    public NasNetClient (NasCallback cbDisconnection, int port, String hostName)
+    public LocalNetClient (NasCallback cbDisconnection, int port, String hostName)
     {
         callbackOnDisconnection = cbDisconnection;
         javafx = Thread.currentThread();
         this.port = port;
         this.hostName = hostName;
-        LOGGER.debug("создан NasNetClient");
+        LOGGER.debug("создан LocalNetClient");
     }
 
 //----------------------- колбэки для связи с манипулятором -----------------------------------------------------*/
@@ -71,7 +70,7 @@ public class NasNetClient implements NetClient
     void callbackDummy (Object ... objects){}
 
 // Обработка окончания установления соединения : теперь мы можем воспользоваться сохранённой переменной
-// типа SocketChannel и продолжить авторизацию в методе NasNetClient.login().
+// типа SocketChannel и продолжить авторизацию в методе LocalNetClient.login().
     void callbackOnChannelActive (Object ... objects)
     {
         synchronized (syncObj)
@@ -140,7 +139,7 @@ public class NasNetClient implements NetClient
         return isOnAir;
     }
 
-//run-метод потока, в котором будет работать NasNetClient.
+//run-метод потока, в котором будет работать LocalNetClient.
     @Override public void run()
     {
         NasCallback callbackChannelActive = this::callbackOnChannelActive;
@@ -157,10 +156,10 @@ public class NasNetClient implements NetClient
                 @Override protected void initChannel (SocketChannel socketChannel) throws Exception
                 {
                     schannel = socketChannel;
-                    manipulator = new NasClientManipulator(callbackChannelActive,
-                                                           callbackMsgIncoming,
-                                                           callbackInfo,
-                                                           socketChannel);
+                    manipulator = new LocalManipulator(callbackChannelActive,
+                                                       callbackMsgIncoming,
+                                                       callbackInfo,
+                                                       socketChannel);
                     socketChannel.pipeline().addLast
                      (      //new StringDecoder(), new StringEncoder(),
                             //An encoder which serializes a Java object into a ByteBuf.
@@ -180,7 +179,7 @@ public class NasNetClient implements NetClient
     //Одинаковыми оказались:
     //      SocketChannel sC,
     //      cfuture.channel(),
-    //      NasClientManipulator.channelActive().ctx.channel
+    //      LocalManipulator.channelActive().ctx.channel
 
             ChannelFuture cfuture = b.connect (hostName, port).sync();
             this.channelOfChannelFuture = cfuture.channel();
@@ -189,7 +188,7 @@ public class NasNetClient implements NetClient
             lnprint("\n\t\t*** Connected ("+port+"). ***\n");
 
             synchronized (syncObj4ConnectionOnly)
-            {   // это продолжит исполнение NasNetClient.connect(), если соединение установлено.
+            {   // это продолжит исполнение LocalNetClient.connect(), если соединение установлено.
                 syncObj4ConnectionOnly.notify();
             }
             cfuture.channel().closeFuture().sync(); //< чтобы перешагнуть через эту строчку, нужно сделать
@@ -203,7 +202,7 @@ public class NasNetClient implements NetClient
             groupWorker.shutdownGracefully();
             disconnect();
             synchronized (syncObj4ConnectionOnly)
-            {   // это продолжит исполнение NasNetClient.connect(), если сервера нет.
+            {   // это продолжит исполнение LocalNetClient.connect(), если сервера нет.
                 syncObj4ConnectionOnly.notify();
             }
         }
