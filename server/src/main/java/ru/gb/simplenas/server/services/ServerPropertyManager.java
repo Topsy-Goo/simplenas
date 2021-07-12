@@ -1,18 +1,16 @@
 package ru.gb.simplenas.server.services;
 
-import java.nio.file.Path;
 import java.util.List;
 
-public interface ServerPropertyManager
-{
-    void initialize();
+public interface ServerPropertyManager {
+    void initialize ();
 
-    int getPublicPort();
+    int getPublicPort ();
 
-    String getCloudName();
+    String getCloudName ();
 
-    List<String> getWelcomeFolders();
+    List<String> getWelcomeFolders ();
 
-    List<String> getWelcomeFiles();
+    List<String> getWelcomeFiles ();
 
 }

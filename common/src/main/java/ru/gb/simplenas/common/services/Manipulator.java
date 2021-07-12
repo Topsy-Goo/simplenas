@@ -3,10 +3,7 @@ package ru.gb.simplenas.common.services;
 import io.netty.channel.ChannelHandlerContext;
 import ru.gb.simplenas.common.structs.NasMsg;
 
-public interface Manipulator
-{
-    //эти методы нужны серверу и клиенту
-
+public interface Manipulator {
     void handle (ChannelHandlerContext ctx, NasMsg nm);
 
     void onChannelActive (ChannelHandlerContext ctx);

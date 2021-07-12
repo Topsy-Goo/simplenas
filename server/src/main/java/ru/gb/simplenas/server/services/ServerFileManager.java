@@ -4,8 +4,7 @@ import ru.gb.simplenas.common.structs.FileInfo;
 
 import java.nio.file.Path;
 
-public interface ServerFileManager
-{
+public interface ServerFileManager {
 
     boolean checkUserFolder (String userName);
 

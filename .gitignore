@@ -19,3 +19,4 @@
 /common/src/main/java/ru/gb/simplenas/common/services/impl/TestInboundHandler.java
 /local.properties
 /server.properties
+/server/target/classes/db/migration/V1__Create_person_table.sql

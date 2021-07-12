@@ -6,9 +6,9 @@ import javafx.scene.control.TableView;
 import ru.gb.simplenas.client.services.ClientPropertyManager;
 import ru.gb.simplenas.client.services.NetClient;
 import ru.gb.simplenas.client.services.impl.*;
+import ru.gb.simplenas.client.structs.TableFileInfo;
 import ru.gb.simplenas.common.NasCallback;
 import ru.gb.simplenas.common.structs.FileInfo;
-import ru.gb.simplenas.client.structs.TableFileInfo;
 
 import java.awt.*;
 import java.nio.file.Path;
@@ -17,18 +17,16 @@ import java.util.List;
 import static ru.gb.simplenas.common.CommonData.MAINWND_TITLE;
 
 
-public class CFactory
-{
+public class CFactory {
     public static final int DEFAULT_PORT_NUMBER = 8289;
-    //public static final int PORT = 8289;
-    public static final String PROPERTY_FILE_NAME_CLIENT = "local.properties";   //< файл настроек (property file)
+    public static final String PROPERTY_FILE_NAME_CLIENT = "local.properties";
     public static final String DEFAULT_HOST_NAME = "localhost";
     public static final String PROPNAME_PORT = "PORT";
     public static final String PROPNAME_HOST = "HOST";
     public static final String PROPNAME_PATH_LOCAL = "MRU.PATH.LOCAL";
     public static final String PROPNAME_PATH_REMOTE = "MRU.PATH.REMOTE";
 
-    public static final String STR_DEF_FOLDER = "user.dir"; //< текущая папка юзера;   "user.home" < папка в учётной записи
+    public static final String STR_DEF_FOLDER = "user.dir";
     public static final String SBAR_TEXT_SERVER_NOCONNECTION = "Соединение с сервером отсутствует.";
     public static final String SBAR_TEXT_SERVER_ONAIR = "Есть подключение к серверу.";
     public static final String SBAR_TEXT_FOLDER_READING_IN_PROGRESS = "Выполняется чтение содержимого папки.";
@@ -70,95 +68,72 @@ public class CFactory
     public static final String ERROR_UNABLE_GET_LIST = "Не удалось получить список содержимого папки.";
     public static final String ERROR_NO_CONNECTION_TO_REMOTE_STORAGE = "Нет подключения к серверу.";
     public static final String PROMPT_FORMAT_UNABLE_LIST = "Не удалось вывести список содержимого папки.\n\n%s\n";
-    //public static final String PROMPT_FORMAT_UNABLE_APPLY_PATH = "Не удалось вывести список содержимого папки.\n\n%s\n";
 
     private CFactory () {}
 
-    static NetClient newNetClient (NasCallback cbDisconnection, int port, String hostName)
-    {
+    static NetClient newNetClient (NasCallback cbDisconnection, int port, String hostName) {
         return new LocalNetClient(cbDisconnection, port, hostName);
     }
 
-//-------------------------- методы для работы с контекстным меню -----------------------------------------------*/
+    //-------------------------- методы для работы с контекстным меню -----------------------------------------------*/
 
-    public static void setContextMenuEventHandler_OnShoing (ContextMenu menu, TableView<TableFileInfo> tv)
-    {
-        ContextMenuManager.setContextMenuEventHandler_OnShoing (menu, tv);
+    public static void setContextMenuEventHandler_OnShoing (ContextMenu menu, TableView<TableFileInfo> tv) {
+        ContextMenuManager.setContextMenuEventHandler_OnShoing(menu, tv);
     }
 
-//-------------------------- методы для работы с TableView ------------------------------------------------------*/
+    //-------------------------- методы для работы с TableView ------------------------------------------------------*/
 
-    public static Point populateTv (@NotNull TableView<TableFileInfo> tv, @NotNull List<FileInfo> infolist)
-    {
-        return TableViewManager.populateTv (tv, infolist);
+    public static Point populateTv (@NotNull TableView<TableFileInfo> tv, @NotNull List<FileInfo> infolist) {
+        return TableViewManager.populateTv(tv, infolist);
     }
 
-    public static Point statisticsTv (@NotNull TableView<TableFileInfo> tv)
-    {
-        return TableViewManager.statisticsTv (tv);
+    public static Point statisticsTv (@NotNull TableView<TableFileInfo> tv) {
+        return TableViewManager.statisticsTv(tv);
     }
 
-    public static TableFileInfo addItemAsFolder (@NotNull String name, @NotNull TableView<TableFileInfo> tv)
-    {
-        return TableViewManager.addItemAsFolder (name, tv);
+    public static TableFileInfo addItemAsFolder (@NotNull String name, @NotNull TableView<TableFileInfo> tv) {
+        return TableViewManager.addItemAsFolder(name, tv);
     }
 
-    public static void deleteTvItem (TableView<TableFileInfo> tv, TableFileInfo t)
-    {
-        TableViewManager.deleteTvItem (tv, t);
+    public static void deleteTvItem (TableView<TableFileInfo> tv, TableFileInfo t) {
+        TableViewManager.deleteTvItem(tv, t);
     }
 
 
-//--------------------------------- LocalFileManager ------------------------------------------------------------*/
+    //--------------------------------- LocalFileManager ------------------------------------------------------------*/
 
-    public static boolean isStringOfRealPath (@NotNull String string, String ... strings)
-    {
+    public static boolean isStringOfRealPath (@NotNull String string, String... strings) {
         return LocalFileManager.isStringOfRealPath(string, strings);
     }
 
-    public static String stringPath2StringAbsoluteParentPath (@NotNull String s)
-    {
+    public static String stringPath2StringAbsoluteParentPath (@NotNull String s) {
         return LocalFileManager.stringPath2StringAbsoluteParentPath(s);
     }
 
-    public static String formatFileTime (long time)
-    {
+    public static String formatFileTime (long time) {
         return LocalFileManager.formatFileTime(time);
     }
 
-    public static Path createSubfolder (Path parent, String strChild)
-    {
+    public static Path createSubfolder (Path parent, String strChild) {
         return LocalFileManager.createSubfolder(parent, strChild);
     }
 
-    public static FileInfo rename (@NotNull Path pathParentAbsolute, @NotNull String oldName, @NotNull String newName)
-    {
+    public static FileInfo rename (@NotNull Path pathParentAbsolute, @NotNull String oldName, @NotNull String newName) {
         return LocalFileManager.rename(pathParentAbsolute, oldName, newName);
     }
 
-    public static int countDirectoryEntries (@NotNull Path pFolder)
-    {
+    public static int countDirectoryEntries (@NotNull Path pFolder) {
         return LocalFileManager.countDirectoryEntries(pFolder);
     }
 
-    public static boolean deleteFileOrDirectory (@NotNull Path path)
-    {
+    public static boolean deleteFileOrDirectory (@NotNull Path path) {
         return LocalFileManager.deleteFileOrDirectory(path);
     }
 
-//--------------------------------- ClientPropertyManager --------------------------------------------------------*/
+    //--------------------------------- ClientPropertyManager --------------------------------------------------------*/
 
-    public static ClientPropertyManager getProperyManager ()
-    {
+    public static ClientPropertyManager getProperyManager () {
         return LocalPropertyManager.getInstance();
     }
 
-
-//--------------------------------- LocalWatchService -----------------------------------------------------------*/
-
-    //public static ClientWatchService getClientWatchService()
-    //{
-    //    return LocalWatchService.getClientWatchService();
-    //}
 }
-//---------------------------------------------------------------------------------------------------------------*/

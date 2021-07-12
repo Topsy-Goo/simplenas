@@ -1,17 +1,19 @@
 package ru.gb.simplenas.client.services;
 
-public interface ClientPropertyManager
-{
+public interface ClientPropertyManager {
+    void initialize ();
 
-    void initialize();
+    int getRemotePort ();
 
-    int getRemotePort();
-    String getHostString();
-    String getLastLocalPathString();
-    String getLastRemotePathString();
+    String getHostString ();
+
+    String getLastLocalPathString ();
+
+    String getLastRemotePathString ();
 
     void setLastLocalPathString (String strLocalPath);
+
     void setLastRemotePathString (String strRemote);
 
-    void close();
+    void close ();
 }

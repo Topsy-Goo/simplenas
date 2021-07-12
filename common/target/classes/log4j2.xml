@@ -36,56 +36,25 @@
 	</Appenders>
 
 	<!-- ——————————————————————————————————————————————————————————————————————————— -->
-	<!--	trace  <  debug  <  info  <  warn  <  error  <  fatal	-->
 	<Loggers>
 		<Root level="error">
 			<AppenderRef ref="FILE_APPENDER_CLIENT" />
 			<AppenderRef ref="FILE_APPENDER_COMMON" />
 			<AppenderRef ref="FILE_APPENDER_SERVER" />
-<!--			<AppenderRef ref="STDOUT_APPENDER_ROOT" />-->
 		</Root>
 
         <Logger name="ru.gb.simplenas.client" level="info" >
         	<AppenderRef ref="STDOUT_APPENDER"/>
-<!--        	<AppenderRef ref="FILE_APPENDER_CLIENT"/>-->
         </Logger>
 
         <Logger name="ru.gb.simplenas.common" level="info" >
         	<AppenderRef ref="STDOUT_APPENDER"/>
-<!--        	<AppenderRef ref="FILE_APPENDER_COMMON"/>-->
         </Logger>
 
         <Logger name="ru.gb.simplenas.server" level="info" >
         	<AppenderRef ref="STDOUT_APPENDER"/>
-<!--        	<AppenderRef ref="FILE_APPENDER_SERVER"/>-->
         </Logger>
 
 	</Loggers>
 
 </Configuration>
-<!--
-Форматирование:
-	%n		- перенос строки
-	%m		- само сообщение.
-	%-5p	- печатать уровень сообщения; использовать 5 символов (указывать 3 или 4 бесполезно).
-	%d{yyyy-MM-dd HH:mm:ss}
-			- печатать временную метку; использовать указанный формат.
-	%t		- имя потока, из которого выполнена запись.
-	%C{2}	- имя класса, из которого выполнена запись; использовать 2 последних элемента имени класса.
-			Если суффикс {n} не указывать, то выводится полное имя класса.
-	%F:%L	- имя файла:номер строки, из которых вызван метод логирования.
-	Примечание: если для отображения имени класса используются более 1 элемента — %c или %c{n},
-				где n > 1, — и выражение %F:%L взято в круглые скобки, то в консоли выражение
-				%F:%L будет отображаться как ссылка на соотв.строку кода. Это справедливо для
-				IntelliJ IDEA.
-
-	(Разрешается добавлять любые символы «для красоты» — пробелы, пунктуацию, скобки, надписи, —
-	 если они не будут восприняты как форматирование.)
-
-Примеры:
-		<PatternLayout pattern="%n%-5p %c{2} [%t] (%F:%L)>> %m."/>
-
-		"%-5p %d{yyyy-MM-dd HH:mm:ss} [%t] %C (%F:%L)- %m%n"
-
-
--->

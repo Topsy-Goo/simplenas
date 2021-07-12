@@ -22,29 +22,29 @@
 
     <dependencies>
 
-        <dependency>  <!-- https://mvnrepository.com/artifact/io.netty/netty-all -->
+        <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-all</artifactId>
             <version>4.1.65.Final</version>
         </dependency>
 
-		<dependency>	<!-- поддержка логгера log4j v2 (aka log4j2) -->
+		<dependency>
 			<groupId>org.apache.logging.log4j</groupId>
 			<artifactId>log4j-core</artifactId>
 			<version>2.13.0</version>
 		</dependency>
 
-		<dependency>	<!-- API для логгера -->
+		<dependency>
 			<groupId>org.apache.logging.log4j</groupId>
 			<artifactId>log4j-api</artifactId>
 			<version>2.13.0</version>
 		</dependency>
 
-		<dependency>	<!-- поддержка отладчика JUnit v5 -->
+		<dependency>
 			<groupId>org.junit.jupiter</groupId>
 			<artifactId>junit-jupiter</artifactId>
 			<version>5.6.2</version>
-			<scope>test</scope>		<!-- < каталог, в котором располагается наше «тестирование» -->
+			<scope>test</scope>
 		</dependency>
 
     </dependencies>

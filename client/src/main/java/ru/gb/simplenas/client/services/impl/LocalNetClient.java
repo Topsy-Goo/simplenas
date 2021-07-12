@@ -33,31 +33,26 @@ import static ru.gb.simplenas.common.CommonData.*;
 import static ru.gb.simplenas.common.Factory.lnprint;
 import static ru.gb.simplenas.common.Factory.sayNoToEmptyStrings;
 import static ru.gb.simplenas.common.structs.OperationCodes.*;
-//import static ru.gb.simplenas.client.CFactory.PORT;
-//import static ru.gb.simplenas.client.CFactory.DEFAULT_HOST_NAME;
 
-public class LocalNetClient implements NetClient
-{
+public class LocalNetClient implements NetClient {
+    private static final Logger LOGGER = LogManager.getLogger(LocalNetClient.class.getName());
+    private final Thread javafx;
+    private final Object syncObj = new Object();
+    private final Object syncObj4ConnectionOnly = new Object();
+    private final int port;
+    private final String hostName;
     private SocketChannel schannel;
     private Channel channelOfChannelFuture;
     private Thread threadNetWork;
     private String userName;
     private ClientManipulator manipulator;
-    private final Thread javafx;
     private NasCallback callbackOnDisconnection = this::callbackDummy;
     private boolean connected = false;
-
-    private final Object syncObj = new Object();
-    private final Object syncObj4ConnectionOnly = new Object();
-    private NasMsg nmSyncResult;    //< для передачи сообщений между синхронизированными потоками
+    private NasMsg nmSyncResult;
     private NasDialogue closedDialogue;
-    private final int port;
-    private final String hostName;
-    private static final Logger LOGGER = LogManager.getLogger(LocalNetClient.class.getName());
 
 
-    public LocalNetClient (NasCallback cbDisconnection, int port, String hostName)
-    {
+    public LocalNetClient (NasCallback cbDisconnection, int port, String hostName) {
         callbackOnDisconnection = cbDisconnection;
         javafx = Thread.currentThread();
         this.port = port;
@@ -65,165 +60,104 @@ public class LocalNetClient implements NetClient
         LOGGER.debug("создан LocalNetClient");
     }
 
-//----------------------- колбэки для связи с манипулятором -----------------------------------------------------*/
+    //----------------------- колбэки для связи с манипулятором -----------------------------------------------------*/
 
-    void callbackDummy (Object ... objects){}
+    void callbackDummy (Object... objects) {}
 
-// Обработка окончания установления соединения : теперь мы можем воспользоваться сохранённой переменной
-// типа SocketChannel и продолжить авторизацию в методе LocalNetClient.login().
-    void callbackOnChannelActive (Object ... objects)
-    {
-        synchronized (syncObj)
-        {
+    void callbackOnChannelActive (Object... objects) {
+        synchronized (syncObj) {
             syncObj.notifyAll();
         }
     }
 
-//Вызывается из манипулятора. Сейчас юзер и поток javafx ждут окончания операции, которую они нам поручили, и
-// результат этой операции они получат в nmSyncResult.
-    void callbackOnMsgIncoming (Object ... objects)
-    {
-        synchronized (syncObj)
-        {
-            if (objects != null)
-            {
+    void callbackOnMsgIncoming (Object... objects) {
+        synchronized (syncObj) {
+            if (objects != null) {
                 int count = objects.length;
-                if (count > 0)
-                    nmSyncResult = (NasMsg) objects[0];
-                if (count > 1)
-                    closedDialogue = (NasDialogue) objects[1];
+                if (count > 0) { nmSyncResult = (NasMsg) objects[0]; }
+                if (count > 1) { closedDialogue = (NasDialogue) objects[1]; }
                 syncObj.notify();//All
             }
         }
     }
 
-//Вызывается из манипулятора. Служит для информирования юзером о событиях.
-    void callbackInfo (Object ... objects)
-    {
+    void callbackInfo (Object... objects) {
         NasMsg nm = (NasMsg) objects[0];
-        if (nm != null && nm.opCode() == EXIT)
-        {
+        if (nm != null && nm.opCode() == EXIT) {
             Platform.runLater(()->{
                 messageBox(CFactory.ALERTHEADER_CONNECTION, PROMPT_CONNECTION_GETTING_CLOSED, Alert.AlertType.WARNING);
             });
         }
     }
 
-    void unusedMethod (String strName)
-    {
-    }
- //------------------------------- подключение, отключение, … ----------------------------------------------------*/
+    //------------------------------- подключение, отключение, … ----------------------------------------------------*/
 
-// Запускаем поток, который соединяется с сервером.
-    @Override public boolean connect()
-    {
+    @Override public boolean connect () {
         boolean isOnAir = schannel != null && schannel.isOpen();
 
-        if (isOnAir)
-            messageBox(CFactory.ALERTHEADER_CONNECTION, "Уже установлено.", Alert.AlertType.INFORMATION);
-        else
-        {
-            synchronized (syncObj4ConnectionOnly)
-            {
+        if (isOnAir) { messageBox(CFactory.ALERTHEADER_CONNECTION, "Уже установлено.", Alert.AlertType.INFORMATION); }
+        else {
+            synchronized (syncObj4ConnectionOnly) {
                 schannel = null;
-                threadNetWork = new Thread (this);
-                //threadNetWork.setDaemon(true);
+                threadNetWork = new Thread(this);
                 threadNetWork.start();
-                try
-                {   syncObj4ConnectionOnly.wait(10000);
+                try {
+                    syncObj4ConnectionOnly.wait(10000);
                 }
-                catch (InterruptedException e){e.printStackTrace();}
+                catch (InterruptedException e) {e.printStackTrace();}
                 isOnAir = schannel != null;
-            }//sync
+            }
         }
         return isOnAir;
     }
 
-//run-метод потока, в котором будет работать LocalNetClient.
-    @Override public void run()
-    {
+    @Override public void run () {
         NasCallback callbackChannelActive = this::callbackOnChannelActive;
         NasCallback callbackMsgIncoming = this::callbackOnMsgIncoming;
         NasCallback callbackInfo = this::callbackInfo;
 
         EventLoopGroup groupWorker = new NioEventLoopGroup();
-        try
-        {   Bootstrap b = new Bootstrap();
-            b.group (groupWorker)
-             .channel (NioSocketChannel.class)
-             .handler (new ChannelInitializer<SocketChannel>()
-            {
-                @Override protected void initChannel (SocketChannel socketChannel) throws Exception
-                {
+        try {
+            Bootstrap b = new Bootstrap();
+            b.group(groupWorker).channel(NioSocketChannel.class).handler(new ChannelInitializer<SocketChannel>() {
+                @Override protected void initChannel (SocketChannel socketChannel) {
                     schannel = socketChannel;
-                    manipulator = new LocalManipulator(callbackChannelActive,
-                                                       callbackMsgIncoming,
-                                                       callbackInfo,
-                                                       socketChannel);
-                    socketChannel.pipeline().addLast
-                     (      //new StringDecoder(), new StringEncoder(),
-                            //An encoder which serializes a Java object into a ByteBuf.
-                            new ObjectEncoder(),
-                            //A decoder which deserializes the received ByteBufs into Java objects.
-                            //new ObjectDecoder (ClassResolvers.cacheDisabled (null)),
-                            //new ObjectDecoder (MAX_OBJECT_SIZE, ClassResolvers.cacheDisabled (null)),
-                            new ObjectDecoder (Integer.MAX_VALUE, ClassResolvers.weakCachingConcurrentResolver(null)),
-                            new NasMsgInboundHandler (manipulator)
-                            //new TestInboundHandler (manipulator)
-                     );
+                    manipulator = new LocalManipulator(callbackChannelActive, callbackMsgIncoming, callbackInfo, socketChannel);
+                    socketChannel.pipeline().addLast(new ObjectEncoder(), new ObjectDecoder(Integer.MAX_VALUE, ClassResolvers.weakCachingConcurrentResolver(null)), new NasMsgInboundHandler(manipulator));
                 }
             });
-    // !!! Важное замечание: если подключиться к серверу в потоке JavaFX, то
-    //          блокировка cfuture.channel().closeFuture().sync()  заблокирует весь клиент.
 
-    //Одинаковыми оказались:
-    //      SocketChannel sC,
-    //      cfuture.channel(),
-    //      LocalManipulator.channelActive().ctx.channel
-
-            ChannelFuture cfuture = b.connect (hostName, port).sync();
+            ChannelFuture cfuture = b.connect(hostName, port).sync();
             this.channelOfChannelFuture = cfuture.channel();
             this.connected = true;
 
-            lnprint("\n\t\t*** Connected ("+port+"). ***\n");
+            lnprint("\n\t\t*** Connected (" + port + "). ***\n");
 
-            synchronized (syncObj4ConnectionOnly)
-            {   // это продолжит исполнение LocalNetClient.connect(), если соединение установлено.
+            synchronized (syncObj4ConnectionOnly) {
                 syncObj4ConnectionOnly.notify();
             }
-            cfuture.channel().closeFuture().sync(); //< чтобы перешагнуть через эту строчку, нужно сделать
-        }                                           //  socketChannel.close().
-        catch (Exception e)
-        {
+            cfuture.channel().closeFuture().sync();
+        }
+        catch (Exception e) {
             e.printStackTrace();
         }
-        finally
-        {
+        finally {
             groupWorker.shutdownGracefully();
             disconnect();
-            synchronized (syncObj4ConnectionOnly)
-            {   // это продолжит исполнение LocalNetClient.connect(), если сервера нет.
+            synchronized (syncObj4ConnectionOnly) {
                 syncObj4ConnectionOnly.notify();
             }
         }
     }
 
-//Метод может вызываться из Controller.closeSession() и из блока catch в run().
-//(закрытие socketChannel приведёт к выполнению блока finally в run().)
-    @Override public void disconnect ()
-    {
-    //делаем что-то в контроллере
-        if (connected) callbackOnDisconnection.callback();
+    @Override public void disconnect () {
+        if (connected) { callbackOnDisconnection.callback(); }
 
-    //закрываем канал
-        if (schannel != null && schannel.isOpen())
-        {
+        if (schannel != null && schannel.isOpen()) {
             sendExitMessage();
             schannel.disconnect();
         }
-        if (channelOfChannelFuture != null && channelOfChannelFuture.isOpen())
-        {
-            //закрытие желательно, иначе закрытие канала происходит заметно дольше.
+        if (channelOfChannelFuture != null && channelOfChannelFuture.isOpen()) {
             ChannelFuture cf = channelOfChannelFuture.closeFuture();
         }
 
@@ -237,257 +171,198 @@ public class LocalNetClient implements NetClient
         userName = null;
     }
 
- //------------------------------- команды для запросов к серверу ------------------------------------------------*/
+    //------------------------------- команды для запросов к серверу ------------------------------------------------*/
 
-    @Override public NasMsg login (@NotNull String username)
-    {
+    @Override public NasMsg login (@NotNull String username) {
         NasMsg result = null;
-        if (sayNoToEmptyStrings(username))
-        {
-            synchronized (syncObj)
-            {
+        if (sayNoToEmptyStrings(username)) {
+            synchronized (syncObj) {
                 nmSyncResult = null;
-                if (manipulator.startSimpleRequest (new NasMsg (OperationCodes.LOGIN, username, OUTBOUND)))
-                {
-                    try {   while (nmSyncResult == null)
-                                syncObj.wait();
-                            result = nmSyncResult;
-                            nmSyncResult = null;
-                        }
-                    catch (InterruptedException e){e.printStackTrace();}
+                if (manipulator.startSimpleRequest(new NasMsg(OperationCodes.LOGIN, username, OUTBOUND))) {
+                    try {
+                        while (nmSyncResult == null) { syncObj.wait(); }
+                        result = nmSyncResult;
+                        nmSyncResult = null;
+                    }
+                    catch (InterruptedException e) {e.printStackTrace();}
                 }
-            }//sync
-            if (result == null)
-            {
-                result = new NasMsg (ERROR, ERROR_UNABLE_TO_PERFORM, INBOUND);
             }
-            else if (result.opCode() == OperationCodes.OK)
-            {
+            if (result == null) {
+                result = new NasMsg(ERROR, ERROR_UNABLE_TO_PERFORM, INBOUND);
+            }
+            else if (result.opCode() == OperationCodes.OK) {
                 this.userName = result.msg();
             }
         }
         return result;
     }
 
-    @Override public @NotNull NasMsg list (@NotNull String folder, String ... subfolders)
-    {
+    @Override public @NotNull NasMsg list (@NotNull String folder, String... subfolders) {
         NasMsg result = null;
-        if (sayNoToEmptyStrings (folder))
-        {
-            result = new NasMsg (ERROR, ERROR_UNABLE_TO_PERFORM, OUTBOUND);
-            NasMsg nm = new NasMsg (LIST, Paths.get (folder, subfolders).toString(), OUTBOUND);
-            synchronized (syncObj)
-            {
+        if (sayNoToEmptyStrings(folder)) {
+            result = new NasMsg(ERROR, ERROR_UNABLE_TO_PERFORM, OUTBOUND);
+            NasMsg nm = new NasMsg(LIST, Paths.get(folder, subfolders).toString(), OUTBOUND);
+            synchronized (syncObj) {
                 nmSyncResult = null;
-                if (manipulator.startListRequest(nm))
-                {
-                    try {   while (nmSyncResult == null)
-                                syncObj.wait();
-                            result = nmSyncResult;
-                            nmSyncResult = null;
-                        }
-                    catch (InterruptedException e){e.printStackTrace();}
-                }
-            }//sync
-        }
-        return result;
-    }
-
-    @Override public @NotNull NasMsg create (@NotNull String newfoldername)
-    {
-        NasMsg result = null;
-        if (sayNoToEmptyStrings (newfoldername))
-        {
-            result = new NasMsg (ERROR, ERROR_UNABLE_TO_PERFORM, OUTBOUND);
-            NasMsg nm = new NasMsg(OperationCodes.CREATE, newfoldername, OUTBOUND);
-            synchronized (syncObj)
-            {
-                nmSyncResult = null;
-                if (manipulator.startSimpleRequest (nm))
-                {
-                    try {   while (nmSyncResult == null)
-                                syncObj.wait();
-                            result = nmSyncResult;
-                            nmSyncResult = null;
-                        }
-                    catch (InterruptedException e){e.printStackTrace();}
-                }
-            }//sync
-        }
-        return result;
-    }
-
-    @Override public @NotNull NasMsg rename (@NotNull FileInfo old, @NotNull String newName)
-    {
-        NasMsg result = null;
-        if (sayNoToEmptyStrings (newName) && old != null)
-        {
-            result = new NasMsg (ERROR, ERROR_UNABLE_TO_PERFORM, OUTBOUND);
-            NasMsg nm =     new NasMsg (OperationCodes.RENAME, newName, OUTBOUND);
-                   nm.setfileInfo (old);
-            synchronized (syncObj)
-            {
-                nmSyncResult = null;
-                if (manipulator.startSimpleRequest(nm))
-                {
-                    try {   while (nmSyncResult == null)
-                                syncObj.wait();
-                            result = nmSyncResult;
-                            nmSyncResult = null;
-                        }
-                    catch (InterruptedException e){e.printStackTrace();}
-                }
-            }//sync
-        }
-        return result;
-    }
-
-    @Override public @NotNull NasMsg transferFile (@NotNull String strLocalFolder, @NotNull String strServerFolder,
-                                                   @NotNull FileInfo fileInfo, OperationCodes opcode)
-    {
-        NasMsg result = null;
-        if (fileInfo != null && sayNoToEmptyStrings (strLocalFolder, fileInfo.getFileName()) && !fileInfo.isDirectory())
-        {
-            result = new NasMsg (ERROR, ERROR_UNABLE_TO_PERFORM, OUTBOUND);
-            NasMsg nm =     new NasMsg (opcode, strServerFolder, OUTBOUND);
-
-            nm.setfileInfo (fileInfo);
-            synchronized (syncObj)
-            {
-                boolean ok = false;
-                if (opcode == LOAD2LOCAL)
-                {
-                    ok = manipulator.startLoad2LocalRequest (strLocalFolder, nm);
-                }
-                else if (opcode == LOAD2SERVER)
-                {
-                    ok = manipulator.startLoad2ServerRequest (strLocalFolder, nm);
-                }
-                if (ok)
-                {
-                    nmSyncResult = null;
-                    try
-                    {   while (nmSyncResult == null)
-                            syncObj.wait();
+                if (manipulator.startListRequest(nm)) {
+                    try {
+                        while (nmSyncResult == null) { syncObj.wait(); }
                         result = nmSyncResult;
                         nmSyncResult = null;
                     }
-                    catch (InterruptedException e){e.printStackTrace();}
+                    catch (InterruptedException e) {e.printStackTrace();}
                 }
-            }//sync
+            }
         }
         return result;
     }
 
-    @Override public FileInfo fileInfo (@NotNull String folder, @NotNull String fileName)
-    {
-        FileInfo result = null;
-        if (sayNoToEmptyStrings (folder, fileName))
-        {
-            NasMsg nm = new NasMsg (FILEINFO, folder, OUTBOUND);
-            nm.setfileInfo (new FileInfo (fileName, NOT_FOLDER, EXISTS));
-            synchronized (syncObj)
-            {
+    @Override public @NotNull NasMsg create (@NotNull String newfoldername) {
+        NasMsg result = null;
+        if (sayNoToEmptyStrings(newfoldername)) {
+            result = new NasMsg(ERROR, ERROR_UNABLE_TO_PERFORM, OUTBOUND);
+            NasMsg nm = new NasMsg(OperationCodes.CREATE, newfoldername, OUTBOUND);
+            synchronized (syncObj) {
                 nmSyncResult = null;
-                if (manipulator.startSimpleRequest (nm))
-                {
-                    try {   while (nmSyncResult == null)
-                                syncObj.wait();
-                            result = nmSyncResult.fileInfo();
-                            nmSyncResult = null;
-                        }
-                    catch (InterruptedException e){e.printStackTrace();}
+                if (manipulator.startSimpleRequest(nm)) {
+                    try {
+                        while (nmSyncResult == null) { syncObj.wait(); }
+                        result = nmSyncResult;
+                        nmSyncResult = null;
+                    }
+                    catch (InterruptedException e) {e.printStackTrace();}
                 }
-            }//sync
-        }
-        return  result;
-    }
-
-    //посчёт элементов указанного удалённого каталога. -1 означает ошибку.
-    @Override public int countFolderEntries (String strParent, final FileInfo fi)
-    {
-        int result = -1;
-        if (sayNoToEmptyStrings (strParent))
-        {
-            NasMsg nm = new NasMsg (OperationCodes.COUNTITEMS, strParent, OUTBOUND);
-            nm.setfileInfo (fi);
-            synchronized (syncObj)
-            {
-                nmSyncResult = null;
-                if (manipulator.startSimpleRequest (nm))
-                {
-                    try {   while (nmSyncResult == null)
-                                syncObj.wait();
-                            nm = nmSyncResult;
-                            nmSyncResult = null;
-                        }
-                    catch (InterruptedException e){e.printStackTrace();}
-                }
-            }//sync
-            if (nm.opCode() != ERROR)
-            {
-                result = (int)nm.fileInfo().getFilesize();
             }
         }
-        return  result;
+        return result;
     }
 
-    @Override public @NotNull NasMsg delete (String strParent, final FileInfo fi)
-    {
+    @Override public @NotNull NasMsg rename (@NotNull FileInfo old, @NotNull String newName) {
         NasMsg result = null;
-        if (sayNoToEmptyStrings (strParent))
-        {
-            result = new NasMsg (ERROR, ERROR_UNABLE_TO_PERFORM, OUTBOUND);
-            NasMsg nm =     new NasMsg (OperationCodes.DELETE, strParent, OUTBOUND);
-            nm.setfileInfo (fi);
-            synchronized (syncObj)
-            {
+        if (sayNoToEmptyStrings(newName) && old != null) {
+            result = new NasMsg(ERROR, ERROR_UNABLE_TO_PERFORM, OUTBOUND);
+            NasMsg nm = new NasMsg(OperationCodes.RENAME, newName, OUTBOUND);
+            nm.setfileInfo(old);
+            synchronized (syncObj) {
                 nmSyncResult = null;
-                if (manipulator.startSimpleRequest(nm))
-                {
-                    try {   while (nmSyncResult == null)
-                                syncObj.wait();
-                            result = nmSyncResult;
-                            nmSyncResult = null;
-                        }
-                    catch (InterruptedException e){e.printStackTrace();}
+                if (manipulator.startSimpleRequest(nm)) {
+                    try {
+                        while (nmSyncResult == null) { syncObj.wait(); }
+                        result = nmSyncResult;
+                        nmSyncResult = null;
+                    }
+                    catch (InterruptedException e) {e.printStackTrace();}
                 }
-            }//sync
+            }
         }
-        return  result;
+        return result;
     }
 
-    @Override public @NotNull NasMsg goTo (@NotNull String folder, String ... subfolders)
-    {
-        if (folder != null)
-        {
-            return list (folder, subfolders);
+    @Override public @NotNull NasMsg transferFile (@NotNull String strLocalFolder, @NotNull String strServerFolder, @NotNull FileInfo fileInfo, OperationCodes opcode) {
+        NasMsg result = null;
+        if (fileInfo != null && sayNoToEmptyStrings(strLocalFolder, fileInfo.getFileName()) && !fileInfo.isDirectory()) {
+            result = new NasMsg(ERROR, ERROR_UNABLE_TO_PERFORM, OUTBOUND);
+            NasMsg nm = new NasMsg(opcode, strServerFolder, OUTBOUND);
+
+            nm.setfileInfo(fileInfo);
+            synchronized (syncObj) {
+                boolean ok = false;
+                if (opcode == LOAD2LOCAL) {
+                    ok = manipulator.startLoad2LocalRequest(strLocalFolder, nm);
+                }
+                else if (opcode == LOAD2SERVER) {
+                    ok = manipulator.startLoad2ServerRequest(strLocalFolder, nm);
+                }
+                if (ok) {
+                    nmSyncResult = null;
+                    try {
+                        while (nmSyncResult == null) { syncObj.wait(); }
+                        result = nmSyncResult;
+                        nmSyncResult = null;
+                    }
+                    catch (InterruptedException e) {e.printStackTrace();}
+                }
+            }
         }
-        return new NasMsg (ERROR, ERROR_UNABLE_TO_PERFORM, OUTBOUND);
+        return result;
     }
 
-    //@Override public NasMsg levelUp (@NotNull String strFolder)
-    //{
-    //    NasMsg result = null;
-    //    if (strFolder != null)
-    //    {
-    //        String strParent = getParentFromRelative (userName, strFolder);
-    //        if (sayNoToEmptyStrings (strParent))
-    //        {
-    //            result = goTo (strParent);
-    //        }
-    //    }
-    //    return result;
-    //}
+    @Override public FileInfo fileInfo (@NotNull String folder, @NotNull String fileName) {
+        FileInfo result = null;
+        if (sayNoToEmptyStrings(folder, fileName)) {
+            NasMsg nm = new NasMsg(FILEINFO, folder, OUTBOUND);
+            nm.setfileInfo(new FileInfo(fileName, NOT_FOLDER, EXISTS));
+            synchronized (syncObj) {
+                nmSyncResult = null;
+                if (manipulator.startSimpleRequest(nm)) {
+                    try {
+                        while (nmSyncResult == null) { syncObj.wait(); }
+                        result = nmSyncResult.fileInfo();
+                        nmSyncResult = null;
+                    }
+                    catch (InterruptedException e) {e.printStackTrace();}
+                }
+            }
+        }
+        return result;
+    }
 
-//Отправляем серверу сообщене EXIT
-    void sendExitMessage()
-    {
-        if (schannel != null && schannel.isOpen())
-        {
-            manipulator.startExitRequest (null);
+    @Override public int countFolderEntries (String strParent, final FileInfo fi) {
+        int result = -1;
+        if (sayNoToEmptyStrings(strParent)) {
+            NasMsg nm = new NasMsg(OperationCodes.COUNTITEMS, strParent, OUTBOUND);
+            nm.setfileInfo(fi);
+            synchronized (syncObj) {
+                nmSyncResult = null;
+                if (manipulator.startSimpleRequest(nm)) {
+                    try {
+                        while (nmSyncResult == null) { syncObj.wait(); }
+                        nm = nmSyncResult;
+                        nmSyncResult = null;
+                    }
+                    catch (InterruptedException e) {e.printStackTrace();}
+                }
+            }
+            if (nm.opCode() != ERROR) {
+                result = (int) nm.fileInfo().getFilesize();
+            }
+        }
+        return result;
+    }
+
+    @Override public @NotNull NasMsg delete (String strParent, final FileInfo fi) {
+        NasMsg result = null;
+        if (sayNoToEmptyStrings(strParent)) {
+            result = new NasMsg(ERROR, ERROR_UNABLE_TO_PERFORM, OUTBOUND);
+            NasMsg nm = new NasMsg(OperationCodes.DELETE, strParent, OUTBOUND);
+            nm.setfileInfo(fi);
+            synchronized (syncObj) {
+                nmSyncResult = null;
+                if (manipulator.startSimpleRequest(nm)) {
+                    try {
+                        while (nmSyncResult == null) { syncObj.wait(); }
+                        result = nmSyncResult;
+                        nmSyncResult = null;
+                    }
+                    catch (InterruptedException e) {e.printStackTrace();}
+                }
+            }
+        }
+        return result;
+    }
+
+    @Override public @NotNull NasMsg goTo (@NotNull String folder, String... subfolders) {
+        if (folder != null) {
+            return list(folder, subfolders);
+        }
+        return new NasMsg(ERROR, ERROR_UNABLE_TO_PERFORM, OUTBOUND);
+    }
+
+
+    void sendExitMessage () {
+        if (schannel != null && schannel.isOpen()) {
+            manipulator.startExitRequest(null);
         }
     }
 
 }
-//---------------------------------------------------------------------------------------------------------------*/

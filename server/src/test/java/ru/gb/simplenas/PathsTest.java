@@ -18,7 +18,6 @@ import static ru.gb.simplenas.common.CommonData.strFileSeparator;
 import static ru.gb.simplenas.server.SFactory.getServerFileManager;
 import static ru.gb.simplenas.server.SFactory.isNameValid;
 
-//класс для проверки возможности пользователя выйти за пределлы своего дискового пространства на сервере.
 public class PathsTest
 {
     private static Path cloud;
@@ -43,7 +42,7 @@ public class PathsTest
         list.add (Arguments.arguments (true, "5"));
         list.add (Arguments.arguments (true, "m"));
         list.add (Arguments.arguments (true, "user2021"));
-        list.add (Arguments.arguments (true,  "123456789o123456789o123456789o12")); //< MAX_USERNAME_LENGTH = 32
+        list.add (Arguments.arguments (true,  "123456789o123456789o123456789o12"));
         list.add (Arguments.arguments (false, "123456789o123456789o123456789o123"));
         list.add (Arguments.arguments (false, null));
         list.add (Arguments.arguments (false, STR_EMPTY));
@@ -61,7 +60,7 @@ public class PathsTest
         list.add (Arguments.arguments (false, "\t"));
         list.add (Arguments.arguments (false, " "));
         list.add (Arguments.arguments (false, "\""));
-        list.add (Arguments.arguments (false, "."));  //< чтобы юзер не выбрал логин, совпадающий с названием какого-то служебного файла
+        list.add (Arguments.arguments (false, "."));
         return list.stream();
     }
 
@@ -79,7 +78,7 @@ public class PathsTest
     {
         List<Arguments> list = new ArrayList<>();
         list.add (Arguments.arguments (true, "user1"));
-        list.add(Arguments.arguments(true, strCloudName));   //< сейчас юзер может выбрать себе такой логин
+        list.add(Arguments.arguments(true, strCloudName));
         list.add (Arguments.arguments (false, ".."+strFileSeparator+"user1"));
         list.add (Arguments.arguments (false, ".."+strFileSeparator+".."+strFileSeparator+"user1"));
         list.add (Arguments.arguments (false, ".."+strFileSeparator+".."+strFileSeparator));
@@ -148,4 +147,3 @@ public class PathsTest
         }
     }
 }
-//---------------------------------------------------------------------------------------------------------------*/
