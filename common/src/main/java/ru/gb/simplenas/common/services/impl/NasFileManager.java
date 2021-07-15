@@ -11,7 +11,6 @@ import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 import static ru.gb.simplenas.common.CommonData.MAX_USERNAME_LENGTH;
@@ -25,6 +24,18 @@ public class NasFileManager
     private static final Logger LOGGER = LogManager.getLogger(NasFileManager.class.getName());
 
     protected NasFileManager () {}
+
+// !!! Метод НЕ проверяет, находится ли strChild в STRPATH_CLOUD или в адресном пространстве юзера.
+    public static Path createSubfolder (@NotNull Path pParent, @NotNull String strChild)   //Controller
+    {
+        Path result = null;
+        if (pParent != null && sayNoToEmptyStrings (strChild))
+        {
+            Path pChild = pParent.toAbsolutePath().resolve(strChild).normalize();
+            result = createFolder (pChild);
+        }
+        return result;
+    }
 
     protected static Path createFolder (@NotNull Path pFolder)    //fm, sfm
     {
@@ -155,7 +166,7 @@ public class NasFileManager
             {
                 if (Files.isDirectory(path))
                 {
-                    FileUtils.deleteDirectory(path.toFile());
+                    FileUtils.deleteDirectory (path.toFile());
                     LOGGER.info("удалён каталог : <"+ path.toString() +">");
                     result = true;
                 }
@@ -223,11 +234,15 @@ public class NasFileManager
         boolean boolOk = false;
         if (sayNoToEmptyStrings(userName) && userName.length() <= MAX_USERNAME_LENGTH)
         {
-            for (Character ch : userName.toCharArray())
+            Path path = Paths.get(userName);
+            if (path.getNameCount() == 1)
             {
-                boolOk = Character.isAlphabetic(ch) || Character.isDigit(ch);
-                if (!boolOk)
-                    break;
+                for (Character ch : userName.toCharArray())
+                {
+                    boolOk = Character.isAlphabetic(ch) || Character.isDigit(ch);
+                    if (!boolOk)
+                        break;
+                }
             }
         }
         return boolOk;
@@ -260,6 +275,34 @@ public class NasFileManager
             }
         }
         return result;
+    }
+
+//Возвращает строку пути к родительской папке. Родительская папка должна существовать.
+    public static @NotNull String stringPath2StringAbsoluteParentPath (@NotNull String strPath)     //Controller
+    {
+        String parent = "";
+        if (strPath != null)
+        {
+            Path path = Paths.get(strPath).toAbsolutePath().normalize().getParent();
+            if (path != null && Files.exists (path))
+            {
+                parent = path.toString();
+            }
+        }
+        return parent;
+    }
+
+    public static boolean isStringOfRealPath (@NotNull String string)   //Controller
+    {
+        boolean boolYes = false;
+        if (string != null)
+        {
+            try
+            {   boolYes = Files.exists (Paths.get(string));
+            }
+            catch (InvalidPathException e) { e.printStackTrace(); }
+        }
+        return boolYes;
     }
 
 

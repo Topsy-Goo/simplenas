@@ -8,7 +8,9 @@ import ru.gb.simplenas.common.structs.FileInfo;
 import ru.gb.simplenas.server.services.ServerFileManager;
 
 import java.io.IOException;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,6 +39,7 @@ public class RemoteFileManager extends NasFileManager implements ServerFileManag
         this.cloud = Paths.get(strCloud).toAbsolutePath().normalize();
         LOGGER.debug("создан RemoteFileManager");
     }
+
 //Этот конструктор для работы.
     public RemoteFileManager (String strCloudName, List<String> welcomeFolders, List<String> welcomeFiles)
     {
@@ -49,7 +52,6 @@ public class RemoteFileManager extends NasFileManager implements ServerFileManag
         if (welcomeFiles == null)   welcomeFiles = new ArrayList<>();
         this.welcomeFiles = welcomeFiles;
     }
-
 
 //пытается создать папку cloud, если она отсутствует
     private boolean checkCloudFolder ()    //sfm
@@ -66,6 +68,8 @@ public class RemoteFileManager extends NasFileManager implements ServerFileManag
         }
         return exists && Files.isDirectory (cloud);
     }
+
+//---------------------------------------------------------------------------------------------------------------*/
 
 //вернёт FileInfo, только если указанный файл находится в дисковом пространстве юзера
     @Override public FileInfo getSafeFileInfo (@NotNull String userName, @NotNull String folder, @NotNull String file)   //ServerManipulator
@@ -177,7 +181,7 @@ public class RemoteFileManager extends NasFileManager implements ServerFileManag
     {
         Path userroot = null;
 
-        if (isNameValid(userName))
+        if (isNameValid (userName))
         {
             Path ptmp = Paths.get (userName);
             if (ptmp.getNameCount() == 1)
@@ -214,9 +218,9 @@ public class RemoteFileManager extends NasFileManager implements ServerFileManag
     }
 
 //возвращает количество элементов в указанном каталоге, если каталог принадлежит ДПП.
-    @Override public int safeCountDirectoryEntries (@NotNull Path pFolder, @NotNull String userNAme)   //ServerManipulator
+    @Override public int safeCountDirectoryEntries (@NotNull Path pFolder, @NotNull String userName)   //ServerManipulator
     {
-        Path tmp = getSafeAbsolutePathBy (pFolder, userNAme);
+        Path tmp = getSafeAbsolutePathBy (pFolder, userName);
         if (tmp != null)
         {
             return countDirectoryEntries (tmp);
@@ -225,9 +229,9 @@ public class RemoteFileManager extends NasFileManager implements ServerFileManag
     }
 
 //Удаляем файл или папку, если они находятся в ДПП.
-    @Override public boolean safeDeleteFileOrDirectory (@NotNull Path path, @NotNull String userNAme) //ServerManipulator
+    @Override public boolean safeDeleteFileOrDirectory (@NotNull Path path, @NotNull String userName) //ServerManipulator
     {
-        Path tmp = getSafeAbsolutePathBy (path, userNAme);
+        Path tmp = getSafeAbsolutePathBy (path, userName);
         if (tmp != null)
         {
             return deleteFileOrDirectory (path);
@@ -276,9 +280,4 @@ public class RemoteFileManager extends NasFileManager implements ServerFileManag
 
 
 }
-//------------------------------ вызываются из клиента ----------------------------------------------------------*/
-
-
-//------------------------------ вызываются из сервера ----------------------------------------------------------*/
-
-
+//---------------------------------------------------------------------------------------------------------------*/

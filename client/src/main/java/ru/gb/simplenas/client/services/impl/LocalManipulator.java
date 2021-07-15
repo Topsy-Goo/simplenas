@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 
 import static java.nio.file.StandardOpenOption.READ;
+import static ru.gb.simplenas.client.CFactory.PROMPT_FORMAT_UPLOADERROR_SRCFILE_ACCESS;
 import static ru.gb.simplenas.common.CommonData.*;
 import static ru.gb.simplenas.common.Factory.*;
 import static ru.gb.simplenas.common.structs.OperationCodes.*;
@@ -168,19 +169,27 @@ public class LocalManipulator implements ClientManipulator
     @Override public boolean startLoad2LocalRequest (String toLocalFolder, NasMsg nm)       //OUT
     {
         boolean result = false;
+        String errMsg = ERROR_UNABLE_TO_PERFORM;
+
         if (nm != null && schannel != null && nm.fileInfo() != null)
         {
             String fileName = nm.fileInfo().getFileName();
             if (sayNoToEmptyStrings (toLocalFolder, fileName, nm.msg()))
             {
                 Path ptargetfile = Paths.get(toLocalFolder, fileName);
-                if (newDialogue(nm, new InboundFileExtruder(ptargetfile)))
+                if (newDialogue (nm, new InboundFileExtruder(ptargetfile)))
                 {
                     schannel.writeAndFlush(nm);
                     lnprint("M:отправлено сообщение: "+ nm.opCode() +"\n");
                     result = true;
                 }
+                else errMsg = sformat("%s\n\n%s\n", errMsg, ptargetfile);
             }
+        }
+        if (!result && nm != null)
+        {
+            nm.setOpCode(ERROR);
+            nm.setmsg(errMsg);
         }
         return result;
     }
@@ -220,7 +229,12 @@ public class LocalManipulator implements ClientManipulator
         if (nm != null && nm.fileInfo() != null && schannel != null)
         {
             InputStream is = inputstreamByFilename (fromLocalFolder, nm.fileInfo().getFileName());
-            if (is != null && newDialogue (nm, is))
+            if (is == null)
+            {
+                nm.setOpCode(ERROR);
+                nm.setmsg(sformat(PROMPT_FORMAT_UPLOADERROR_SRCFILE_ACCESS, fromLocalFolder, strFileSeparator, nm.fileInfo().getFileName()));
+            }
+            else if (newDialogue (nm, is))
             {
                 schannel.writeAndFlush(nm);
                 lnprint("M:отправлено сообщение: "+ nm.opCode() +"\n");
@@ -230,8 +244,25 @@ public class LocalManipulator implements ClientManipulator
         return result;
     }
 
-//TODO : иногда файл не копируется на сервер с первого раза или не копируется никогда. Это, судя по всему,
-//       связано с предоставлением прав на доступ к файлу. Эти трудные файлы, как праило, служебные.
+    public static InputStream inputstreamByFilename (String strFolder, String strFileName)
+    {
+        InputStream inputstream = null;
+        if (sayNoToEmptyStrings(strFolder, strFileName))
+        {
+            Path pLocalFile = Paths.get(strFolder, strFileName).toAbsolutePath().normalize();
+            if (!Files.isDirectory(pLocalFile) && Files.isReadable(pLocalFile))
+            {
+                try {   inputstream = Files.newInputStream(pLocalFile, READ);
+                    }
+                catch (IOException e){e.printStackTrace();}
+            }
+        }
+        return inputstream;
+
+        //TODO : для некоторых файлов система не даёт создать InputStream. Должно быть, дело в правах
+        //       доступа, т.к. каждый раз эти файлы выглядят служебными. Иногда попытка удаётся, но
+        //       не с первого раза.
+    }
 
     @ManipulateMethod (opcodes = {LOAD2SERVER})
     private void manipulateLoad2ServerQueue (NasMsg nm)                                     //IN, OUT, OUT, ..., OUT
@@ -469,25 +500,5 @@ public class LocalManipulator implements ClientManipulator
         }
     }
 
-    public static InputStream inputstreamByFilename (String strFolder, String strFileName)
-    {
-        InputStream inputstream = null;
-        if (sayNoToEmptyStrings(strFolder, strFileName))
-        {
-            Path pLocalFile = Paths.get(strFolder, strFileName).toAbsolutePath().normalize();
-            if (!Files.isDirectory(pLocalFile) && Files.exists(pLocalFile))
-            {
-                try {   inputstream = Files.newInputStream(pLocalFile, READ);
-                    }
-                catch (IOException e){e.printStackTrace();}
-            }
-        }
-        return inputstream;
-
-        //TODO : для некоторых файлов система не даёт создать InputStream. Должно быть, дело в правах
-        //       доступа, т.к. каждый раз эти файлы выглядят служебными. Иногда попытка удаётся, но
-        //       не с первого раза, что подтверждает догадку.
-    }
-
-}// class LocalManipulator
+}
 //---------------------------------------------------------------------------------------------------------------*/

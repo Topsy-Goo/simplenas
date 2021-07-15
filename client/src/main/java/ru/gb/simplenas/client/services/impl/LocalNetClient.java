@@ -33,8 +33,6 @@ import static ru.gb.simplenas.common.CommonData.*;
 import static ru.gb.simplenas.common.Factory.lnprint;
 import static ru.gb.simplenas.common.Factory.sayNoToEmptyStrings;
 import static ru.gb.simplenas.common.structs.OperationCodes.*;
-//import static ru.gb.simplenas.client.CFactory.PORT;
-//import static ru.gb.simplenas.client.CFactory.DEFAULT_HOST_NAME;
 
 public class LocalNetClient implements NetClient
 {
@@ -43,7 +41,6 @@ public class LocalNetClient implements NetClient
     private Thread threadNetWork;
     private String userName;
     private ClientManipulator manipulator;
-    private final Thread javafx;
     private NasCallback callbackOnDisconnection = this::callbackDummy;
     private boolean connected = false;
 
@@ -59,7 +56,6 @@ public class LocalNetClient implements NetClient
     public LocalNetClient (NasCallback cbDisconnection, int port, String hostName)
     {
         callbackOnDisconnection = cbDisconnection;
-        javafx = Thread.currentThread();
         this.port = port;
         this.hostName = hostName;
         LOGGER.debug("создан LocalNetClient");
@@ -109,10 +105,7 @@ public class LocalNetClient implements NetClient
         }
     }
 
-    void unusedMethod (String strName)
-    {
-    }
- //------------------------------- подключение, отключение, … ----------------------------------------------------*/
+//------------------------------- подключение, отключение, … ----------------------------------------------------*/
 
 // Запускаем поток, который соединяется с сервером.
     @Override public boolean connect()
@@ -237,7 +230,7 @@ public class LocalNetClient implements NetClient
         userName = null;
     }
 
- //------------------------------- команды для запросов к серверу ------------------------------------------------*/
+//------------------------------- команды для запросов к серверу ------------------------------------------------*/
 
     @Override public NasMsg login (@NotNull String username)
     {
@@ -342,28 +335,43 @@ public class LocalNetClient implements NetClient
         return result;
     }
 
-    @Override public @NotNull NasMsg transferFile (@NotNull String strLocalFolder, @NotNull String strServerFolder,
-                                                   @NotNull FileInfo fileInfo, OperationCodes opcode)
+    @Override public @NotNull NasMsg upload (@NotNull String strLocalFolder, @NotNull String strServerFolder,
+                                             @NotNull FileInfo fileInfo)
     {
         NasMsg result = null;
         if (fileInfo != null && sayNoToEmptyStrings (strLocalFolder, fileInfo.getFileName()) && !fileInfo.isDirectory())
         {
-            result = new NasMsg (ERROR, ERROR_UNABLE_TO_PERFORM, OUTBOUND);
-            NasMsg nm =     new NasMsg (opcode, strServerFolder, OUTBOUND);
-
-            nm.setfileInfo (fileInfo);
+            result = new NasMsg (LOAD2SERVER, strServerFolder, OUTBOUND);
+            result.setfileInfo (fileInfo);
             synchronized (syncObj)
             {
-                boolean ok = false;
-                if (opcode == LOAD2LOCAL)
+                if (manipulator.startLoad2ServerRequest (strLocalFolder, result))
                 {
-                    ok = manipulator.startLoad2LocalRequest (strLocalFolder, nm);
+                    nmSyncResult = null;
+                    try
+                    {   while (nmSyncResult == null)
+                            syncObj.wait();
+                        result = nmSyncResult;
+                        nmSyncResult = null;
+                    }
+                    catch (InterruptedException e){e.printStackTrace();}
                 }
-                else if (opcode == LOAD2SERVER)
-                {
-                    ok = manipulator.startLoad2ServerRequest (strLocalFolder, nm);
-                }
-                if (ok)
+            }//sync
+        }
+        return result;
+    }
+
+    @Override public @NotNull NasMsg download (@NotNull String strLocalFolder, @NotNull String strServerFolder,
+                                               @NotNull FileInfo fileInfo)
+    {
+        NasMsg result = null;
+        if (fileInfo != null && sayNoToEmptyStrings (strLocalFolder, fileInfo.getFileName()) && !fileInfo.isDirectory())
+        {
+            result = new NasMsg (LOAD2LOCAL, strServerFolder, OUTBOUND);
+            result.setfileInfo (fileInfo);
+            synchronized (syncObj)
+            {
+                if (manipulator.startLoad2LocalRequest (strLocalFolder, result))
                 {
                     nmSyncResult = null;
                     try

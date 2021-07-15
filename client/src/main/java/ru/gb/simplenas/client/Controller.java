@@ -811,9 +811,7 @@ public class Controller implements Initializable
 
             if (isItSafeToDownloadFile (strTarget))
             {
-                NasMsg nm;
-                    nm = netClient.transferFile (strCurrentLocalPath, strCurrentServerPath,
-                                                        tfi.toFileInfo(), LOAD2LOCAL);
+                NasMsg nm = netClient.download (strCurrentLocalPath, strCurrentServerPath, tfi.toFileInfo());
                 if (nm != null)
                 if (nm.opCode() == OperationCodes.ERROR)
                 {
@@ -858,8 +856,7 @@ public class Controller implements Initializable
         }
         else if (isItSafeToUploadFile (strTargetName, fi.isExists()))
         {
-            NasMsg nm = netClient.transferFile (strCurrentLocalPath, strCurrentServerPath,
-                                                tfi.toFileInfo(), LOAD2SERVER);
+            NasMsg nm = netClient.upload (strCurrentLocalPath, strCurrentServerPath, tfi.toFileInfo());
             if (nm != null)
             if (workUpAListRequestResult (netClient.list (strCurrentServerPath)))
             {   // Из-за ошибки с передачей больших файлов мы не можем просто добавить пункт в таблицу.

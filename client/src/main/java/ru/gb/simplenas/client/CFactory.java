@@ -61,6 +61,7 @@ public class CFactory
     public static final String PROMPT_FORMAT_FOLDER_DELETION_CONFIRMATION = "Удаляемая папка НЕ пуста. Всё равно удалить её?\n\n%s\n";
     public static final String PROMPT_FORMAT_FILE_DELETION_CONFIRMATION = "Подтвердите удаление файла:\n\n%s\n";
     public static final String PROMPT_FORMAT_RENAMING_ALREADY_EXISTS = "Переименование отклонено, — папка или файл с таким имененм уже существуют:\n\n%s\n";
+    public static final String PROMPT_FORMAT_UPLOADERROR_SRCFILE_ACCESS = "Не удалось получить доступ к фалу:\n%s%s%s\n";
     public static final String PROMPT_FOLDERS_EXCHANGE_NOT_SUPPORTED = "Пересылка папок не поддерживается.";
     public static final String PROMPT_CONFIRM_CREATE_FOLDER = "Введите имя для новой папки и нажмите ENTER.";
     public static final String PROMPT_DIR_ENTRY_DOESNOT_EXISTS = "Папка или файл не существуют!";
@@ -111,14 +112,14 @@ public class CFactory
 
 //--------------------------------- LocalFileManager ------------------------------------------------------------*/
 
-    public static boolean isStringOfRealPath (@NotNull String string, String ... strings)
+    public static boolean isStringOfRealPath (@NotNull String string)
     {
-        return LocalFileManager.isStringOfRealPath(string, strings);
+        return LocalFileManager.isStringOfRealPath(string);
     }
 
     public static String stringPath2StringAbsoluteParentPath (@NotNull String s)
     {
-        return LocalFileManager.stringPath2StringAbsoluteParentPath(s);
+        return LocalFileManager.stringPath2StringAbsoluteParentPath (s);
     }
 
     public static String formatFileTime (long time)
@@ -133,12 +134,12 @@ public class CFactory
 
     public static FileInfo rename (@NotNull Path pathParentAbsolute, @NotNull String oldName, @NotNull String newName)
     {
-        return LocalFileManager.rename(pathParentAbsolute, oldName, newName);
+        return LocalFileManager.rename (pathParentAbsolute, oldName, newName);
     }
 
     public static int countDirectoryEntries (@NotNull Path pFolder)
     {
-        return LocalFileManager.countDirectoryEntries(pFolder);
+        return LocalFileManager.countDirectoryEntries (pFolder);
     }
 
     public static boolean deleteFileOrDirectory (@NotNull Path path)

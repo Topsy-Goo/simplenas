@@ -2,6 +2,7 @@ package ru.gb.simplenas.server;
 
 import com.sun.istack.internal.NotNull;
 import ru.gb.simplenas.common.services.impl.NasFileManager;
+import ru.gb.simplenas.common.structs.FileInfo;
 import ru.gb.simplenas.server.services.ServerPropertyManager;
 import ru.gb.simplenas.server.services.Server;
 import ru.gb.simplenas.server.services.ServerFileManager;
@@ -10,6 +11,7 @@ import ru.gb.simplenas.server.services.impl.RemoteFileManager;
 import ru.gb.simplenas.server.services.impl.RemoteManipulator;
 import ru.gb.simplenas.server.services.impl.RemotePropertyManager;
 
+import java.nio.file.Path;
 import java.util.List;
 
 public class SFactory
@@ -75,6 +77,44 @@ public class SFactory
     {
         return NasFileManager.isNameValid(userName);
     }
+
+    //public static boolean deleteFileOrDirectory (@NotNull Path path)
+    //{
+    //    return NasFileManager.deleteFileOrDirectory (path);
+    //}
+
+    //public static int countDirectoryEntries (@NotNull Path pFolder)
+    //{
+    //    return NasFileManager.countDirectoryEntries (pFolder);
+    //}
+
+    //public static FileInfo rename (@NotNull Path pParent, @NotNull String oldName, @NotNull String newName)
+    //{
+    //    return NasFileManager.rename (pParent, oldName, newName);
+    //}
+
+    //protected static Path createFolder (@NotNull Path pFolder)
+    //{
+    //    return NasFileManager.cre
+    //}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 }
