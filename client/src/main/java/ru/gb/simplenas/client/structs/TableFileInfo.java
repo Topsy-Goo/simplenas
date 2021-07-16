@@ -23,15 +23,20 @@ public class TableFileInfo
     Гетеры и сетеры для этих переменных тоже имеют особый формат, потому что ими пользуется javafx
     при добавлении значений в таблицу и при извлечении значений.
 */
+//строковые поля служат для отображения в таблице. Ими оперирует jfx.
+    private final SimpleStringProperty folderMark = new SimpleStringProperty(STR_EMPTY);    //< пустая строка останется пустой для файлов
     private final SimpleStringProperty fileName = new SimpleStringProperty (STR_EMPTY);
-    private final SimpleStringProperty timeModified = new SimpleStringProperty (STR_EMPTY);
-    private final SimpleStringProperty timeCreated  = new SimpleStringProperty (STR_EMPTY);
+    private final SimpleStringProperty timeModified = new SimpleStringProperty (STR_EMPTY); //< пустая строка останется пустой для папок
+    private final SimpleStringProperty timeCreated  = new SimpleStringProperty (STR_EMPTY); //< ...
+
+//числовые и логические поля удобны для обмена данными в остальной части программы.
+//(Кажется, jfx может без особого труда пользоваться и этими НЕстроковыми полями, но выяснять
+// детали сейчас нет времени.)
     private final SimpleLongProperty size     = new SimpleLongProperty(-1); //< -1 заставит колбэк поместить в ячейку пустую строку (см.FormattedTableCellFactory)
     private final SimpleLongProperty modified = new SimpleLongProperty();
     private final SimpleLongProperty created  = new SimpleLongProperty();
     private final SimpleBooleanProperty folder    = new SimpleBooleanProperty(false);
     private final SimpleBooleanProperty symbolic  = new SimpleBooleanProperty(false);
-    private final SimpleStringProperty folderMark = new SimpleStringProperty("");
 
 
     public TableFileInfo()

@@ -1,6 +1,7 @@
 package ru.gb.simplenas.client;
 
 import com.sun.istack.internal.NotNull;
+import javafx.application.Platform;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -133,6 +134,9 @@ public class Controller implements Initializable
         textfieldCurrentPath_Client.setText (strCurrentLocalPath);
         textfieldCurrentPath_Server.setPromptText(TEXTFIELD_SERVER_PROMPTTEXT_DOCONNECT);
         populateTableView (listFolderContents (strCurrentLocalPath), LOCAL);
+
+        tvClientSide.sort();
+        tvServerSide.sort();
 
         setContextMenuEventHandler_OnShoing (menuClientTableActions, tvClientSide);
         setContextMenuEventHandler_OnShoing (menuServerTableActions, tvServerSide);
@@ -527,6 +531,8 @@ public class Controller implements Initializable
             Point p = populateTv(tv, infolist);
             folders = p.x;
             files = p.y;
+//lnprint("SortSortSortSortSortSortSortSortSortSortSortSortSortSortSortSortSortSortSortSort");
+//            Platform.runLater(tv::sort);
 
             enableUsersInput (ENABLE);
             s = String.format (SBAR_TEXTFORMAT_FOLDER_STATISTICS, strPrefix, folders, files);
