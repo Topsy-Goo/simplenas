@@ -2,10 +2,7 @@ package ru.gb.simplenas.client.services.impl;
 
 import com.sun.istack.internal.NotNull;
 import io.netty.bootstrap.Bootstrap;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.EventLoopGroup;
+import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
@@ -144,6 +141,7 @@ public class LocalNetClient implements NetClient
         {   Bootstrap b = new Bootstrap();
             b.group (groupWorker)
              .channel (NioSocketChannel.class)
+             //.option (ChannelOption.SO_KEEPALIVE, true)
              .handler (new ChannelInitializer<SocketChannel>()
             {
                 @Override protected void initChannel (SocketChannel socketChannel) throws Exception

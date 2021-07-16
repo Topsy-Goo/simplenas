@@ -1,10 +1,7 @@
 package ru.gb.simplenas.server.services.impl;
 
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.EventLoopGroup;
+import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
@@ -123,9 +120,13 @@ public class RemoteServer implements Server
                         LOGGER.trace("initChannel() end");
 
                     }
-                });
+                })
+                //.option (ChannelOption.SO_BACKLOG, 128)
+                //.childOption (ChannelOption.SO_KEEPALIVE, true)
+                ;
+
     // ChannelFuture.sync() запускает исполнение.
-            ChannelFuture cfuture = sbts.bind (publicPort).sync();
+            ChannelFuture cfuture = sbts.bind(publicPort).sync();
 
             LOGGER.debug("run(): ChannelFuture "+ cfuture.toString());
             lnprint("\n\t\t*** Ready to getting clients ("+publicPort+"). ***\n");

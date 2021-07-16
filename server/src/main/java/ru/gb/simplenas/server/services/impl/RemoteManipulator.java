@@ -1,6 +1,7 @@
 package ru.gb.simplenas.server.services.impl;
 
 import com.sun.istack.internal.NotNull;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.socket.SocketChannel;
 import org.apache.logging.log4j.LogManager;
@@ -265,7 +266,7 @@ public class RemoteManipulator implements Manipulator
             rest -= read;
             print(RF_ + read);
             nm.fileInfo().setFilesize (read);   //< пусть nm.fileInfo.filesize содержит количество считанных байтов
-            socketChannel.writeAndFlush (nm);
+            socketChannel.writeAndFlush(nm)/*.addListener(ChannelFutureListener.CLOSE)*/;
         }
         //LOGGER.trace("sendAllTheFile(): >>>>>>>>>>>>>>>> конец пересылки данных");
 

@@ -9,6 +9,7 @@ public interface ClientPropertyManager
     String getHostString();
     String getLastLocalPathString();
     String getLastRemotePathString();
+    int getFontSize();
 
     void setLastLocalPathString (String strLocalPath);
     void setLastRemotePathString (String strRemote);

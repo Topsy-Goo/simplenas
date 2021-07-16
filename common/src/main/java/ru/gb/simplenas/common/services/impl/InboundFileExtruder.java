@@ -15,8 +15,7 @@ import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.FileTime;
 
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
-import static java.nio.file.StandardOpenOption.CREATE_NEW;
-import static java.nio.file.StandardOpenOption.WRITE;
+import static java.nio.file.StandardOpenOption.*;
 import static ru.gb.simplenas.common.Factory.print;
 import static ru.gb.simplenas.common.CommonData.WF_;
 
@@ -55,7 +54,7 @@ public class InboundFileExtruder implements FileExtruder
                 pTmpDir = Files.createTempDirectory (pTargetDir, null);
 
                 pFileInTmpFolder = pTmpDir.resolve (pTargetFile.getFileName());
-                outputStream = Files.newOutputStream (pFileInTmpFolder, CREATE_NEW, WRITE/*, SYNC*/);
+                outputStream = Files.newOutputStream (pFileInTmpFolder, CREATE_NEW, WRITE/*, APPEND, SYNC*/);
                 result = true;
             }
             catch (IOException e) {e.printStackTrace();}

@@ -1,6 +1,7 @@
 package ru.gb.simplenas.client.services.impl;
 
 import com.sun.istack.internal.NotNull;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.socket.SocketChannel;
 import org.apache.logging.log4j.LogManager;
@@ -312,7 +313,7 @@ public class LocalManipulator implements ClientManipulator
             rest -= read;
             nm.fileInfo().setFilesize (read);   //< пусть nm.fileInfo.filesize содержит количество считанных байтов
             print(RF_ + read);
-            schannel.writeAndFlush (nm);
+            schannel.writeAndFlush(nm)/*.addListener(ChannelFutureListener.CLOSE)*/;
             dialogue.incChunks();
         }
 

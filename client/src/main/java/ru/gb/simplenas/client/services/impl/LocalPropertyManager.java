@@ -28,6 +28,7 @@ public class LocalPropertyManager implements ClientPropertyManager
     private String strRemotePath;
     private Path pPropertyFile;
     private boolean needUpdate;
+    private int fontSize;
     private static final Logger LOGGER = LogManager.getLogger(LocalPropertyManager.class.getName());
 
 
@@ -68,6 +69,11 @@ public class LocalPropertyManager implements ClientPropertyManager
 
             String strPort = properties.getProperty (PROPNAME_PORT, String.valueOf(DEFAULT_PORT_NUMBER));
             port = Integer.parseInt(strPort);
+
+            String strFontSize = properties.getProperty (PROPNAME_FONT_SIZE/*, String.valueOf(DEFAULT_FONT_SIZE)*/);
+            if (sayNoToEmptyStrings(strFontSize))
+                fontSize = Integer.parseInt(strFontSize);
+
             hostName       = properties.getProperty (PROPNAME_HOST, DEFAULT_HOST_NAME);
             strLocalPath   = properties.getProperty (PROPNAME_PATH_LOCAL, System.getProperty (STR_DEF_FOLDER));
             strRemotePath  = properties.getProperty (PROPNAME_PATH_REMOTE, STR_EMPTY);
@@ -84,6 +90,12 @@ public class LocalPropertyManager implements ClientPropertyManager
             properties.setProperty (PROPNAME_PORT, String.valueOf(DEFAULT_PORT_NUMBER));
             needUpdate = true;
             port = DEFAULT_PORT_NUMBER;
+        }
+        if (fontSize < MIN_FONT_SIZE)
+        {
+            properties.setProperty (PROPNAME_FONT_SIZE, String.valueOf(DEFAULT_FONT_SIZE));
+            needUpdate = true;
+            fontSize = DEFAULT_FONT_SIZE;
         }
         if (!sayNoToEmptyStrings (hostName))
         {
@@ -134,6 +146,7 @@ public class LocalPropertyManager implements ClientPropertyManager
 
 //------------------- гетеры и сетеры ---------------------------------------------------------------------------*/
 
+    @Override public int getFontSize ()     {   return fontSize;   }
     @Override public int getRemotePort()    {   return port;   }
     @Override public String getHostString() {   return hostName;   }
     @Override public String getLastLocalPathString()  {   return strLocalPath;   }

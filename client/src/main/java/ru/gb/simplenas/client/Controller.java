@@ -68,6 +68,8 @@ public class Controller implements Initializable
     @FXML public TableColumn<TableFileInfo, String> columnServerFileSize;
     @FXML public TableColumn<TableFileInfo, String> columnServerModified;
     @FXML public TableColumn<TableFileInfo, String> columnServerCreated;
+    @FXML public Text textLocalFolder;
+    @FXML public Text textServerFolder;
 
     private Stage primaryStage;
     private NetClient netClient;
@@ -78,13 +80,14 @@ public class Controller implements Initializable
     private String sbarLocalStatistics = STR_EMPTY;
     private String sbarServerStatistics = STR_EMPTY;
 
-    private Thread javafx;
+    //private Thread javafx;
     private final Object syncObj = new Object();
     private boolean extraInitialisationIsDone = false;
     private TableViewManager tableViewManager;
     private ClientPropertyManager propMan;
     private ClientWatchService clientWatcher;
     private Lock lockOnWatching;
+    private static int fontSize = DEFAULT_FONT_SIZE;
     private static final Logger LOGGER = LogManager.getLogger(Controller.class.getName());
 
 
@@ -114,10 +117,11 @@ public class Controller implements Initializable
 
     @Override public void initialize (URL location, ResourceBundle resources)
     {
-        javafx = Thread.currentThread();
+        //javafx = Thread.currentThread();
 
         propMan = getProperyManager();
         strCurrentLocalPath = propMan.getLastLocalPathString();
+        setSceneFontSize (propMan.getFontSize());
 
         lockOnWatching = new ReentrantLock();
         clientWatcher = new LocalWatchService ((ooo)->callbackOnCurrentFolderEvents(), lockOnWatching);
@@ -585,6 +589,10 @@ public class Controller implements Initializable
         Alert a = new Alert (alerttype, message, ButtonType.CLOSE);
         a.setTitle(CFactory.ALERT_TITLE);
         a.setHeaderText (header);
+
+        String strFontSizeStyle = sformat(STYLE_FORMAT_SET_FONT_SIZE, fontSize);
+        a.getDialogPane().setStyle(strFontSizeStyle);
+
         a.showAndWait();
     }
 
@@ -598,6 +606,9 @@ public class Controller implements Initializable
         Alert a = new Alert (alerttype, message, ButtonType.OK, ButtonType.CANCEL);
         a.setHeaderText (header);
         a.setTitle(CFactory.ALERT_TITLE);
+
+        String strFontSizeStyle = sformat(STYLE_FORMAT_SET_FONT_SIZE, fontSize);
+        a.getDialogPane().setStyle(strFontSizeStyle);
 
         Optional<ButtonType> option = a.showAndWait();
         if (option.isPresent() && option.get() == ButtonType.OK)
@@ -891,5 +902,18 @@ public class Controller implements Initializable
         catch (InterruptedException e){e.printStackTrace();}
         return ok;
     }
+
+//Устанавливаем размер шрифта (в пикселах) для всего главного окна. (Для окон сообщений размер шрифта
+// устанавливается при вызове этих окон сообщений.)
+    private void setSceneFontSize (int size)
+    {
+        size = Math.max(size, MIN_FONT_SIZE);
+        size = Math.min(size, MAX_FONT_SIZE);
+        fontSize = size;
+
+        String strFontSizeStyle = sformat(STYLE_FORMAT_SET_FONT_SIZE, size);
+        rootbox.setStyle (strFontSizeStyle);
+    }
+
 }
 //---------------------------------------------------------------------------------------------------------------*/

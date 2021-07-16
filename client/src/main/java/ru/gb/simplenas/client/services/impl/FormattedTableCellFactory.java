@@ -4,6 +4,10 @@ import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontPosture;
+import javafx.scene.text.FontWeight;
 import javafx.scene.text.TextAlignment;
 import javafx.util.Callback;
 
@@ -85,4 +89,4 @@ public class FormattedTableCellFactory<P, T> implements Callback<TableColumn<P, 
     public void setAlignment (TextAlignment alignment) {   this.alignment = alignment;   }
     public void setFormat (Format format) {   this.format = format;   }
 
-}// class FormattedTableCellFactory
+}

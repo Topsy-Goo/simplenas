@@ -1,6 +1,8 @@
 package ru.gb.simplenas.common.services.impl;
 
+import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
+import io.netty.util.ReferenceCountUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import ru.gb.simplenas.common.services.Manipulator;
@@ -25,6 +27,39 @@ public class NasMsgInboundHandler extends SimpleChannelInboundHandler<NasMsg>// 
     {
         if (nm != null)
             manipulator.handle (ctx, nm);
+    }
+
+    //@Override public void channelRead (ChannelHandlerContext ctx, Object msg) throws Exception
+    //{
+    //    ByteBuf in = (ByteBuf) msg;
+    //    try
+    //    {
+    //        while (in.isReadable())
+    //        {
+    //            System.out.print((char) in.readByte());
+    //            System.out.flush();
+    //        }
+    //        ctx.channel().writeAndFlush(msg).;
+    //
+    //    }
+    //    finally
+    //    {
+    //        ReferenceCountUtil.release(msg); // Можно использовать in.release()
+    //        //(Если сообщени нужно отправить клиенту, но release() нельзя, а Netty освободит буфер сам
+    //        // после отправки.)
+    //    }
+    //}
+
+//---------------------- методы жизненного циклла хэндлера ------------------------------------------------------*/
+
+    @Override public void handlerAdded(ChannelHandlerContext ctx)
+    {
+        //(Здесь можно проводить НЕпродолжительную инициализацию.)
+    }
+
+    @Override public void handlerRemoved(ChannelHandlerContext ctx)
+    {
+        //(Здесь можно проводить НЕпродолжительную ДЕинициализацию.)
     }
 
 //---------------------------------------------------------------------------------------------------------------*/
