@@ -10,11 +10,15 @@ import javafx.scene.text.FontPosture;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.TextAlignment;
 import javafx.util.Callback;
+import ru.gb.simplenas.client.structs.TableFileInfo;
 
 import java.text.DecimalFormat;
 import java.text.Format;
 
+import static ru.gb.simplenas.client.CFactory.NO_SIZE_VALUE;
 import static ru.gb.simplenas.common.CommonData.STR_EMPTY;
+import static ru.gb.simplenas.common.Factory.lnprint;
+import static ru.gb.simplenas.common.Factory.sformat;
 
 
 // https://docs.oracle.com/javafx/2/fxml_get_started/fxml_tutorial_intermediate.htm
@@ -24,7 +28,7 @@ import static ru.gb.simplenas.common.CommonData.STR_EMPTY;
 public class FormattedTableCellFactory<P, T> implements Callback<TableColumn<P, T>, TableCell<P, T>>
 {
     private TextAlignment alignment;
-    private Format format = new DecimalFormat("###,###,###,###,###");   //< форматируем размер (если в таблицу вписывать
+    private Format format = new DecimalFormat(",###");   //< форматируем размер (если в таблицу вписывать
     // отфрматированную строку, то она будет сортироваться лексиграфически, а не по значению; к тому же так мы
     // избавляемся от лишней строковой переменной в TableFileInfo)
 
@@ -47,12 +51,20 @@ public class FormattedTableCellFactory<P, T> implements Callback<TableColumn<P, 
                 }
                 else if (format != null)
                 {
-                    if (((Long)item) >= 0) //< проверяем нашу минус-единицу
+                    if (item instanceof Long)
                     {
-                        super.setText (format.format(item));
-                        //super.setText (CFactory.fileSizeToString ((Long)item));
+                        long value = (Long)item;
+                        if (value >= 0) //< проверяем нашу минус-единицу
+                        {
+                            super.setText (format.format(item));    //super.setText (sformat("%,d", item));//
+                            //super.setStyle("-fx-text-fill: green; -fx-font-weight: 700");
+                        }
+                        else if (value == NO_SIZE_VALUE)
+                        {
+                            super.setText(STR_EMPTY);
+                            //super.setStyle("-fx-text-fill: red; -fx-font-weight: 700");
+                        }
                     }
-                    else super.setText(STR_EMPTY);
                 }
                 else if (item instanceof Node)
                 {
@@ -60,7 +72,8 @@ public class FormattedTableCellFactory<P, T> implements Callback<TableColumn<P, 
                     super.setGraphic ((Node) item);
                 }
                 else
-                {   super.setText(item.toString());
+                {
+                    super.setText(item.toString());
                     super.setGraphic (null);
                 }
             }

@@ -49,6 +49,7 @@ public class RemoteFileManager extends NasFileManager implements ServerFileManag
 
         if (welcomeFolders == null) welcomeFolders = new ArrayList<>();
         this.welcomeFolders = welcomeFolders;
+
         if (welcomeFiles == null)   welcomeFiles = new ArrayList<>();
         this.welcomeFiles = welcomeFiles;
     }
@@ -70,6 +71,8 @@ public class RemoteFileManager extends NasFileManager implements ServerFileManag
     }
 
 //---------------------------------------------------------------------------------------------------------------*/
+
+    @Override public Path getCloud()  {   return cloud;   }
 
 //вернёт FileInfo, только если указанный файл находится в дисковом пространстве юзера
     @Override public FileInfo getSafeFileInfo (@NotNull String userName, @NotNull String folder, @NotNull String file)   //ServerManipulator

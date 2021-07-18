@@ -5,7 +5,9 @@ import javafx.application.Platform;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
+import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextField;
@@ -26,6 +28,7 @@ import ru.gb.simplenas.common.structs.OperationCodes;
 import ru.gb.simplenas.client.structs.TableFileInfo;
 
 import java.awt.*;
+import java.io.IOException;
 import java.net.URL;
 import java.nio.file.*;
 import java.util.List;
@@ -59,18 +62,16 @@ public class Controller implements Initializable
     @FXML public ContextMenu menuServerTableActions;
     @FXML public TableView<TableFileInfo> tvClientSide;
     @FXML public TableView<TableFileInfo>  tvServerSide;
-    @FXML public TableColumn<TableFileInfo, String> columnClientFolderMark;
+    //@FXML public TableColumn<TableFileInfo, String> columnClientFolderMark;
     @FXML public TableColumn<TableFileInfo, String> columnClientFileName;
-    @FXML public TableColumn<TableFileInfo, String> columnClientFileSize;
-    @FXML public TableColumn<TableFileInfo, String> columnClientModified;
-    @FXML public TableColumn<TableFileInfo, String> columnClientCreated;
-    @FXML public TableColumn<TableFileInfo, String> columnServerFolderMark;
+    //@FXML public TableColumn<TableFileInfo, String> columnClientFileSize;
+    //@FXML public TableColumn<TableFileInfo, String> columnClientModified;
+    //@FXML public TableColumn<TableFileInfo, String> columnClientCreated;
+    //@FXML public TableColumn<TableFileInfo, String> columnServerFolderMark;
     @FXML public TableColumn<TableFileInfo, String> columnServerFileName;
-    @FXML public TableColumn<TableFileInfo, String> columnServerFileSize;
-    @FXML public TableColumn<TableFileInfo, String> columnServerModified;
-    @FXML public TableColumn<TableFileInfo, String> columnServerCreated;
-    @FXML public Text textLocalFolder;
-    @FXML public Text textServerFolder;
+    //@FXML public TableColumn<TableFileInfo, String> columnServerFileSize;
+    //@FXML public TableColumn<TableFileInfo, String> columnServerModified;
+    //@FXML public TableColumn<TableFileInfo, String> columnServerCreated;
 
     private Stage primaryStage;
     private NetClient netClient;
@@ -89,6 +90,7 @@ public class Controller implements Initializable
     private ClientWatchService clientWatcher;
     private Lock lockOnWatching;
     private static int fontSize = DEFAULT_FONT_SIZE;
+
     private static final Logger LOGGER = LogManager.getLogger(Controller.class.getName());
 
 
@@ -491,10 +493,9 @@ public class Controller implements Initializable
 //двойной щелчок ЛКМ по пункту-папке открывает соттв. ему папку
     @FXML public void tvOnMouseClickedClient (MouseEvent mouseEvent)
     {
+        //TableView<TableFileInfo> tv = (TableView<TableFileInfo>) mouseEvent.getSource();
         if (mouseEvent.getClickCount() == 2)
-        {
            openFolderOnClientSide();
-        }
     }
 
     @FXML public void tvOnMouseClickedServer (MouseEvent mouseEvent)
@@ -531,8 +532,6 @@ public class Controller implements Initializable
             Point p = populateTv(tv, infolist);
             folders = p.x;
             files = p.y;
-//lnprint("SortSortSortSortSortSortSortSortSortSortSortSortSortSortSortSortSortSortSortSort");
-//            Platform.runLater(tv::sort);
 
             enableUsersInput (ENABLE);
             s = String.format (SBAR_TEXTFORMAT_FOLDER_STATISTICS, strPrefix, folders, files);
@@ -920,6 +919,8 @@ public class Controller implements Initializable
         String strFontSizeStyle = sformat(STYLE_FORMAT_SET_FONT_SIZE, size);
         rootbox.setStyle (strFontSizeStyle);
     }
+
+
 
 }
 //---------------------------------------------------------------------------------------------------------------*/

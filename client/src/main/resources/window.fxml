@@ -15,8 +15,8 @@
 	  xmlns="http://javafx.com/javafx/11.0.1"
 	  xmlns:fx="http://javafx.com/fxml/1"
 	  fx:controller="ru.gb.simplenas.client.Controller"
-	  stylesheets="styles.css"
 	  spacing="5">
+<!--	  stylesheets="styles.css"-->
 
 	<padding>
 		<Insets topRightBottomLeft="5"/>
@@ -28,7 +28,7 @@
 		- Кнопки для перехода на уровень вверх       -->
     <HBox spacing="3">
 		<VBox>
-			<Text text="Локальная папка: " fx:id="textLocalFolder" textOrigin="BOTTOM" />
+			<Text text="Локальная папка: " textOrigin="BOTTOM" />
 			<HBox.margin><Insets top="5"/></HBox.margin>
 		</VBox>
 		<TextField fx:id="textfieldCurrentPath_Client" onAction="#onactionTextField_Client_ApplyAsPath" HBox.hgrow="ALWAYS" />
@@ -37,7 +37,7 @@
 
 	<HBox spacing="3">
 		<VBox>
-			<Text text="Удалённая папка: " fx:id="textServerFolder" textOrigin="BOTTOM" />
+			<Text text="Удалённая папка: " textOrigin="BOTTOM" />
 			<HBox.margin><Insets top="5"/></HBox.margin>
 		</VBox>
 		<TextField fx:id="textfieldCurrentPath_Server" onAction="#onactionTextField_Server_ApplyAsPath" HBox.hgrow="ALWAYS" />
@@ -58,24 +58,23 @@
 						<!-- folderMark это название поля в классе TableFileInfo, — классе, который описывает строку таблицы -->
 					</cellValueFactory>
 				</TableColumn>
+
 				<TableColumn fx:id="columnClientFileName" minWidth="30" prefWidth="150" text="Имя">
 					<cellValueFactory>
 						<PropertyValueFactory property="fileName" />
 					</cellValueFactory>
-					<cellFactory>
-						<FormattedTableCellFactory alignment="right">
-						</FormattedTableCellFactory>
-					</cellFactory>
 				</TableColumn>
-				<TableColumn fx:id="columnClientFileSize" minWidth="30" prefWidth="100" text="Размер">
+
+				<TableColumn fx:id="columnClientFileSize" minWidth="30" prefWidth="100" text="Размер" style="-fx-text-fill: green">
 					<cellValueFactory>
 						<PropertyValueFactory property="size" />
 					</cellValueFactory>
 					<cellFactory>
-						<FormattedTableCellFactory alignment="right">
+						<FormattedTableCellFactory alignment="RIGHT" >
 						</FormattedTableCellFactory>
 					</cellFactory>
 				</TableColumn>
+
 				<TableColumn fx:id="columnClientModified" minWidth="30" text="Изменён">
 					<cellValueFactory><PropertyValueFactory property="timeModified" />
 					</cellValueFactory>
@@ -120,11 +119,14 @@
 					<cellValueFactory><PropertyValueFactory property="folderMark" />
 					</cellValueFactory>
 				</TableColumn>
+
 				<TableColumn fx:id="columnServerFileName" minWidth="30" prefWidth="150" text="Имя">
-					<cellValueFactory><PropertyValueFactory property="fileName" />
+					<cellValueFactory>
+						<PropertyValueFactory property="fileName" />
 					</cellValueFactory>
 				</TableColumn>
-				<TableColumn fx:id="columnServerFileSize" minWidth="30" prefWidth="100" text="Размер">
+
+				<TableColumn fx:id="columnServerFileSize" minWidth="30" prefWidth="100" text="Размер" style="-fx-text-fill: green">
 					<cellValueFactory>
 						<PropertyValueFactory property="size" />
 					</cellValueFactory>
@@ -133,10 +135,12 @@
 						</FormattedTableCellFactory>
 					</cellFactory>
 				</TableColumn>
+
 				<TableColumn fx:id="columnServerModified" minWidth="30" text="Изменён">
 					<cellValueFactory><PropertyValueFactory property="timeModified" />
 					</cellValueFactory>
 				</TableColumn>
+
 				<TableColumn fx:id="columnServerCreated" minWidth="30" text="Создан">
 					<cellValueFactory><PropertyValueFactory property="timeCreated" />
 					</cellValueFactory>
@@ -166,10 +170,10 @@
 
     <!-- Кнопки Upload (Отправить) и Download (Получить)  -->
     <HBox>
-        <HBox alignment="CENTER" HBox.hgrow="ALWAYS">
+        <HBox alignment="CENTER" HBox.hgrow="ALWAYS" focusTraversable="true">
             <Button fx:id="buttonUpload" alignment="CENTER" onAction="#onactionMenuClient_Upload" text="Отправить на сервер &gt;" />
         </HBox>
-        <HBox alignment="CENTER" HBox.hgrow="ALWAYS">
+        <HBox alignment="CENTER" HBox.hgrow="ALWAYS" focusTraversable="true">
             <Button fx:id="buttonDownload" alignment="CENTER" onAction="#onactionMenu_Download" text="&lt; Загрузить с сервера" />
         </HBox>
     </HBox>
@@ -180,3 +184,4 @@
     </HBox>
 
 </VBox>
+

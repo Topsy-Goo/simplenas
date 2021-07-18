@@ -232,14 +232,24 @@ public class NasFileManager
     public static boolean isNameValid (@NotNull String userName)    //fm, sfm, PathsTest
     {
         boolean boolOk = false;
-        if (sayNoToEmptyStrings(userName) && userName.length() <= MAX_USERNAME_LENGTH)
+        if (sayNoToEmptyStrings(userName))
         {
-            Path path = Paths.get(userName);
-            if (path.getNameCount() == 1)
+            int len = userName.length();
+
+            if (len <= MAX_USERNAME_LENGTH)
+            if (len == userName.trim().length())
             {
                 for (Character ch : userName.toCharArray())
                 {
                     boolOk = Character.isAlphabetic(ch) || Character.isDigit(ch);
+
+                    if (boolOk)
+                    {
+                    //Эта проверка должна производиться ПОСЛЕ проверки символов, чтобы не ловить исключения.
+                        Path path = Paths.get(userName);
+                        boolOk = path.getNameCount() == 1;
+                    }
+
                     if (!boolOk)
                         break;
                 }

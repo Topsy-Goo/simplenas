@@ -78,44 +78,5 @@ public class SFactory
         return NasFileManager.isNameValid(userName);
     }
 
-    //public static boolean deleteFileOrDirectory (@NotNull Path path)
-    //{
-    //    return NasFileManager.deleteFileOrDirectory (path);
-    //}
-
-    //public static int countDirectoryEntries (@NotNull Path pFolder)
-    //{
-    //    return NasFileManager.countDirectoryEntries (pFolder);
-    //}
-
-    //public static FileInfo rename (@NotNull Path pParent, @NotNull String oldName, @NotNull String newName)
-    //{
-    //    return NasFileManager.rename (pParent, oldName, newName);
-    //}
-
-    //protected static Path createFolder (@NotNull Path pFolder)
-    //{
-    //    return NasFileManager.cre
-    //}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 }
 //---------------------------------------------------------------------------------------------------------------*/

@@ -35,14 +35,13 @@ public class Factory
 //Возвращает true, если ни одна из строк lines не пустая и не равна null.
     public static boolean sayNoToEmptyStrings (String ... lines)
     {
-        boolean result = lines != null;
-        if (result)
+        if (lines != null)
         for (String s : lines)
             if (s == null || s.trim().isEmpty())
             {
-                result = false;     break;
+                return false;
             }
-        return result;
+        return true;
     }
 
 //К сожалению, метод print (см. sun.misc) зарезервирован для служебных целей. Исправляю этот недостаток.

@@ -27,6 +27,8 @@ public interface ServerFileManager
 
     int safeCountDirectoryEntries (Path pFolder, String userNAme);
 
-
     boolean safeDeleteFileOrDirectory (Path path, String userNAme);
+
+    Path getCloud();
+
 }

@@ -8,6 +8,7 @@ import ru.gb.simplenas.common.structs.FileInfo;
 
 import java.nio.file.attribute.FileTime;
 
+import static ru.gb.simplenas.client.CFactory.NO_SIZE_VALUE;
 import static ru.gb.simplenas.common.CommonData.*;
 import static ru.gb.simplenas.client.CFactory.formatFileTime;
 
@@ -30,9 +31,8 @@ public class TableFileInfo
     private final SimpleStringProperty timeCreated  = new SimpleStringProperty (STR_EMPTY); //< ...
 
 //числовые и логические поля удобны для обмена данными в остальной части программы.
-//(Кажется, jfx может без особого труда пользоваться и этими НЕстроковыми полями, но выяснять
-// детали сейчас нет времени.)
-    private final SimpleLongProperty size     = new SimpleLongProperty(-1); //< -1 заставит колбэк поместить в ячейку пустую строку (см.FormattedTableCellFactory)
+//(jfx может без особого труда пользоваться и НЕстроковыми полями, о чём свидетельствует поле size.)
+    private final SimpleLongProperty size     = new SimpleLongProperty (NO_SIZE_VALUE); //< NO_SIZE_VALUE заставит колбэк поместить в ячейку пустую строку (см.FormattedTableCellFactory)
     private final SimpleLongProperty modified = new SimpleLongProperty();
     private final SimpleLongProperty created  = new SimpleLongProperty();
     private final SimpleBooleanProperty folder    = new SimpleBooleanProperty(false);

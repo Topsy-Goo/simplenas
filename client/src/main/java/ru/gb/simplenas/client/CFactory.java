@@ -23,7 +23,7 @@ public class CFactory
     public static final int DEFAULT_FONT_SIZE = 9;
     public static final int MIN_FONT_SIZE = 9;
     public static final int MAX_FONT_SIZE = 30;
-    //public static final int PORT = 8289;
+
     public static final String STYLE_FORMAT_SET_FONT_SIZE = "-fx-font-size: %dpt";
     public static final String PROPERTY_FILE_NAME_CLIENT = "local.properties";   //< файл настроек (property file)
     public static final String DEFAULT_HOST_NAME = "localhost";
@@ -77,6 +77,8 @@ public class CFactory
     public static final String ERROR_NO_CONNECTION_TO_REMOTE_STORAGE = "Нет подключения к серверу.";
     public static final String PROMPT_FORMAT_UNABLE_LIST = "Не удалось вывести список содержимого папки.\n\n%s\n";
     //public static final String PROMPT_FORMAT_UNABLE_APPLY_PATH = "Не удалось вывести список содержимого папки.\n\n%s\n";
+    public static final long NO_SIZE_VALUE = -1L;
+
 
     private CFactory () {}
 
@@ -150,6 +152,11 @@ public class CFactory
     public static boolean deleteFileOrDirectory (@NotNull Path path)
     {
         return LocalFileManager.deleteFileOrDirectory(path);
+    }
+
+    public static List<FileInfo> getRootsAsFileinfoList()
+    {
+        return LocalFileManager.getRootsAsFileinfoList();
     }
 
 //--------------------------------- ClientPropertyManager --------------------------------------------------------*/
