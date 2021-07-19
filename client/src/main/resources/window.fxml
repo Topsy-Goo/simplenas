@@ -9,14 +9,19 @@
 <?import javafx.scene.text.Text?>
 <?import ru.gb.simplenas.client.services.impl.FormattedTableCellFactory?>
 
-<VBox fx:id="rootbox"
-	  alignment="center"
+<VBox
+	  xmlns:fx="http://javafx.com/fxml"
+	  xmlns="http://javafx.com/javafx"
 	  minHeight="600.0" minWidth="800.0"
-	  xmlns="http://javafx.com/javafx/11.0.1"
-	  xmlns:fx="http://javafx.com/fxml/1"
 	  fx:controller="ru.gb.simplenas.client.Controller"
+	  fx:id="rootbox"
 	  spacing="5">
-<!--	  stylesheets="styles.css"-->
+<!--
+	  stylesheets="styles.css"
+	  alignment="center"
+	  xmlns:fx="http://javafx.com/fxml/1"
+	  xmlns="http://javafx.com/javafx/11.0.1"
+-->
 
 	<padding>
 		<Insets topRightBottomLeft="5"/>
@@ -36,12 +41,18 @@
 	</HBox>
 
 	<HBox spacing="3">
-		<VBox>
+		<VBox >
 			<Text text="Удалённая папка: " textOrigin="BOTTOM" />
 			<HBox.margin><Insets top="5"/></HBox.margin>
 		</VBox>
-		<TextField fx:id="textfieldCurrentPath_Server" onAction="#onactionTextField_Server_ApplyAsPath" HBox.hgrow="ALWAYS" />
-		<Button fx:id="buttonLevelUp_Server" onAction="#onactionButton_Server_LevelUp" text="▲" />
+
+		<TextField	fx:id="textfieldCurrentPath_Server" onAction="#onactionTextField_Server_ApplyAsPath" HBox.hgrow="ALWAYS"
+			visible="false" managed="false" />
+
+		<Button 	fx:id="buttonConnect"				onAction="#onactionStartConnect"				 HBox.hgrow="ALWAYS"
+			text="Нажмите для подключения к удалённому хранилищу."	maxWidth="Infinity"/>
+
+		<Button fx:id="buttonLevelUp_Server" onAction="#onactionButton_Server_LevelUp" text="▲"/>
 	</HBox>
 
 

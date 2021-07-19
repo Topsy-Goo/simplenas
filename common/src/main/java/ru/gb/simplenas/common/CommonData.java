@@ -7,14 +7,15 @@ import java.util.concurrent.TimeUnit;
 public class CommonData
 {
     public static final boolean DEBUG =      true;
-    public static final boolean INBOUND =    true, OUTBOUND =      false;
-    public static final boolean LOCAL =      true, REMOTE =        false;
-    public static final boolean ANSWER_OK =  true, ANSWER_CANCEL = false;
+    public static final boolean INBOUND =    true, OUTBOUND =      !INBOUND;
+    public static final boolean LOCAL =      true, REMOTE =        !LOCAL;
+    public static final boolean ANSWER_OK =  true, ANSWER_CANCEL = !ANSWER_OK;
     //public static final boolean ANSWER_YES = true, ANSWER_NO =     false;
-    public static final boolean FOLDER =     true, NOT_FOLDER =    false;
-    public static final boolean EXISTS =     true, NOT_EXISTS =    false;
-    public static final boolean SYMBOLIC =   true, NOT_SYMBOLIC =  false;
-    public static final boolean ENABLE =     true, DISABLE =       false;
+    public static final boolean FOLDER =     true, NOT_FOLDER =    !FOLDER;
+    public static final boolean EXISTS =     true, NOT_EXISTS =    !EXISTS;
+    public static final boolean SYMBOLIC =   true, NOT_SYMBOLIC =  !SYMBOLIC;
+    public static final boolean ENABLE =     true, DISABLE =       !ENABLE;
+    public static final boolean CONNECTED =  true, NOT_CONNECTED = !CONNECTED;
 
     public static final TimeUnit filetimeUnits = TimeUnit.SECONDS;
     public static final String FILETIME_FORMAT_PATTERN = " yyyy-MM-dd | HH:mm:ss ";

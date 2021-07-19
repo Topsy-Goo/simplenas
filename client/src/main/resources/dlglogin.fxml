@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.text.Text?>
+<VBox xmlns="http://javafx.com/javafx"
+	  xmlns:fx="http://javafx.com/fxml"
+	  fx:controller="ru.gb.simplenas.client.DlgLoginController"
+	  prefHeight="300.0" prefWidth="450.0"
+	  spacing="20"
+	  fx:id="dlgloginroot">
+
+	<padding>
+		<Insets topRightBottomLeft="30"/>
+	</padding>
+
+	<Text text="Пожалуйста авторизуйтесь." style="-fx-font-size: 20pt"/>
+
+	<TextField	onAction="#onActionLoginTypingDone"	fx:id="txtfldLogin"	promptText="Введите логин здесь"/>
+
+	<TextField		managed="false"	visible="false"	onAction="#onActionPasswordTypingDone"	fx:id="txtfldPassword"
+		promptText="Введите пароль здесь"	maxWidth="Infinity"/>
+
+	<PasswordField	managed="true"	visible="true"	onAction="#onActionPasswordTypingDone"	fx:id="pswfldPassword"
+		promptText="Введите пароль здесь"	maxWidth="Infinity"/>
+
+	<CheckBox text="Показывать символы пароля: "	fx:id="checkBox" wrapText="true" nodeOrientation="RIGHT_TO_LEFT"
+		maxWidth="Infinity"/>
+
+	<HBox spacing="20">
+		<Button text="Авторизоваться" fx:id="buttnLogin"	onAction="#onActionStartLogin"	maxWidth="Infinity"/>
+		<Button text="Отмена"		  fx:id="buttnCancel"	onAction="#onActionCancel"		maxWidth="Infinity"/>
+	</HBox>
+
+</VBox>
+<!--
+style="-fx-alignment: left"		prefWidth="Infinity"	alignment="BASELINE_LEFT"
+style="-fx-alignment: right"	prefWidth="Infinity"	alignment="BASELINE_RIGHT"
+style="-fx-alignment: right"
+-->

@@ -29,7 +29,7 @@ public class LocalWatchService implements ClientWatchService
         {
             try
             {   localWatcher = FileSystems.getDefault().newWatchService();
-                LOGGER.debug("Создана служба наблюдения за каталогами.");
+                LOGGER.debug("Создана служба наблюдения за каталогами");
 
                 lockOnWatching = lock;
 
@@ -56,30 +56,6 @@ public class LocalWatchService implements ClientWatchService
     @Override public void startWatchingOnFolder (String strFolder)
     {
         changeWatchingKey (strFolder);
-    }
-
-    private void changeWatchingKey (String strFolder)
-    {
-        if (sayNoToEmptyStrings (strFolder) && localWatcher != null)
-        if (localWatchingKey != null)
-        {
-            localWatchingKey.cancel();  //< Это можно делать многократно;
-            localWatchingKey = null;    //  после отмены ключ делается недействтельным навсегда, но может
-        }                               //  дообработать события, которые он уже ждёт или обрабатывает.
-
-        Path p = Paths.get(strFolder).toAbsolutePath().normalize();
-        if (Files.exists(p) && Files.isDirectory(p))
-        {
-            try
-            {   //(Если за указанной папкой уже ведётся наблюдение при помощи ключа К, то у ключа К
-                // меняется набор событий на указанный, и возвращается ключ К. Иначе возвращается
-                // новый ключ. Все зарегистрированные ранее события остаются в очереди.)
-                localWatchingKey = p.register(localWatcher, ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY);
-                printf("\nСоздан ключ для наблюдения за папкой <%s>", p);
-            }
-            catch (IOException e){e.printStackTrace();}
-        }
-        else LOGGER.error(String.format("Папка не существует <%s>", strFolder));
     }
 
     private void threadDoWatching (WatchService service)
@@ -127,6 +103,30 @@ public class LocalWatchService implements ClientWatchService
             }
         }
         LOGGER.debug("Поток службы наблюдения завершил работу");
+    }
+
+    private void changeWatchingKey (String strFolder)
+    {
+        if (sayNoToEmptyStrings (strFolder) && localWatcher != null)
+        if (localWatchingKey != null)
+        {
+            localWatchingKey.cancel();  //< Это можно делать многократно;
+            localWatchingKey = null;    //  после отмены ключ делается недействтельным навсегда, но может
+        }                               //  дообработать события, которые он уже ждёт или обрабатывает.
+
+        Path p = Paths.get(strFolder).toAbsolutePath().normalize();
+        if (Files.exists(p) && Files.isDirectory(p))
+        {
+            try
+            {   //(Если за указанной папкой уже ведётся наблюдение при помощи ключа К, то у ключа К
+                // меняется набор событий на указанный, и возвращается ключ К. Иначе возвращается
+                // новый ключ. Все зарегистрированные ранее события остаются в очереди.)
+                localWatchingKey = p.register(localWatcher, ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY);
+                printf("\nСоздан ключ для наблюдения за папкой <%s>", p);
+            }
+            catch (IOException e){e.printStackTrace();}
+        }
+        else LOGGER.error(String.format("Папка не существует <%s>", strFolder));
     }
 
     @Override public void close()

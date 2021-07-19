@@ -1,19 +1,19 @@
 package ru.gb.simplenas.client;
 
 import com.sun.istack.internal.NotNull;
-import javafx.application.Platform;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
-import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextField;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Text;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -69,11 +69,15 @@ public class Controller implements Initializable
     //@FXML public TableColumn<TableFileInfo, String> columnClientCreated;
     //@FXML public TableColumn<TableFileInfo, String> columnServerFolderMark;
     @FXML public TableColumn<TableFileInfo, String> columnServerFileName;
+    @FXML public Button buttonConnect;
     //@FXML public TableColumn<TableFileInfo, String> columnServerFileSize;
     //@FXML public TableColumn<TableFileInfo, String> columnServerModified;
     //@FXML public TableColumn<TableFileInfo, String> columnServerCreated;
 
     private Stage primaryStage;
+    private DlgLoginController dlgLoginController;
+    private Stage dlgLoginStage;
+
     private NetClient netClient;
     private String userName;
     private String strCurrentLocalPath = STR_EMPTY; // не имеет отношения к textfieldCurrentPath_Client
@@ -94,6 +98,8 @@ public class Controller implements Initializable
     private static final Logger LOGGER = LogManager.getLogger(Controller.class.getName());
 
 
+//TODO : регистрацию нужно делать при старте программы. Это позолит хранить настройки пользователей в
+//       индивидуальных файлах настроек.
 //TODO : авторизация + БД + флайвэй
 //TODO : DnD
 //TODO : Грэдл
@@ -120,11 +126,11 @@ public class Controller implements Initializable
 
     @Override public void initialize (URL location, ResourceBundle resources)
     {
-        //javafx = Thread.currentThread();
+        LOGGER.debug("initialize() starts");
 
         propMan = getProperyManager();
-        strCurrentLocalPath = propMan.getLastLocalPathString();
-        setSceneFontSize (propMan.getFontSize());
+        strCurrentLocalPath = propMan.getDefaultLastLocalPathString();
+        setSceneFontSize(rootbox, propMan.getDefaultFontSize());
 
         lockOnWatching = new ReentrantLock();
         clientWatcher = new LocalWatchService ((ooo)->callbackOnCurrentFolderEvents(), lockOnWatching);
@@ -134,7 +140,7 @@ public class Controller implements Initializable
 
         tableViewManager = new TableViewManager (this);
         textfieldCurrentPath_Client.setText (strCurrentLocalPath);
-        textfieldCurrentPath_Server.setPromptText(TEXTFIELD_SERVER_PROMPTTEXT_DOCONNECT);
+        //textfieldCurrentPath_Server.setPromptText(TEXTFIELD_SERVER_PROMPTTEXT_DOCONNECT);
         populateTableView (listFolderContents (strCurrentLocalPath), LOCAL);
 
         tvClientSide.sort();
@@ -145,13 +151,14 @@ public class Controller implements Initializable
 
         extraInitialisationIsDone = false;
         enableUsersInput (ENABLE);
+        LOGGER.debug("C.initialize() finished");
     }
 
 //---------------------------------------------------------------------------------------------------------------*/
 
-    void onCmdConnectAndLogin (String name)
+    void onCmdConnectAndLogin (String name, String password)
     {
-        if (sayNoToEmptyStrings(name))
+        if (sayNoToEmptyStrings(name, password))
         {
             //инициализация, которую нельзя было сделать в initialize()
             if (!extraInitialisationIsDone)
@@ -160,7 +167,7 @@ public class Controller implements Initializable
             }
             if (connect())
             {
-                login (name);
+                login (name, password);
             }
             else messageBox(CFactory.ALERTHEADER_CONNECTION, ERROR_UNABLE_CONNECT_TO_SERVER, WARNING);
         }
@@ -185,10 +192,11 @@ public class Controller implements Initializable
         return result;
     }
 
-    private void login (String name)
+    private void login (String name, String password)
     {
+        LOGGER.debug("login() start");
         NasMsg nm = null;
-        if (netClient == null || (null == (nm = netClient.login (name))))
+        if (netClient == null || (null == (nm = netClient.login (name, password))))
         {
             messageBox (ALERTHEADER_AUTHENTIFICATION, ERROR_UNABLE_TO_PERFORM, ERROR);
         }
@@ -206,30 +214,27 @@ public class Controller implements Initializable
             }
             messageBox (ALERTHEADER_AUTHENTIFICATION, strErr, WARNING);
         }
+        LOGGER.debug("login() end");
     }
 
     private void updateControlsOnSuccessfulLogin()
     {
-        textfieldCurrentPath_Server.clear();
-        textfieldCurrentPath_Server.setText (STR_EMPTY);
-        textfieldCurrentPath_Server.setPromptText (TEXTFIELD_SERVER_PROMPTTEXT_LOGGEDIN);
+        updateMainWndTitleWithUserName();
+        swapControlsOnConnect (CONNECTED);
         sbarSetDefaultText (null, SBAR_TEXT_SERVER_ONAIR);
 
         messageBox (ALERTHEADER_AUTHENTIFICATION,
-                    String.format(STRFORMAT_YOUARE_LOGGEDIN, userName),
+                    sformat(STRFORMAT_YOUARE_LOGGEDIN, userName),
                     INFORMATION);
 
-        if (propMan != null)
-            strCurrentServerPath = propMan.getLastRemotePathString();
+        readUserSpecificProperties (userName);
 
-        String strRemotePath = Paths.get(userName, strCurrentServerPath).toString();
-        if (!workUpAListRequestResult (netClient.list (strRemotePath)))
+        if (!workUpAListRequestResult (netClient.list (strCurrentServerPath)))
         {
             messageBox (ALERTHEADER_REMOUTE_STORAGE,
                         String.format(PROMPT_FORMAT_UNABLE_LIST, userName),
                         ERROR);
         }
-        updateMainWndTitleWithUserName();
     }
 
 // Наш обработчик события primaryStage.setOnCloseRequest.
@@ -250,10 +255,18 @@ public class Controller implements Initializable
     {
         if (propMan != null)
         {
-            propMan.setLastLocalPathString (strCurrentLocalPath);
-            if (sayNoToEmptyStrings (strCurrentServerPath))  //< чтобы не сбрасывалось, если во время сессии не было подключения
+            if (!sayNoToEmptyStrings (userName))
             {
-                propMan.setLastRemotePathString (relativizeByFolderName (userName, strCurrentServerPath));
+                propMan.setLastLocalPathString (strCurrentLocalPath);
+                //if (sayNoToEmptyStrings (strCurrentServerPath))  //< чтобы не сбрасывалось, если во время сессии не было подключения
+                //{
+                //    propMan.setLastRemotePathString (relativizeByFolderName (userName, strCurrentServerPath));
+                //}
+            }
+            else
+            {
+                propMan.setUserLastLocalPath (userName, strCurrentLocalPath);
+                propMan.setUserLastRemotePath (userName, strCurrentServerPath);
             }
             propMan.close();
         }
@@ -261,6 +274,7 @@ public class Controller implements Initializable
 
     void onMainWndShowing (Stage primaryStage) //< не надо делать этот метод private!
     {
+        LOGGER.debug("void onMainWndShowing (Stage primaryStage)");
         this.primaryStage = primaryStage;
     }
 
@@ -289,7 +303,52 @@ public class Controller implements Initializable
         }
     }
 
+
+    private boolean showAuthentificationDialogWindow()
+    {
+        try
+        {
+            if (dlgLoginController == null || dlgLoginStage == null)
+            {
+                // Загружаем fxml-файл и создаём новую сцену для всплывающего диалогового окна.
+                FXMLLoader loader = new FXMLLoader();
+                loader.setLocation (getClass().getResource("/dlglogin.fxml"));
+                VBox page = loader.load();
+                setSceneFontSize(page, propMan.getDefaultFontSize());
+                Scene scene = new Scene (page);
+
+                // Создаём диалоговое окно Stage.
+                dlgLoginStage = new Stage();
+                dlgLoginStage.setTitle (MAINWND_TITLE + " - Авторизация пользователя");
+                dlgLoginStage.initModality (Modality.WINDOW_MODAL);
+                dlgLoginStage.initOwner (this.primaryStage);
+                dlgLoginStage.setScene (scene);
+
+                // Передаём адресата в контроллер.
+                dlgLoginController = loader.getController();
+                dlgLoginController.setDialogStage (dlgLoginStage);
+            }
+            // Отображаем диалоговое окно и ждём, пока пользователь его не закроет
+            dlgLoginStage.showAndWait();
+            return dlgLoginController.isButtnLoginPressed();
+        }
+        catch (IOException e){e.printStackTrace();}
+        return false;
+    }
+
 //------------------------------------------ обработчики команд GUI ---------------------------------------------*/
+
+    @FXML public void onactionStartConnect (ActionEvent actionEvent)
+    {
+        if (showAuthentificationDialogWindow() && dlgLoginController != null)
+        {
+            String login = dlgLoginController.getLogin();
+            String password = dlgLoginController.getPassword();
+            LOGGER.debug(sformat("onMainWndShowing() юзер ввел пароль (%s) и логин (%s)", login, password));
+            onCmdConnectAndLogin (login, password);
+        }
+        LOGGER.debug("onMainWndShowing() юзер отказался от авторизации");
+    }
 
 //Создание папки на сервере в текущей папке.
     @FXML public void onactionMenuServer_CreateFolder (ActionEvent actionEvent)
@@ -426,7 +485,7 @@ public class Controller implements Initializable
 
         if (netClient == null)
         {   //перед подключением поле пути для сервера используется как поле ввода для имени пользователя
-            onCmdConnectAndLogin(text);
+            //onCmdConnectAndLogin(text);
         }
         else
         {   //если подключение уже установлено, то текст явялется папкой на сервере, которую нужно выбрать
@@ -910,17 +969,43 @@ public class Controller implements Initializable
 
 //Устанавливаем размер шрифта (в пикселах) для всего главного окна. (Для окон сообщений размер шрифта
 // устанавливается при вызове этих окон сообщений.)
-    private void setSceneFontSize (int size)
+    private void setSceneFontSize (VBox vbox, int size)
     {
         size = Math.max(size, MIN_FONT_SIZE);
         size = Math.min(size, MAX_FONT_SIZE);
         fontSize = size;
 
         String strFontSizeStyle = sformat(STYLE_FORMAT_SET_FONT_SIZE, size);
-        rootbox.setStyle (strFontSizeStyle);
+        vbox.setStyle (strFontSizeStyle);
     }
 
+    private void swapControlsOnConnect (boolean connected)
+    {
+        buttonConnect.setManaged (!connected);
+        buttonConnect.setVisible (!connected);
+        textfieldCurrentPath_Server.setVisible (connected);
+        textfieldCurrentPath_Server.setManaged (connected);
+    }
 
+    private void readUserSpecificProperties (String userName)
+    {
+        if (propMan != null)
+        {
+            fontSize = propMan.getUserFontSize (userName);
+            setSceneFontSize (rootbox, fontSize);
+
+            strCurrentLocalPath = propMan.getUserLocalPath (userName);
+            strCurrentServerPath = propMan.getUserRemotePath (userName);
+        }
+        else
+        {
+            strCurrentServerPath = userName;
+            strCurrentLocalPath = System.getProperty (STR_DEF_FOLDER);
+        }
+
+        populateTableView (listFolderContents (strCurrentLocalPath), LOCAL);
+        textfieldCurrentPath_Client.setText (strCurrentLocalPath);
+    }
 
 }
 //---------------------------------------------------------------------------------------------------------------*/

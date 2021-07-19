@@ -37,23 +37,26 @@ public class MainGUI extends Application
 
     @Override public void start (Stage primaryStage) throws IOException
     {
+        LOGGER.debug("start() starts");
     //инициализируем приложение
-        FXMLLoader fxmlLoader = new FXMLLoader (getClass().getResource ("/window.fxml"));
-        Parent root = fxmlLoader.load();
+        FXMLLoader fxmlLoader = new FXMLLoader (getClass().getResource ("/window.fxml"));   //LOGGER.debug("\n\t••\tFXMLLoader fxmlLoader = new FXMLLoader (getClass().getResource (\"/window.fxml\"));");
+        //(Здесь выполняется Controller.initialize().)
+        Parent root = fxmlLoader.load();                                                    //LOGGER.debug("\n\t••\tParent root = fxmlLoader.load();");
 
     //можно вот таким образом назначить обработчик закрытия пользователем окна приложения …:
-        Controller controller = fxmlLoader.getController();
-        primaryStage.setOnShowing (event -> controller.onMainWndShowing (primaryStage));
-        primaryStage.setOnCloseRequest (event -> controller.closeSession());
+        Controller controller = fxmlLoader.getController();                                 //LOGGER.debug("\n\t••\tController controller = fxmlLoader.getController();");
+        primaryStage.setOnShowing (event -> controller.onMainWndShowing (primaryStage));    //LOGGER.debug("\n\t••\tprimaryStage.setOnShowing (event -> controller.onMainWndShowing (primaryStage));");
+        primaryStage.setOnCloseRequest (event -> controller.closeSession());                //LOGGER.debug("\n\t••\tprimaryStage.setOnCloseRequest (event -> controller.closeSession());");
         //… а можно это сделать из Controller'а (см.метод Controller.onCmdConnect).
 
     //продолжаем инициализацию
-        primaryStage.setTitle (MAINWND_TITLE);
-        Scene scene = new Scene (root, initialWidth, initialHeight);
-        primaryStage.setScene (scene);
-        primaryStage.show();
-        primaryStage.setMinWidth (minWidth);
-        primaryStage.setMinHeight (minHeight);
+        primaryStage.setTitle (MAINWND_TITLE);                                              //LOGGER.debug("\n\t••\tprimaryStage.setTitle (MAINWND_TITLE);");
+        Scene scene = new Scene (root, initialWidth, initialHeight);                        //LOGGER.debug("\n\t••\tScene scene = new Scene (root, initialWidth, initialHeight); ");
+        primaryStage.setScene (scene);                                                      //LOGGER.debug("\n\t••\tprimaryStage.setScene (scene);  ");
+        //(Здесь выполняется листенер Controller.onMainWndShowing().)
+        primaryStage.show();                                                                //LOGGER.debug("\n\t••\tprimaryStage.show();  ");
+        primaryStage.setMinWidth (minWidth);                                                //LOGGER.debug("\n\t••\tprimaryStage.setMinWidth (minWidth);");
+        primaryStage.setMinHeight (minHeight);                                              //LOGGER.debug("\n\t••\tprimaryStage.setMinHeight (minHeight);");
     }
 
 }

@@ -7,7 +7,7 @@ public interface NetClient extends Runnable
 {
     boolean connect ();
 
-    NasMsg login (String userName);
+    NasMsg login (String userName, String password);
 
     void disconnect ();
 

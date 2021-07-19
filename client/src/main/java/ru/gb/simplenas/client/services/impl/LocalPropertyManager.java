@@ -22,13 +22,16 @@ public class LocalPropertyManager implements ClientPropertyManager
 {
     private static LocalPropertyManager instance;
     private Properties properties;
+    private Path pPropertyFile;
+    private boolean loaded;
+    private boolean needUpdate;
+
+    private int fontSizeDefault;    //< размер шрифта GUI, который используется в отсутствие авторизации
     private int port;
     private String hostName;
-    private String strLocalPath;
-    private String strRemotePath;
-    private Path pPropertyFile;
-    private boolean needUpdate;
-    private int fontSize;
+    private String strDefaultLocalPath;
+    //private String strRemotePath; < больше не используется
+
     private static final Logger LOGGER = LogManager.getLogger(LocalPropertyManager.class.getName());
 
 
@@ -53,49 +56,52 @@ public class LocalPropertyManager implements ClientPropertyManager
         properties = new Properties();
         pPropertyFile = Paths.get(PROPERTY_FILE_NAME_CLIENT).toAbsolutePath();
 
-        if (Files.exists(pPropertyFile) && Files.isRegularFile(pPropertyFile))
+        if (Files.exists (pPropertyFile) && Files.isRegularFile(pPropertyFile))
         {
-            readAllProperties (pPropertyFile);
+            try (FileInputStream fis = new FileInputStream (pPropertyFile.toString());)
+            {
+                lnprint("чтение настроек из файла: "+ pPropertyFile.toString());
+                properties.loadFromXML(fis);
+                loaded = true;
+                readDefaultProperties (pPropertyFile);
+            }
+            catch (IOException e){e.printStackTrace();}
         }
-        checkPropertiesValues (pPropertyFile);
+        checkDefaultPropertiesValues (pPropertyFile);
     }
 
-    private void readAllProperties (@NotNull Path pPropertyFile)
+    private void readDefaultProperties (@NotNull Path pPropertyFile)
     {
-        try (FileInputStream fis = new FileInputStream (pPropertyFile.toString());)
+        String strPort = properties.getProperty (PROPNAME_PORT, String.valueOf(DEFAULT_PORT_NUMBER));
+        if (sayNoToEmptyStrings (strPort) && isConvertableToInteger (strPort))
         {
-            lnprint("чтение настроек из файла: "+ pPropertyFile.toString());
-            properties.loadFromXML(fis);
-
-            String strPort = properties.getProperty (PROPNAME_PORT, String.valueOf(DEFAULT_PORT_NUMBER));
             port = Integer.parseInt(strPort);
-
-            String strFontSize = properties.getProperty (PROPNAME_FONT_SIZE/*, String.valueOf(DEFAULT_FONT_SIZE)*/);
-            if (sayNoToEmptyStrings(strFontSize))
-                fontSize = Integer.parseInt(strFontSize);
-
-            hostName       = properties.getProperty (PROPNAME_HOST, DEFAULT_HOST_NAME);
-            strLocalPath   = properties.getProperty (PROPNAME_PATH_LOCAL, System.getProperty (STR_DEF_FOLDER));
-            strRemotePath  = properties.getProperty (PROPNAME_PATH_REMOTE, STR_EMPTY);
         }
-        catch (IOException e){e.printStackTrace();}
 
+        String strFontSize = properties.getProperty (PROPNAME_FONT_SIZE/*, String.valueOf(DEFAULT_FONT_SIZE)*/);
+        if (sayNoToEmptyStrings (strFontSize) && isConvertableToInteger (strFontSize))
+        {
+            fontSizeDefault = Integer.parseInt(strFontSize);
+        }
+
+        hostName       = properties.getProperty (PROPNAME_HOST, DEFAULT_HOST_NAME);
+        strDefaultLocalPath = properties.getProperty(PROPNAME_PATH_LOCAL, System.getProperty(STR_DEF_FOLDER));
+        //strRemotePath  = properties.getProperty (PROPNAME_PATH_REMOTE, STR_EMPTY);
     }
 
-    private void checkPropertiesValues (@NotNull Path pPropertyFile)
+    private void checkDefaultPropertiesValues (@NotNull Path pPropertyFile)
     {
-        //boolean needWrite = false;
         if (port <= 0)
         {
             properties.setProperty (PROPNAME_PORT, String.valueOf(DEFAULT_PORT_NUMBER));
             needUpdate = true;
             port = DEFAULT_PORT_NUMBER;
         }
-        if (fontSize < MIN_FONT_SIZE)
+        if (!isFontSizeValid (fontSizeDefault))
         {
             properties.setProperty (PROPNAME_FONT_SIZE, String.valueOf(DEFAULT_FONT_SIZE));
             needUpdate = true;
-            fontSize = DEFAULT_FONT_SIZE;
+            fontSizeDefault = DEFAULT_FONT_SIZE;
         }
         if (!sayNoToEmptyStrings (hostName))
         {
@@ -103,18 +109,18 @@ public class LocalPropertyManager implements ClientPropertyManager
             needUpdate = true;
             hostName = DEFAULT_HOST_NAME;
         }
-        if (!sayNoToEmptyStrings (strLocalPath) || !isStringOfRealPath (strLocalPath))
+        if (!sayNoToEmptyStrings(strDefaultLocalPath) || !isStringOfRealPath(strDefaultLocalPath))
         {
             properties.setProperty (PROPNAME_PATH_LOCAL, System.getProperty (STR_DEF_FOLDER));
             needUpdate = true;
-            strLocalPath = System.getProperty (STR_DEF_FOLDER);
+            strDefaultLocalPath = System.getProperty(STR_DEF_FOLDER);
         }
-        if (strRemotePath == null)
-        {
-            properties.setProperty (PROPNAME_PATH_REMOTE, STR_EMPTY);
-            needUpdate = true;
-            strRemotePath = STR_EMPTY;
-        }
+        //if (strRemotePath == null)
+        //{
+        //    properties.setProperty (PROPNAME_PATH_REMOTE, STR_EMPTY);
+        //    needUpdate = true;
+        //    strRemotePath = STR_EMPTY;
+        //}
         if (needUpdate)
             LOGGER.error(String.format("\nНе удалось (частично или полностью) прочитать файл настроек: <%s>", pPropertyFile));
     }
@@ -146,30 +152,144 @@ public class LocalPropertyManager implements ClientPropertyManager
 
 //------------------- гетеры и сетеры ---------------------------------------------------------------------------*/
 
-    @Override public int getFontSize ()     {   return fontSize;   }
+    @Override public int getDefaultFontSize()     {   return fontSizeDefault;   }
     @Override public int getRemotePort()    {   return port;   }
     @Override public String getHostString() {   return hostName;   }
-    @Override public String getLastLocalPathString()  {   return strLocalPath;   }
-    @Override public String getLastRemotePathString() {   return strRemotePath;   }
+    @Override public String getDefaultLastLocalPathString ()  {   return strDefaultLocalPath;   }
+    //@Override public String getLastRemotePathString() {   return strRemotePath;   }
 
-    @Override public void setLastLocalPathString (String strLocal)
+    //(для случаев, когда пользователь не зарегистрировался)
+    @Override public void setLastLocalPathString (String strLocalPath)
     {
-        if (!sayNoToEmptyStrings (strLocal))
-            strLocal = System.getProperty (STR_DEF_FOLDER);
+        if (!sayNoToEmptyStrings (strLocalPath))
+            strLocalPath = System.getProperty (STR_DEF_FOLDER);
 
-        strLocalPath = strLocal;
-        properties.setProperty (PROPNAME_PATH_LOCAL, strLocal);
+        this.strDefaultLocalPath = strLocalPath;
+        properties.setProperty (PROPNAME_PATH_LOCAL, strLocalPath);
         needUpdate = true;
     }
 
-    @Override public void setLastRemotePathString (String strRemote)
-    {
-        if (strRemote == null)
-            strRemote = STR_EMPTY;
+    //@Override public void setLastRemotePathString (String strRemote)
+    //{
+    //    if (strRemote == null)
+    //        strRemote = STR_EMPTY;
+    //
+    //    strRemotePath = strRemote;
+    //    properties.setProperty (PROPNAME_PATH_REMOTE, strRemote);
+    //    needUpdate = true;
+    //}
 
-        strRemotePath = strRemote;
-        properties.setProperty (PROPNAME_PATH_REMOTE, strRemote);
-        needUpdate = true;
+    @Override public int getUserFontSize (@NotNull String userName)
+    {
+        int userFontSize = DEFAULT_FONT_SIZE;
+        boolean ok = false;
+        if (loaded && sayNoToEmptyStrings (userName))
+        {
+            String propName = userPropName (userName, PROPNAME_FONT_SIZE);
+            String strFontSize = properties.getProperty (propName/*, String.valueOf(DEFAULT_FONT_SIZE)*/);
+
+            if (isConvertableToInteger (strFontSize))
+            {
+                userFontSize = Integer.parseInt(strFontSize);
+                ok = isFontSizeValid (userFontSize);
+            }
+            else setUserFontSize (userName, DEFAULT_FONT_SIZE);
+        }
+        if (!ok)
+        {
+            userFontSize = DEFAULT_FONT_SIZE;
+            needUpdate = true;
+        }
+        return userFontSize;
     }
+
+    @Override public String getUserLocalPath (@NotNull String userName)
+    {
+        String result = System.getProperty (STR_DEF_FOLDER);
+        if (loaded && sayNoToEmptyStrings (userName))
+        {
+            String propName = userPropName (userName, PROPNAME_PATH_LOCAL);
+            String strLocalPath = properties.getProperty (propName);
+
+            if (sayNoToEmptyStrings (strLocalPath))
+                result = strLocalPath;
+        }
+        return result;
+    }
+
+    @Override public String getUserRemotePath (@NotNull String userName)
+    {
+        String result = STR_EMPTY;
+        if (sayNoToEmptyStrings (userName))
+        {
+            result = userName;
+            if (loaded)
+            {
+                String propName = userPropName (userName, PROPNAME_PATH_REMOTE);
+                String strRemotePath = properties.getProperty (propName);
+
+                if (sayNoToEmptyStrings (strRemotePath))
+                    result = strRemotePath;
+            }
+        }
+        return result;
+    }
+
+    @Override public void setUserFontSize (@NotNull String userName, int size)
+    {
+        if (sayNoToEmptyStrings (userName) && isFontSizeValid (size))
+        {
+            String propName = userPropName (userName, PROPNAME_FONT_SIZE);
+            properties.setProperty (propName, String.valueOf(size));
+            needUpdate = true;
+        }
+        else LOGGER.error("setUserFontSize()");
+    }
+
+    @Override public void setUserLastLocalPath (@NotNull String userName, @NotNull String strPath)
+    {
+        if (sayNoToEmptyStrings (userName, strPath))
+        {
+            String propName = userPropName (userName, PROPNAME_PATH_LOCAL);
+            properties.setProperty (propName, strPath);
+            needUpdate = true;
+        }
+        else LOGGER.error("setUserLastLocalPath()");
+    }
+
+    @Override public void setUserLastRemotePath (@NotNull String userName, @NotNull String strPath)
+    {
+        if (sayNoToEmptyStrings (userName, strPath))
+        {
+            String propName = userPropName (userName, PROPNAME_PATH_REMOTE);
+            properties.setProperty (propName, strPath);
+            needUpdate = true;
+        }
+        else LOGGER.error("setUserLastRemotePath()");
+    }
+
+//---------------------- различные вспомогательные методы -------------------------------------------------------*/
+
+    private static String userPropName (@NotNull String userName, @NotNull String defaultName)
+    {
+        return sformat("%s.%s", userName, defaultName);
+    }
+
+    private static boolean isConvertableToInteger (@NotNull String number)
+    {
+        boolean ok = sayNoToEmptyStrings(number);
+        if (ok)
+        for (Character ch : number.toCharArray())
+        {
+            if (!(ok = Character.isDigit(ch)))
+                break;
+        }
+        return ok;
+    }
+
+    private static boolean isFontSizeValid (int fontSize)
+    {
+        return fontSize >= MIN_FONT_SIZE && fontSize <= MAX_FONT_SIZE;
+    }
+
 }
-//---------------------------------------------------------------------------------------------------------------*/

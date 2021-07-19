@@ -20,3 +20,5 @@
 /local.properties
 /server.properties
 /common/src/main/java/ru/gb/simplenas/common/TestTestTest.java
+/client/target/classes/dlglogin.fxml
+/client/target/classes/styles.css

@@ -41,8 +41,8 @@ public class CFactory
     public static final String SBAR_TEXTFORMAT_FOLDER_STATISTICS = "%s папка содержит: %d папок, %d файлов.";
     public static final String STR_PREFIX_LOCAL = "Локальная";
     public static final String STR_PREFIX_REMOTE = "Удалённая";
-    public static final String TEXTFIELD_SERVER_PROMPTTEXT_DOCONNECT = "Для подключения к серверу введите имя пользователя и нажмите ENTER.";
-    public static final String TEXTFIELD_SERVER_PROMPTTEXT_LOGGEDIN = "Укажите папку на сервере, с которой хотите начать работать, и нажмите ENTER.";
+    //public static final String TEXTFIELD_SERVER_PROMPTTEXT_DOCONNECT = "Для подключения к серверу введите имя пользователя и нажмите ENTER.";
+    //public static final String TEXTFIELD_SERVER_PROMPTTEXT_LOGGEDIN = "Укажите папку на сервере, с которой хотите начать работать, и нажмите ENTER.";
     public static final String STRFORMAT_YOUARE_LOGGEDIN = "Вы успешно авторизованы как\n\n%s";
     public static final String ALERT_TITLE = MAINWND_TITLE;
     public static final String NO_USER_TITLE = "(?)";
@@ -76,6 +76,8 @@ public class CFactory
     public static final String ERROR_UNABLE_GET_LIST = "Не удалось получить список содержимого папки.";
     public static final String ERROR_NO_CONNECTION_TO_REMOTE_STORAGE = "Нет подключения к серверу.";
     public static final String PROMPT_FORMAT_UNABLE_LIST = "Не удалось вывести список содержимого папки.\n\n%s\n";
+    public static final String PROMPT_INVALID_USER_NAME = "Указано недопустимое имя пользователя. Имя пользователя должно содержать только буквы и цифры.";
+    public static final String PROMPT_INVALID_PASSWORD = "Указан недопустимый пароль.";
     //public static final String PROMPT_FORMAT_UNABLE_APPLY_PATH = "Не удалось вывести список содержимого папки.\n\n%s\n";
     public static final long NO_SIZE_VALUE = -1L;
 

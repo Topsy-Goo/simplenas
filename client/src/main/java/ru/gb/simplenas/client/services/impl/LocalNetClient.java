@@ -230,15 +230,18 @@ public class LocalNetClient implements NetClient
 
 //------------------------------- команды для запросов к серверу ------------------------------------------------*/
 
-    @Override public NasMsg login (@NotNull String username)
+    @Override public NasMsg login (@NotNull String username, @NotNull String password)
     {
         NasMsg result = null;
         if (sayNoToEmptyStrings(username))
         {
             synchronized (syncObj)
             {
+                NasMsg nm = new NasMsg (LOGIN, username, OUTBOUND);
+                nm.setdata (password);
+
                 nmSyncResult = null;
-                if (manipulator.startSimpleRequest (new NasMsg (OperationCodes.LOGIN, username, OUTBOUND)))
+                if (manipulator.startSimpleRequest (nm))
                 {
                     try {   while (nmSyncResult == null)
                                 syncObj.wait();

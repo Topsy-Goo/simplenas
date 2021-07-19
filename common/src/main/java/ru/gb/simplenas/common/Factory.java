@@ -96,9 +96,14 @@ public class Factory
         return NasFileManager.createFile (strFile);
     }
 
-    public static String relativizeByFolderName (@NotNull String folderName, @NotNull String strPath)
+    //public static String relativizeByFolderName (@NotNull String folderName, @NotNull String strPath)
+    //{
+    //    return NasFileManager.relativizeByFolderName(folderName, strPath);
+    //}
+
+    public static boolean isUserNameValid (String userName)
     {
-        return NasFileManager.relativizeByFolderName(folderName, strPath);
+        return NasFileManager.isNameValid (userName);
     }
 
 }
