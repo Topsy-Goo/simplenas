@@ -8,6 +8,6 @@ public interface Server
 
     void clientsListRemove (RemoteManipulator manipulator, String userName);
 
-    //Path getCloudPath ();
+    boolean validateOnLogin (String login, String password);
 
 }

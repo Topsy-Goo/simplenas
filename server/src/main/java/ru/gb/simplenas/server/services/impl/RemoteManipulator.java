@@ -1,7 +1,6 @@
 package ru.gb.simplenas.server.services.impl;
 
 import com.sun.istack.internal.NotNull;
-import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.socket.SocketChannel;
 import org.apache.logging.log4j.LogManager;
@@ -281,22 +280,29 @@ public class RemoteManipulator implements Manipulator
     @ManipulateMethod (opcodes = {LOGIN})
     private boolean manipulateLoginRequest (@NotNull NasMsg nm, ChannelHandlerContext ctx)
     {
-        //LOGGER.trace("manipulateLoginRequest(): start");
+        boolean result = false;
+        String name = nm.msg();
+        String password = (String) nm.data();
+        String errMsg = ERROR_UNABLE_TO_PERFORM;
+
         if (userName != null)
         {
             LOGGER.debug("manipulateLoginRequest(): userName = "+ userName);
         }
-        boolean result = false;
-        String  name = nm.msg();
-        String  errMsg = ERROR_UNABLE_TO_PERFORM;
-
-        if (!isNameValid(name))
+        else if (!isNameValid (name))
         {
-            errMsg = String.format (ERR_FORMAT_UNALLOWABLE_USERNAME, name);
+            errMsg = sformat (ERR_FORMAT_UNALLOWABLE_USERNAME, name);
         }
-        else if (!SFactory.clientsListAdd(this, name))
+/*  Здесь стоит заметить, что в приложении отсутствует механизм регистрации пользователей.
+    Приложение умеет только проверять правильность логина и пароля.
+*/
+        else if (!validateOnLogin (name, password))
         {
-            errMsg = String.format (ERR_FORMAT_LOGIN_REJECTED, name);
+            errMsg = sformat(ERR_FORMAT_NOT_REGISTERED, name);
+        }
+        else if (!clientsListAdd (this, name))
+        {
+            errMsg = sformat (ERR_FORMAT_LOGIN_REJECTED, name);
         }
         else
         {
@@ -308,6 +314,7 @@ public class RemoteManipulator implements Manipulator
                 result = true;
             }
         }
+
         if (!result)
         {
             replyWithErrorMessage (errMsg);

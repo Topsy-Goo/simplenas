@@ -60,7 +60,7 @@ public class LocalPropertyManager implements ClientPropertyManager
         {
             try (FileInputStream fis = new FileInputStream (pPropertyFile.toString());)
             {
-                lnprint("чтение настроек из файла: "+ pPropertyFile.toString());
+                LOGGER.info("чтение настроек из файла: "+ pPropertyFile.toString());
                 properties.loadFromXML(fis);
                 loaded = true;
                 readDefaultProperties (pPropertyFile);

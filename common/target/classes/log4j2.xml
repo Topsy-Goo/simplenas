@@ -10,27 +10,27 @@
 
 	<Appenders>
 		<File name="FILE_APPENDER_CLIENT" fileName="${basePath}/client.log" append="false">
-			<PatternLayout pattern="%n%-3p [%t] %C{2} (%F:%L) %d{yyyy-MM-dd HH:mm:ss} ••• %m." />
+			<PatternLayout pattern="%n%-4p: %-25t•%C{2} (%F:%L) %d{yyyy-MM-dd HH:mm:ss} ••• %m.%n" />
 		</File>
 
 		<File name="FILE_APPENDER_COMMON" fileName="${basePath}/common.log" append="false">
-			<PatternLayout pattern="%n%-3p [%t] %C{2} (%F:%L) %d{yyyy-MM-dd HH:mm:ss} ••• %m." />
+			<PatternLayout pattern="%n%-4p: %-25t•%C{2} (%F:%L) %d{yyyy-MM-dd HH:mm:ss} ••• %m.%n" />
 		</File>
 
 		<File name="FILE_APPENDER_SERVER" fileName="${basePath}/server.log" append="false">
-			<PatternLayout pattern="%n%-3p [%t] %C{2} (%F:%L) %d{yyyy-MM-dd HH:mm:ss} ••• %m." />
+			<PatternLayout pattern="%n%-4p: %-25t•%C{2} (%F:%L) %d{yyyy-MM-dd HH:mm:ss} ••• %m.%n" />
 		</File>
 
 		<Console name="STDOUT_APPENDER" target="SYSTEM_OUT">
-			<PatternLayout pattern="%n%-3p [%t] %c{2} (%F:%L) ••• %m." />
+			<PatternLayout pattern="%n%-4p: %-25t•%c{2} (%F:%L) ••• %m.%n" />
 		</Console>
 
 		<Console name="STDOUT_APPENDER_ROOT" target="SYSTEM_OUT">
-			<PatternLayout pattern="%n%-3p [%t] %c{2} (%F:%L) ••• %m." />
+			<PatternLayout pattern="%n%-4p: %-25t•%c{2} (%F:%L) ••• %m.%n" />
 		</Console>
 
 		<Console name="STDOUT_APPENDER_ERR" target="SYSTEM_ERR">
-			<PatternLayout pattern="%n%-4p %c{2} [%t] (%F:%L) ••• %m." />
+			<PatternLayout pattern="%n%-4p: %-25t•%c{2} (%F:%L) ••• %m.%n" />
 		</Console>
 
 	</Appenders>
@@ -67,7 +67,7 @@
 Форматирование:
 	%n		- перенос строки
 	%m		- само сообщение.
-	%-5p	- печатать уровень сообщения; использовать 5 символов (указывать 3 или 4 бесполезно).
+	%-4p	- печатать уровень сообщения; использовать 5 символов (указывать 3 или 4 бесполезно).
 	%d{yyyy-MM-dd HH:mm:ss}
 			- печатать временную метку; использовать указанный формат.
 	%t		- имя потока, из которого выполнена запись.
@@ -83,9 +83,9 @@
 	 если они не будут восприняты как форматирование.)
 
 Примеры:
-		<PatternLayout pattern="%n%-5p %c{2} [%t] (%F:%L)>> %m."/>
+		<PatternLayout pattern="%n%-4p %c{2} [%t] (%F:%L)>> %m."/>
 
-		"%-5p %d{yyyy-MM-dd HH:mm:ss} [%t] %C (%F:%L)- %m%n"
+		"%-4p %d{yyyy-MM-dd HH:mm:ss} [%t] %C (%F:%L)- %m%n"
 
 
 -->

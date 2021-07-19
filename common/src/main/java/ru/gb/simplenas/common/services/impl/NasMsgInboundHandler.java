@@ -1,14 +1,10 @@
 package ru.gb.simplenas.common.services.impl;
 
-import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
-import io.netty.util.ReferenceCountUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import ru.gb.simplenas.common.services.Manipulator;
 import ru.gb.simplenas.common.structs.NasMsg;
-
-import static ru.gb.simplenas.common.Factory.print;
 
 //Этот класс используется и клиентом, и сервером, но в конструктор передаются разные манипуляторы.
 public class NasMsgInboundHandler extends SimpleChannelInboundHandler<NasMsg>// ChannelInboundHandlerAdapter //

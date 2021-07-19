@@ -4,21 +4,14 @@ import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
-import javafx.scene.paint.Color;
-import javafx.scene.text.Font;
-import javafx.scene.text.FontPosture;
-import javafx.scene.text.FontWeight;
 import javafx.scene.text.TextAlignment;
 import javafx.util.Callback;
-import ru.gb.simplenas.client.structs.TableFileInfo;
 
 import java.text.DecimalFormat;
 import java.text.Format;
 
 import static ru.gb.simplenas.client.CFactory.NO_SIZE_VALUE;
 import static ru.gb.simplenas.common.CommonData.STR_EMPTY;
-import static ru.gb.simplenas.common.Factory.lnprint;
-import static ru.gb.simplenas.common.Factory.sformat;
 
 
 // https://docs.oracle.com/javafx/2/fxml_get_started/fxml_tutorial_intermediate.htm

@@ -1,7 +1,5 @@
 package ru.gb.simplenas.common.services.impl;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import ru.gb.simplenas.common.CommonData;
 import ru.gb.simplenas.common.services.FileExtruder;
 import ru.gb.simplenas.common.structs.NasMsg;
@@ -10,7 +8,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.FileTime;
 

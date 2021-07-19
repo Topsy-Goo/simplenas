@@ -1,7 +1,6 @@
 package ru.gb.simplenas.client.services.impl;
 
 import com.sun.istack.internal.NotNull;
-import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.socket.SocketChannel;
 import org.apache.logging.log4j.LogManager;

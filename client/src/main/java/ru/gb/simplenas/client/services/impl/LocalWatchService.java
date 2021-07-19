@@ -49,13 +49,6 @@ public class LocalWatchService implements ClientWatchService
         callbackOnCurrentFolderEvents = cb;
     }
 
-    //public static ClientWatchService getClientWatchService ()
-    //{
-    //    if (instance == null)
-    //        instance = new LocalWatchService();
-    //    return instance;
-    //}
-
     void callbackDummy (Object ... objects){}
 
 //---------------------------------------------------------------------------------------------------------------*/
@@ -126,7 +119,7 @@ public class LocalWatchService implements ClientWatchService
                 // меняется набор событий на указанный, и возвращается ключ К. Иначе возвращается
                 // новый ключ. Все зарегистрированные ранее события остаются в очереди.)
                 localWatchingKey = p.register(localWatcher, ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY);
-                printf("\nСоздан ключ для наблюдения за папкой <%s>", p);
+                LOGGER.info(sformat("Создан ключ для наблюдения за папкой <%s>", p));
             }
             catch (IOException e){e.printStackTrace();}
         }

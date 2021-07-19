@@ -28,10 +28,10 @@ import static ru.gb.simplenas.common.structs.OperationCodes.OK;
 public class TableViewManager
 {
     private final Controller controller;
-    private TableView<TableFileInfo> clientTv;
-    private TableView<TableFileInfo> serverTv;
-    private TableColumn<TableFileInfo, String> columnClientFileName;
-    private TableColumn<TableFileInfo, String> columnServerFileName;
+    private final TableView<TableFileInfo> clientTv;
+    private final TableView<TableFileInfo> serverTv;
+    private final TableColumn<TableFileInfo, String> columnClientFileName;
+    private final TableColumn<TableFileInfo, String> columnServerFileName;
     //private static final Logger LOGGER = LogManager.getLogger(TableViewManager.class.getName());
 
 

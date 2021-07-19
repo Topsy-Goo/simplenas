@@ -1,5 +1,6 @@
 package ru.gb.simplenas.server.services.impl;
 
+import com.sun.istack.internal.NotNull;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -11,6 +12,7 @@ import io.netty.handler.codec.serialization.ObjectEncoder;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import ru.gb.simplenas.common.services.impl.NasMsgInboundHandler;
+import ru.gb.simplenas.server.services.Authentificator;
 import ru.gb.simplenas.server.services.ServerPropertyManager;
 import ru.gb.simplenas.server.services.Server;
 import ru.gb.simplenas.server.services.ServerFileManager;
@@ -32,6 +34,9 @@ public class RemoteServer implements Server
     public static final String CMD_EXIT = "exit";
     private final ServerFileManager fileNamager;
     private final int publicPort;
+
+    private static Authentificator authentificator;
+
     private static final Logger LOGGER = LogManager.getLogger(RemoteServer.class.getName());
 
 
@@ -43,6 +48,14 @@ public class RemoteServer implements Server
                 serverPropertyManager.getCloudName(),
                 serverPropertyManager.getWelcomeFolders(), //< папки, которые должны быть в папке у нового пользователя.
                 serverPropertyManager.getWelcomeFiles());  //< файлы, которые должны быть в папке у нового пользователя.
+
+        authentificator = new JdbcAuthentificationProvider();
+
+        if (consoleReader == null)
+        {
+            consoleReader = new Thread (this::runConsoleReader);
+            consoleReader.start();
+        }
         LOGGER.debug("создан RemoteServer");
     }
 
@@ -51,7 +64,10 @@ public class RemoteServer implements Server
         if (instance == null)
         {
             instance = new RemoteServer();
-            instance.run();
+            if (authentificator != null && authentificator.isReady())
+            {
+                instance.run(); //< Здесь поток main переходит на обслуживание только метода run(), а всю
+            }                   //  работу по обслуживанию клиентов выполняют потоки пулов.
         }
         return instance;
     }
@@ -131,11 +147,7 @@ public class RemoteServer implements Server
             LOGGER.debug("run(): ChannelFuture "+ cfuture.toString());
             lnprint("\n\t\t*** Ready to getting clients ("+publicPort+"). ***\n");
             channelOfChannelFuture = cfuture.channel();
-            if (consoleReader == null)
-            {
-                consoleReader = new Thread (this::runConsoleReader);
-                consoleReader.start();
-            }
+
     // ChannelFuture позволит отслеживать работу сервера (точнее работу sb). Из всех
     // состояний сервера нас здесь интересует только факт его остановки, поэтому мы следующей строкой указываем свои
     // намерения — ждать, когда сервер остановится:
@@ -201,6 +213,11 @@ public class RemoteServer implements Server
 
 //---------------------------------------------------------------------------------------------------------------*/
 
+    @Override public boolean validateOnLogin (@NotNull String login, @NotNull String password)
+    {
+        return authentificator.authenticate (login, password);
+    }
+
     @Override public boolean clientsListAdd (RemoteManipulator manipulator, String userName)
     {
         boolean ok = false;
@@ -251,6 +268,11 @@ public class RemoteServer implements Server
         }
         channelOfChannelFuture = null;
 
+        if (authentificator != null)
+        {
+            authentificator.close();
+            authentificator = null;
+        }
         LOGGER.trace("onCmdServerExit(): end");
     }
 

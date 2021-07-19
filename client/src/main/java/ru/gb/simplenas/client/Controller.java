@@ -61,17 +61,10 @@ public class Controller implements Initializable
     @FXML public ContextMenu menuServerTableActions;
     @FXML public TableView<TableFileInfo> tvClientSide;
     @FXML public TableView<TableFileInfo>  tvServerSide;
-    //@FXML public TableColumn<TableFileInfo, String> columnClientFolderMark;
     @FXML public TableColumn<TableFileInfo, String> columnClientFileName;
-    //@FXML public TableColumn<TableFileInfo, String> columnClientFileSize;
-    //@FXML public TableColumn<TableFileInfo, String> columnClientModified;
-    //@FXML public TableColumn<TableFileInfo, String> columnClientCreated;
-    //@FXML public TableColumn<TableFileInfo, String> columnServerFolderMark;
     @FXML public TableColumn<TableFileInfo, String> columnServerFileName;
     @FXML public Button buttonConnect;
-    //@FXML public TableColumn<TableFileInfo, String> columnServerFileSize;
-    //@FXML public TableColumn<TableFileInfo, String> columnServerModified;
-    //@FXML public TableColumn<TableFileInfo, String> columnServerCreated;
+
 
     private Stage primaryStage;
     private DlgLoginController dlgLoginController;
@@ -97,9 +90,7 @@ public class Controller implements Initializable
     private static final Logger LOGGER = LogManager.getLogger(Controller.class.getName());
 
 
-//TODO : регистрацию нужно делать при старте программы. Это позолит хранить настройки пользователей в
-//       индивидуальных файлах настроек.
-//TODO : авторизация + БД + флайвэй
+//TODO : докер + флайвэй
 //TODO : DnD
 //TODO : Грэдл
 //
