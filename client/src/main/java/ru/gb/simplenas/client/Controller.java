@@ -34,7 +34,6 @@ import java.nio.file.*;
 import java.util.List;
 import java.util.Optional;
 import java.util.ResourceBundle;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
@@ -92,7 +91,7 @@ public class Controller implements Initializable
     private TableViewManager tableViewManager;
     private ClientPropertyManager propMan;
     private ClientWatchService clientWatcher;
-    private Lock lockOnWatching;
+    private Lock lockSuspendWatching;
     private static int fontSize = DEFAULT_FONT_SIZE;
 
     private static final Logger LOGGER = LogManager.getLogger(Controller.class.getName());
@@ -132,9 +131,8 @@ public class Controller implements Initializable
         strCurrentLocalPath = propMan.getDefaultLastLocalPathString();
         setSceneFontSize(rootbox, propMan.getDefaultFontSize());
 
-        lockOnWatching = new ReentrantLock();
-        clientWatcher = new LocalWatchService ((ooo)->callbackOnCurrentFolderEvents(), lockOnWatching);
-        clientWatcher.startWatchingOnFolder(strCurrentLocalPath);
+        lockSuspendWatching = new ReentrantLock();
+        clientWatcher = new LocalWatchService ((ooo)->callbackOnCurrentFolderEvents(), lockSuspendWatching);
 
         sbarSetDefaultText (STR_EMPTY, SBAR_TEXT_SERVER_NOCONNECTION);
 
@@ -276,6 +274,7 @@ public class Controller implements Initializable
     {
         LOGGER.debug("void onMainWndShowing (Stage primaryStage)");
         this.primaryStage = primaryStage;
+        clientWatcher.startWatchingOnFolder(strCurrentLocalPath);
     }
 
 //callback. Вызывается из netClient при закрытии соединения с сервером. Может вызываться дважды для закрытия одной и той же сессии.
@@ -284,11 +283,14 @@ public class Controller implements Initializable
         netClient = null;
         userName = null;
         //Platform.runLater(()->{
-        //    messageBox(CFactory.ALERTHEADER_REMOUTE_STORAGE, PROMPT_CONNECTION_GETTING_CLOSED, WARNING);  //< вызов не из потока javafx вызывает исключение
+        //    messageBox(ALERTHEADER_REMOUTE_STORAGE,
+        //               PROMPT_CONNECTION_GETTING_CLOSED,
+        //               WARNING);  //< вызов не из потока javafx вызывает исключение
         //                      });
         sbarSetDefaultText(null, CFactory.SBAR_TEXT_SERVER_NOCONNECTION);
     }
 
+//колбэк для службы наблюдения за текущей папкой
     private void callbackOnCurrentFolderEvents()
     {
         applyStringAsNewLocalPath (strCurrentLocalPath);
@@ -386,7 +388,7 @@ public class Controller implements Initializable
     @FXML public void onactionMenuClient_Delete (ActionEvent actionEvent)
     {
         TableFileInfo tfi = tvClientSide.getSelectionModel().getSelectedItem();
-        String errMsg = null;
+        //String errMsg = null;
 
         if (tfi != null)
             deleteLocalEntryByTfi (tfi);
@@ -470,12 +472,7 @@ public class Controller implements Initializable
 //В поле ввода textfieldCurrentPath_Client нажат ENTER.
     @FXML public void onactionTextField_Client_ApplyAsPath (ActionEvent actionEvent)
     {
-        lockOnWatching.lock();
-        {
-            applyStringAsNewLocalPath (textfieldCurrentPath_Client.getText());
-            clientWatcher.startWatchingOnFolder (strCurrentLocalPath);
-        }
-        lockOnWatching.unlock();
+        changeLocalFolder (textfieldCurrentPath_Client.getText());
     }
 
 //В поле ввода textfieldCurrentPath_Server нажат ENTER.
@@ -510,14 +507,19 @@ public class Controller implements Initializable
                         sformat (PROMPT_FORMAT_ROOT_FOLDER, strCurrentLocalPath),
                         INFORMATION);
         }
-        else if (tryLock (1000, MILLISECONDS))
+        else
+        try
         {
-            populateTableView (listFolderContents (strParent), LOCAL);
-            strCurrentLocalPath = strParent;
-            textfieldCurrentPath_Client.setText(strCurrentLocalPath);
-            clientWatcher.startWatchingOnFolder (strCurrentLocalPath);
-            lockOnWatching.unlock();
+            if (lockSuspendWatching.tryLock(2000, MILLISECONDS))
+            {
+                populateTableView (listFolderContents (strParent), LOCAL);
+                strCurrentLocalPath = strParent;
+                textfieldCurrentPath_Client.setText(strCurrentLocalPath);
+                clientWatcher.startWatchingOnFolder (strCurrentLocalPath);
+                lockSuspendWatching.unlock();
+            }
         }
+        catch (InterruptedException e){e.printStackTrace();}
     }
 
 //Переходим в родительскую папку, если таковая существует.
@@ -540,7 +542,7 @@ public class Controller implements Initializable
 //Если в списке/таблице выбрана папка, заходим в неё.
     @FXML public void onactionMenuClient_OpenFolder (ActionEvent actionEvent)
     {
-        openFolderOnClientSide();
+        openItemFolderOnClientSide();
     }
 
 //Если в списке/таблице выбрана папка, заходим в неё.
@@ -554,7 +556,9 @@ public class Controller implements Initializable
     {
         //TableView<TableFileInfo> tv = (TableView<TableFileInfo>) mouseEvent.getSource();
         if (mouseEvent.getClickCount() == 2)
-           openFolderOnClientSide();
+        {
+           openItemFolderOnClientSide();
+        }
     }
 
     @FXML public void tvOnMouseClickedServer (MouseEvent mouseEvent)
@@ -708,34 +712,48 @@ public class Controller implements Initializable
     }
 
 //считая указанную строку путём к каталогу, пытаемся отобразить содержимое этого каталога в «клиентской» панели.
-    void applyStringAsNewLocalPath (String strPath)
+    private boolean applyStringAsNewLocalPath (String strPath)
     {
+/*
+    callbackOnCurrentFolderEvents()
+        onactionTextField_Client_ApplyAsPath()  //-
+        openItemFolderOnClientSide()    //-
+    downloadFileByTfi
+        readUserSpecificProperties()    //-
+    changeLocalFolder()
+*/
+        boolean ok = false;
         if (!sayNoToEmptyStrings(strPath))
+        {
             strPath = System.getProperty (STR_DEF_FOLDER);
-
+        }
         if (isStringOfRealPath (strPath))
         {
             strCurrentLocalPath = strPath;
             List<FileInfo> infolist = listFolderContents (strCurrentLocalPath);
             populateTableView (infolist, LOCAL);
+            ok = true;
         }
-        else messageBox(CFactory.PROMPT_DIR_ENTRY_DOESNOT_EXISTS, strPath, WARNING);
+        else messageBox (PROMPT_DIR_ENTRY_DOESNOT_EXISTS, strPath, WARNING);
+        return ok;
     }
 
 //открывает локальную папку, которая соответствует выбранному пункту в таблице
-    void openFolderOnClientSide()
+    void openItemFolderOnClientSide()
     {
         TableFileInfo tfi = tvClientSide.getSelectionModel().getSelectedItem();
         if (tfi != null && tfi.getFolder())
         {
-            lockOnWatching.lock();
+            try
             {
-                String strPath = Paths.get (strCurrentLocalPath, tfi.getFileName()).toString();
-                applyStringAsNewLocalPath (strPath);
-                textfieldCurrentPath_Client.setText (strPath);
-                clientWatcher.startWatchingOnFolder (strCurrentLocalPath);
+                if (lockSuspendWatching.tryLock(2000, MILLISECONDS))
+                {
+                    String strPath = Paths.get (strCurrentLocalPath, tfi.getFileName()).toString();
+                    changeLocalFolder (strPath);
+                    lockSuspendWatching.unlock();
+                }
             }
-            lockOnWatching.unlock();
+            catch (InterruptedException e){e.printStackTrace();}
         }
     }
 
@@ -826,13 +844,19 @@ public class Controller implements Initializable
             error = entries < 0;
             ok = !error && (entries == 0 || confirmEntryDeletion (paim.toString(), entries));
         }
-        else ok = confirmFileDeletion(paim.toString());
+        else ok = confirmFileDeletion (paim.toString());
 
         if (ok)
         {
             ok = deleteFileOrDirectory (paim);
-            if (tryLock(1000, MILLISECONDS))
-                lockOnWatching.unlock();
+            //try
+            //{
+            //    if (lockOnWatching.tryLock(1000, MILLISECONDS))
+            //    {
+            //        lockOnWatching.unlock();
+            //    }
+            //}
+            //catch (InterruptedException e){e.printStackTrace();}
             error = !ok;
         }
         if (error)  messageBox (ALERTHEADER_DELETION, ERROR_UNABLE_TO_PERFORM, ERROR);
@@ -880,31 +904,36 @@ public class Controller implements Initializable
     private String downloadFileByTfi (TableFileInfo tfi)
     {
         String strErr = ERROR_UNABLE_TO_PERFORM;
-        lockOnWatching.lock();  //< чтобы WatchService не реагировала на временную папку, которая создаётся при загрузке.
+        try
         {
-            String strTarget = Paths.get(strCurrentLocalPath, tfi.getFileName()).toString();
-
-            if (isItSafeToDownloadFile (strTarget))
+            if (lockSuspendWatching.tryLock(2000, MILLISECONDS))  //< чтобы WatchService не реагировала на временную папку, которая создаётся при загрузке.
             {
-                NasMsg nm = netClient.download (strCurrentLocalPath, strCurrentServerPath, tfi.toFileInfo());
-                if (nm != null)
-                if (nm.opCode() == OperationCodes.ERROR)
+                String strTarget = Paths.get(strCurrentLocalPath, tfi.getFileName()).toString();
+
+                if (isItSafeToDownloadFile (strTarget))
                 {
-                    if (nm.msg() != null)
-                        strErr = nm.msg();
+                    NasMsg nm = netClient.download (strCurrentLocalPath, strCurrentServerPath, tfi.toFileInfo());
+                    if (nm != null)
+                    if (nm.opCode() == OperationCodes.ERROR)
+                    {
+                        if (nm.msg() != null)
+                            strErr = nm.msg();
+                    }
+                    else if (nm.opCode() == OK)
+                    {
+                        // Из-за ошибки с передачей больших файлов мы не можем просто добавить пункт
+                        // в таблицу. Поэтому пойдём длинным путём — обновим список файлов.
+                        applyStringAsNewLocalPath (strCurrentLocalPath);
+                        strErr = null;
+                        //Службу слежения за папкой, как оказалось, тут тоже использовать сложно, т.к. она реагирует на
+                        //  временную папку, которая создаётся при загрузке. Служба реагирует быстро, и, если файл маленький,
+                        //  то происходят накладки по времени.
+                    }
                 }
-                else if (nm.opCode() == OK)
-                {
-                    // Из-за ошибки с передачей больших файлов мы не можем просто добавить пункт
-                    // в таблицу. Поэтому пойдём длинным путём — обновим список файлов.
-                    applyStringAsNewLocalPath (strCurrentLocalPath);
-                    strErr = null;
-                    //Листенер, как оказалось, тут тоже использовать сложно, т.к. он реагирует на
-                    //  временную папку, которая создаётся при загрузке.
-                }
+                lockSuspendWatching.unlock();
             }
         }
-        lockOnWatching.unlock();
+        catch (InterruptedException e){e.printStackTrace();}
         return strErr;
     }
 
@@ -958,17 +987,7 @@ public class Controller implements Initializable
                                                                Alert.AlertType.CONFIRMATION);
     }
 
-    private boolean tryLock (long time, TimeUnit timeUnits)
-    {
-        boolean ok = false;
-        try {   ok = lockOnWatching.tryLock (time, timeUnits);
-            }
-        catch (InterruptedException e){e.printStackTrace();}
-        return ok;
-    }
-
-//Устанавливаем размер шрифта (в пикселах) для всего главного окна. (Для окон сообщений размер шрифта
-// устанавливается при вызове этих окон сообщений.)
+//Устанавливаем размер шрифта (в пикселах) для окна.
     private void setSceneFontSize (VBox vbox, int size)
     {
         size = Math.max(size, MIN_FONT_SIZE);
@@ -1002,9 +1021,28 @@ public class Controller implements Initializable
             strCurrentServerPath = userName;
             strCurrentLocalPath = System.getProperty (STR_DEF_FOLDER);
         }
+        changeLocalFolder (strCurrentLocalPath);
+    }
 
-        populateTableView (listFolderContents (strCurrentLocalPath), LOCAL);
-        textfieldCurrentPath_Client.setText (strCurrentLocalPath);
+//Изменяем текущую локальную папку в соотв-вии с параметром strNew. (Синхронизация используется для того, чтобы
+// служба слежения за каталогом не обрабатывала изменения в прежнем каталоге, если таковые случатся во время
+// работы этого метода.)
+    private void changeLocalFolder (String strNew)
+    {
+        if (sayNoToEmptyStrings (strNew))
+        try
+        {
+            if (lockSuspendWatching.tryLock(2000, MILLISECONDS))
+            {
+                if (applyStringAsNewLocalPath (strNew))
+                {
+                    textfieldCurrentPath_Client.setText (strCurrentLocalPath);
+                    clientWatcher.startWatchingOnFolder (strCurrentLocalPath);
+                }
+                lockSuspendWatching.unlock();
+            }
+        }
+        catch (InterruptedException e){e.printStackTrace();}
     }
 
 }

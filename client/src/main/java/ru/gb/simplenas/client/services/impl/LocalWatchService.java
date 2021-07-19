@@ -18,8 +18,15 @@ public class LocalWatchService implements ClientWatchService
     private static LocalWatchService instance;
     private WatchService localWatcher;
     private WatchKey localWatchingKey;
-    private NasCallback callbackOnRegisteredEvents = this::callbackDummy;
-    private Lock lockOnWatching;
+    private NasCallback callbackOnCurrentFolderEvents = this::callbackDummy;
+    private Lock lockSuspendWatching;   //< При загрузке маленьких файлов с сервера временная папка
+        // существует очень короткое время. Служба наблюдения успевает на неё среагировать, а некоторые
+        // методы не успевают, из-за чего они бросаются исключениями. Теперь такие файлы не будут
+        // обрабатываться службой наблюдения.
+        //     Кроме того всегда есть вероятность, что служба слежения начнёт обрабатывать изменения
+        // в каталоге во время какой-то операции в контроллере.
+
+
     private static final Logger LOGGER = LogManager.getLogger (LocalWatchService.class.getName());
 
 
@@ -31,7 +38,7 @@ public class LocalWatchService implements ClientWatchService
             {   localWatcher = FileSystems.getDefault().newWatchService();
                 LOGGER.debug("Создана служба наблюдения за каталогами");
 
-                lockOnWatching = lock;
+                lockSuspendWatching = lock;
 
                 Thread t = new Thread(()->threadDoWatching (localWatcher));
                 t.setDaemon(true);
@@ -39,7 +46,7 @@ public class LocalWatchService implements ClientWatchService
             }
             catch (IOException e) {e.printStackTrace();}
         }
-        callbackOnRegisteredEvents = cb;
+        callbackOnCurrentFolderEvents = cb;
     }
 
     //public static ClientWatchService getClientWatchService ()
@@ -83,13 +90,10 @@ public class LocalWatchService implements ClientWatchService
                                    key.watchable(),
                                    wev.context()));
 
-                        if (lockOnWatching.tryLock())
-                        {   //      При загрузке маленьких файлов с сервера временная папка существует очень короткое время.
-                            // Служба наблюдения успевает на неё среагировать, а некоторые методы — не успевают, из-за
-                            // чего они бросаются исключениями.
-                            //      Теперь такие файлы не будут обрабатываться службой наблюдения.
-                            callbackOnRegisteredEvents.callback (key.watchable().toString());
-                            lockOnWatching.unlock();
+                        if (lockSuspendWatching.tryLock())
+                        {
+                            callbackOnCurrentFolderEvents.callback(key.watchable().toString());
+                            lockSuspendWatching.unlock();
                             LOGGER.debug("\t•\tОбработано");
                         }
                         else LOGGER.debug("\t•\tЗаперто");
