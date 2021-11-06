@@ -13,7 +13,6 @@ public enum OperationCodes {
     COUNTITEMS, //< количество элементов в папке
     DELETE,     //< удаление папки или файла
     EXIT,
-    //TEST,
     ERROR;
 }
 

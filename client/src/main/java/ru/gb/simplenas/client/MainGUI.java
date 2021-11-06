@@ -8,35 +8,29 @@ import javafx.stage.Stage;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Properties;
 
-import static ru.gb.simplenas.client.CFactory.STR_DEF_FOLDER;
-import static ru.gb.simplenas.common.CommonData.*;
-import static ru.gb.simplenas.common.Factory.lnprint;
+import static ru.gb.simplenas.common.CommonData.MAINWND_TITLE;
 
 
-public class MainGUI extends Application
-{
-    private final int initialWidth = 800;
-    private final int initialHeight = 600;
-    private int minWidth = initialWidth;
-    private int minHeight = initialHeight;
+public class MainGUI extends Application {
+
+    private final int initialWidth     = 800;
+    private final int initialHeight    = 600;
+    private final int minWidth         = initialWidth;
+    private final int minHeight        = initialHeight;
     private static final Logger LOGGER = LogManager.getLogger(MainGUI.class.getName());
 
-    public static void main(String[] args)
-    {
+    public static void main(String[] args) {
+
         LOGGER.info("------------------------------------ ");
         LOGGER.info("main(.) start");
         launch(args);
         LOGGER.info("main() end");
     }
 
-    @Override public void start (Stage primaryStage) throws IOException
-    {
+    @Override public void start (Stage primaryStage) throws IOException {
+
         LOGGER.debug("start() starts");
     //инициализируем приложение
         FXMLLoader fxmlLoader = new FXMLLoader (getClass().getResource ("/window.fxml"));   //LOGGER.debug("\n\t••\tFXMLLoader fxmlLoader = new FXMLLoader (getClass().getResource (\"/window.fxml\"));");
@@ -58,5 +52,4 @@ public class MainGUI extends Application
         primaryStage.setMinWidth (minWidth);                                                //LOGGER.debug("\n\t••\tprimaryStage.setMinWidth (minWidth);");
         primaryStage.setMinHeight (minHeight);                                              //LOGGER.debug("\n\t••\tprimaryStage.setMinHeight (minHeight);");
     }
-
 }

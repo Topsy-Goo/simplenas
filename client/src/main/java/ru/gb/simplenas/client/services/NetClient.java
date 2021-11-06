@@ -3,8 +3,7 @@ package ru.gb.simplenas.client.services;
 import ru.gb.simplenas.common.structs.FileInfo;
 import ru.gb.simplenas.common.structs.NasMsg;
 
-public interface NetClient extends Runnable
-{
+public interface NetClient extends Runnable {
     boolean connect ();
 
     NasMsg login (String userName, String password);
@@ -28,5 +27,4 @@ public interface NetClient extends Runnable
     int countFolderEntries (String strParent, FileInfo fi);
 
     NasMsg delete (String strParent, FileInfo fi);
-
 }

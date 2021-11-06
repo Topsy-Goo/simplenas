@@ -4,8 +4,8 @@ import java.nio.file.FileSystems;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
-public class CommonData
-{
+public class CommonData {
+
     public static final boolean DEBUG =      true;
     public static final boolean INBOUND =    true, OUTBOUND =      !INBOUND;
     public static final boolean LOCAL =      true, REMOTE =        !LOCAL;
@@ -38,5 +38,4 @@ public class CommonData
     // сысл которого сводился к тому, что 319 байтов лишние.)
     public static final String WF_ = ".wf:";
     public static final String RF_ = ".rf:";
-
 }

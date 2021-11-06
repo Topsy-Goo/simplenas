@@ -5,8 +5,8 @@ import ru.gb.simplenas.common.structs.NasMsg;
 import java.nio.file.Path;
 
 
-public interface FileExtruder
-{
+public interface FileExtruder {
+
     boolean initialize (Path ptargetfile);
 
     boolean getState();
@@ -18,5 +18,4 @@ public interface FileExtruder
     void discard();
 
     void close();
-
 }

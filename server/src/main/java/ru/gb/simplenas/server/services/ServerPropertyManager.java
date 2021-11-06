@@ -1,10 +1,9 @@
 package ru.gb.simplenas.server.services;
 
-import java.nio.file.Path;
 import java.util.List;
 
-public interface ServerPropertyManager
-{
+public interface ServerPropertyManager {
+
     void initialize();
 
     int getPublicPort();
@@ -14,5 +13,4 @@ public interface ServerPropertyManager
     List<String> getWelcomeFolders();
 
     List<String> getWelcomeFiles();
-
 }

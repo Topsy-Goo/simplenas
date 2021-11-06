@@ -1,6 +1,6 @@
 package ru.gb.simplenas.client.structs;
 
-import com.sun.istack.internal.NotNull;
+import org.jetbrains.annotations.NotNull;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleLongProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -12,21 +12,19 @@ import static ru.gb.simplenas.client.CFactory.NO_SIZE_VALUE;
 import static ru.gb.simplenas.common.CommonData.*;
 import static ru.gb.simplenas.client.CFactory.formatFileTime;
 
-//Класс содержит данные для одной строки таблицы, а также методы, необходимые для того, чтобы JFX могла
-// работать со строкой. Генератор кода создал необходимые конструкторы, гетеры и сетеры для себя и для
-// разработчика. Другие методы были добавлены позже.
-public class TableFileInfo
-{
-/*  Переменные — для отображения данных в таблице имеют особый формат. Если требуется форматирование
-    числовых значений, то требуется специальный callback-обработчик (в качестве примера такого
-    обработчика см. в FormattedTableCellFactory).
-
-    Гетеры и сетеры для этих переменных тоже имеют особый формат, потому что ими пользуется javafx
-    при добавлении значений в таблицу и при извлечении значений.
+/** Класс содержит данные для одной строки таблицы, а также методы, необходимые для того, чтобы JFX могла
+ работать со строкой.<p>
+Переменные — для отображения данных в таблице имеют особый формат. Если требуется форматирование
+числовых значений, то требуется специальный callback-обработчик (в качестве примера такого
+обработчика см. в FormattedTableCellFactory).<p>
+Гетеры и сетеры для этих переменных тоже имеют особый формат, потому что ими пользуется javafx
+при добавлении значений в таблицу и при извлечении значений.
 */
+public class TableFileInfo {
+
 //строковые поля служат для отображения в таблице. Ими оперирует jfx.
-    private final SimpleStringProperty folderMark = new SimpleStringProperty(STR_EMPTY);    //< пустая строка останется пустой для файлов
-    private final SimpleStringProperty fileName = new SimpleStringProperty (STR_EMPTY);
+    private final SimpleStringProperty folderMark   = new SimpleStringProperty(STR_EMPTY);    //< пустая строка останется пустой для файлов
+    private final SimpleStringProperty fileName     = new SimpleStringProperty (STR_EMPTY);
     private final SimpleStringProperty timeModified = new SimpleStringProperty (STR_EMPTY); //< пустая строка останется пустой для папок
     private final SimpleStringProperty timeCreated  = new SimpleStringProperty (STR_EMPTY); //< ...
 
@@ -38,22 +36,19 @@ public class TableFileInfo
     private final SimpleBooleanProperty folder    = new SimpleBooleanProperty(false);
     private final SimpleBooleanProperty symbolic  = new SimpleBooleanProperty(false);
 
+    static final String FORMAT_FILEINFO = "(%s:%s%s%s:sz%d:tm%s:tc%s)";
 
-    public TableFileInfo()
-    {
-        this("", 0L, 0L, 0L, false, false);
-    }
 
-    public TableFileInfo (String name, long size, long modified, long created, boolean folder, boolean symbolic)
-    {
+    public TableFileInfo() { this("", 0L, 0L, 0L, false, false); }
+
+    public TableFileInfo (String name, long size, long modified, long created, boolean folder, boolean symbolic) {
         setFileName (name);
-        setFolder (folder);
+        setFolder   (folder);
         setSymbolic (symbolic);
-        if (!folder)
-        {
+        if (!folder) {
             setSize (size);
-            setCreated     (created);
-            setTimeCreated (created);
+            setCreated      (created);
+            setTimeCreated  (created);
             setModified     (modified);
             setTimeModified (modified);
             setFolderMark (STR_EMPTY);
@@ -61,20 +56,17 @@ public class TableFileInfo
         else setFolderMark (FOLDER_MARK);
     }
 
-    public TableFileInfo (FileInfo fi)
-    {
+    public TableFileInfo (FileInfo fi) {
         if (fi == null)
             throw new IllegalArgumentException ("ERROR @ TableFileInfo (FileInfo): bad FileInfo passed in.");
 
         setFileName (fi.getFileName());
         setSymbolic (fi.isSymbolic());
-        if (fi.isDirectory())
-        {
+        if (fi.isDirectory()) {
             setFolder (true);
-            setFolderMark (FOLDER_MARK); //< Этот индикатор лучше назначать именно так. Дело в том, что в
-        }                                //  пустую таблицу мы добавляем пустую строку при пом.:
-        else                             //  new TableFileInfo ("",0L,0L,0L, FOLDER, NOT_SYMBOLIC)
-        {                                //  что избавляет нас от индикатора DIR в этой пустой строке
+            setFolderMark (FOLDER_MARK); /* < Этот индикатор лучше назначать именно так. Дело в том, что в пустую таблицу мы добавляем пустую строку при пом.: new TableFileInfo ("",0L,0L,0L, FOLDER, NOT_SYMBOLIC) что избавляет нас от индикатора DIR в этой пустой строке   */
+        }
+        else {
             setTimeModified (fi.getModified());
             setModified     (fi.getModified());
             setTimeCreated (fi.getCreated());
@@ -86,45 +78,41 @@ public class TableFileInfo
     }
 
 //Добавлено генератором кода (кроме boolean)
-    public String getFileName()  {   return fileName.get();   }
+    public String getFileName()      {   return fileName.get();   }
     public String getTimeCreated()   {   return timeCreated.get();   }
     public String getTimeModified()  {   return timeModified.get();   }
-    public long getSize()  {   return size.get();   }
+    public long getSize()      {   return size.get();   }
     public long getCreated()   {   return created.get();   }
     public long getModified()  {   return modified.get();   }
-    public boolean getFolder()   {   return folder.get();   }
-    public boolean getSymbolic()   {   return symbolic.get();   }
+    public boolean getFolder()      {   return folder.get();   }
+    public boolean getSymbolic()    {   return symbolic.get();   }
     public String getFolderMark()   {   return folder.get() ? FOLDER_MARK : STR_EMPTY;   }
 
 //Этот набор необходим для javafx, если какие-то строки таблицы заполняются через FXML-файл.
-    public void setFileName (String name) {   this.fileName.set (name);   }
+    public void setFileName (String name)       {   this.fileName.set (name);   }
     public void setTimeCreated (long created)   {   this.timeCreated.set (formatFileTime (created));   }
     public void setTimeModified (long modified) {   this.timeModified.set (formatFileTime (modified));   }
-    public void setSize (long size)   {   this.size.set (size);   }
+    public void setSize (long size)         {   this.size.set (size);   }
     public void setCreated (long created)   {   this.created.set (created);   }
     public void setModified (long modified) {   this.modified.set (modified);   }
-    public void setFolder (boolean folder) {   this.folder.set (folder);   }
-    public void setSymbolic (boolean symbolic) {   this.folder.set (symbolic);   }
+    public void setFolder (boolean folder)  {   this.folder.set (folder);   }
+    public void setSymbolic (boolean symbolic)    {   this.folder.set (symbolic);   }
     public void setFolderMark (String folderMark) {   this.folderMark.set (folderMark);   }
 
 //Эти методы созданы генератором кода, и пока непонятно, нужны ли они.
-    public SimpleStringProperty fileNameProperty ()   {   return fileName;   }
-    public SimpleLongProperty fileSizeProperty ()   {   return size;   }
-    public SimpleLongProperty modifiedProperty ()   {   return modified;   }
-    public SimpleLongProperty createdProperty ()   {   return created;   }
+    public SimpleStringProperty fileNameProperty () {   return fileName;  }
+    public SimpleLongProperty fileSizeProperty ()   {   return size;      }
+    public SimpleLongProperty modifiedProperty ()   {   return modified;  }
+    public SimpleLongProperty createdProperty ()    {   return created;   }
 
-//другие методы
+//---------------------- другие методы ------------------------------------------
 
-    public @NotNull FileInfo toFileInfo()
-    {
+    public @NotNull FileInfo toFileInfo() {
         return new FileInfo (fileName.get(), folder.get(), EXISTS, symbolic.get(),
                              size.get(), created.get(), modified.get());
     }
 
-    static final String FORMAT_FILEINFO = "(%s:%s%s%s:sz%d:tm%s:tc%s)"
-    ;
-    @Override public String toString()
-    {
+    @Override public String toString() {
     //Для папок вместо времени создания и изменения возвращаются 0L, поэтому не будем их высчитывать.
         String  tm = (getFolder()) ? "-" : FileTime.from (getModified(), filetimeUnits).toString(),
                 tc = (getFolder()) ? "-" : FileTime.from (getCreated(), filetimeUnits).toString();
@@ -132,12 +120,12 @@ public class TableFileInfo
         String name = getFileName();
         if (name == null)
             name = "null";
-        return String.format(FORMAT_FILEINFO,
-                             name,
-                             getFolder() ? 'D' : 'F',
-                             'E',
-                             getSymbolic() ?  'S' : '-',
-                             getSize(), tm, tc);
+        return String.format (FORMAT_FILEINFO,
+                              name,
+                              getFolder() ? 'D' : 'F',
+                              'E',
+                              getSymbolic() ?  'S' : '-',
+                              getSize(), tm, tc);
     }
 
 }

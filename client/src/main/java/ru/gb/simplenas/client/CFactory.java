@@ -1,6 +1,6 @@
 package ru.gb.simplenas.client;
 
-import com.sun.istack.internal.NotNull;
+import org.jetbrains.annotations.NotNull;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.TableView;
 import ru.gb.simplenas.client.services.ClientPropertyManager;
@@ -17,8 +17,7 @@ import java.util.List;
 import static ru.gb.simplenas.common.CommonData.MAINWND_TITLE;
 
 
-public class CFactory
-{
+public class CFactory {
     public static final int DEFAULT_PORT_NUMBER = 8289;
     public static final int DEFAULT_FONT_SIZE = 9;
     public static final int MIN_FONT_SIZE = 9;
@@ -84,96 +83,67 @@ public class CFactory
 
     private CFactory () {}
 
-    static NetClient newNetClient (NasCallback cbDisconnection, int port, String hostName)
-    {
+    static NetClient newNetClient (NasCallback cbDisconnection, int port, String hostName) {
         return new LocalNetClient(cbDisconnection, port, hostName);
     }
-
 //-------------------------- методы для работы с контекстным меню -----------------------------------------------*/
 
-    public static void setContextMenuEventHandler_OnShoing (ContextMenu menu, TableView<TableFileInfo> tv)
-    {
-        ContextMenuManager.setContextMenuEventHandler_OnShoing (menu, tv);
+    public static void setContextMenuEventHandler_OnShoing (ContextMenu menu, TableView<TableFileInfo> tv) {
+        ContextMenuManager.setContextMenuEventHandler_OnShoing(menu, tv);
     }
-
 //-------------------------- методы для работы с TableView ------------------------------------------------------*/
 
-    public static Point populateTv (@NotNull TableView<TableFileInfo> tv, @NotNull List<FileInfo> infolist)
-    {
-        return TableViewManager.populateTv (tv, infolist);
+    public static Point populateTv (@NotNull TableView<TableFileInfo> tv, @NotNull List<FileInfo> infolist) {
+        return TableViewManager.populateTv(tv, infolist);
     }
 
-    public static Point statisticsTv (@NotNull TableView<TableFileInfo> tv)
-    {
-        return TableViewManager.statisticsTv (tv);
+    public static Point statisticsTv (@NotNull TableView<TableFileInfo> tv) {
+        return TableViewManager.statisticsTv(tv);
     }
 
-    public static TableFileInfo addItemAsFolder (@NotNull String name, @NotNull TableView<TableFileInfo> tv)
-    {
-        return TableViewManager.addItemAsFolder (name, tv);
+    public static TableFileInfo addItemAsFolder (@NotNull String name, @NotNull TableView<TableFileInfo> tv) {
+        return TableViewManager.addItemAsFolder(name, tv);
     }
 
-    public static void deleteTvItem (TableView<TableFileInfo> tv, TableFileInfo t)
-    {
-        TableViewManager.deleteTvItem (tv, t);
+    public static void deleteTvItem (TableView<TableFileInfo> tv, TableFileInfo t) {
+        TableViewManager.deleteTvItem(tv, t);
     }
-
-
 //--------------------------------- LocalFileManager ------------------------------------------------------------*/
 
-    public static boolean isStringOfRealPath (@NotNull String string)
-    {
+    public static boolean isStringOfRealPath (@NotNull String string) {
         return LocalFileManager.isStringOfRealPath(string);
     }
 
-    public static String stringPath2StringAbsoluteParentPath (@NotNull String s)
-    {
-        return LocalFileManager.stringPath2StringAbsoluteParentPath (s);
+    public static String stringPath2StringAbsoluteParentPath (@NotNull String s) {
+        return LocalFileManager.stringPath2StringAbsoluteParentPath(s);
     }
 
-    public static String formatFileTime (long time)
-    {
+    public static String formatFileTime (long time) {
         return LocalFileManager.formatFileTime(time);
     }
 
-    public static Path createSubfolder (Path parent, String strChild)
-    {
+    public static Path createSubfolder (Path parent, String strChild) {
         return LocalFileManager.createSubfolder(parent, strChild);
     }
 
-    public static FileInfo rename (@NotNull Path pathParentAbsolute, @NotNull String oldName, @NotNull String newName)
-    {
-        return LocalFileManager.rename (pathParentAbsolute, oldName, newName);
+    public static FileInfo rename (@NotNull Path pathParentAbsolute, @NotNull String oldName, @NotNull String newName) {
+        return LocalFileManager.rename(pathParentAbsolute, oldName, newName);
     }
 
-    public static int countDirectoryEntries (@NotNull Path pFolder)
-    {
-        return LocalFileManager.countDirectoryEntries (pFolder);
+    public static int countDirectoryEntries (@NotNull Path pFolder) {
+        return LocalFileManager.countDirectoryEntries(pFolder);
     }
 
-    public static boolean deleteFileOrDirectory (@NotNull Path path)
-    {
+    public static boolean deleteFileOrDirectory (@NotNull Path path) {
         return LocalFileManager.deleteFileOrDirectory(path);
     }
 
-    public static List<FileInfo> getRootsAsFileinfoList()
-    {
+    public static List<FileInfo> getRootsAsFileinfoList () {
         return LocalFileManager.getRootsAsFileinfoList();
     }
-
 //--------------------------------- ClientPropertyManager --------------------------------------------------------*/
 
-    public static ClientPropertyManager getProperyManager ()
-    {
+    public static ClientPropertyManager getProperyManager () {
         return LocalPropertyManager.getInstance();
     }
-
-
-//--------------------------------- LocalWatchService -----------------------------------------------------------*/
-
-    //public static ClientWatchService getClientWatchService()
-    //{
-    //    return LocalWatchService.getClientWatchService();
-    //}
 }
-//---------------------------------------------------------------------------------------------------------------*/

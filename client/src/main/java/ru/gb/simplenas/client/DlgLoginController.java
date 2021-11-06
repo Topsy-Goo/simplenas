@@ -1,6 +1,5 @@
 package ru.gb.simplenas.client;
 
-import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -13,10 +12,11 @@ import java.util.ResourceBundle;
 
 import static ru.gb.simplenas.client.CFactory.*;
 import static ru.gb.simplenas.client.Controller.messageBox;
-import static ru.gb.simplenas.common.Factory.*;
+import static ru.gb.simplenas.common.Factory.isUserNameValid;
+import static ru.gb.simplenas.common.Factory.sayNoToEmptyStrings;
 
-public class DlgLoginController implements Initializable
-{
+public class DlgLoginController implements Initializable {
+
     @FXML public TextField txtfldLogin;
     @FXML public TextField txtfldPassword;
     @FXML public PasswordField pswfldPassword;
@@ -31,106 +31,84 @@ public class DlgLoginController implements Initializable
     private boolean buttnLoginPressed;
 
 
-    @Override public void initialize (URL location, ResourceBundle resources)
-    {
+    @Override public void initialize (URL location, ResourceBundle resources) {
 
-    //Наделяем поле ввода пароля возможностью показывать введённые символы. Для этой цели созданы
-    //  два поля ввода — обычное (TextField) и «парольное» (PasswordField) и создан флажок (чекбокс).
-    //  Одно из полей будет невидимо в зависимости от состояния флажка. Устанавливаем связи между
-    //  этими полями и флажком:
+        //Наделяем поле ввода пароля возможностью показывать введённые символы. Для этой цели созданы
+        //  два поля ввода — обычное (TextField) и «парольное» (PasswordField) и создан флажок (чекбокс).
+        //  Одно из полей будет невидимо в зависимости от состояния флажка. Устанавливаем связи между
+        //  этими полями и флажком:
 
         //если флажок установлен, то будет отображаться обычное поле ввода:
-        txtfldPassword.managedProperty().bind (checkBox.selectedProperty());
-        txtfldPassword.visibleProperty().bind (checkBox.selectedProperty());
+        txtfldPassword.managedProperty().bind(checkBox.selectedProperty());
+        txtfldPassword.visibleProperty().bind(checkBox.selectedProperty());
 
         //если чекбокс сброшен, то будет отображаться «парольное» поле ввода:
-        pswfldPassword.managedProperty().bind (checkBox.selectedProperty().not());
-        pswfldPassword.visibleProperty().bind (checkBox.selectedProperty().not());
+        pswfldPassword.managedProperty().bind(checkBox.selectedProperty().not());
+        pswfldPassword.visibleProperty().bind(checkBox.selectedProperty().not());
 
         //делаем текст в обоих полях ввода одинаковым.
-        txtfldPassword.textProperty().bindBidirectional (pswfldPassword.textProperty());
-
+        txtfldPassword.textProperty().bindBidirectional(pswfldPassword.textProperty());
     }
-
 //---------------------------------------------------------------------------------------------------------------*/
 
-//Если при вводе логина пользователь нажал ENTER, то переводим фокус ввода на следующий элемент управления —
-//  на поле ввода пароля.
-    @FXML public void onActionLoginTypingDone (ActionEvent actionEvent)
-    {
+/** Если при вводе логина пользователь нажал ENTER, то переводим фокус ввода на следующий элемент управления —
+  на поле ввода пароля. */
+    @FXML public void onActionLoginTypingDone (ActionEvent actionEvent) {
         setFocusOnPasswordControl();
     }
 
-//Если при вводе пароля пользователь нажал ENTER, то переводим фокус ффода на следующий элемент управления —
-//  на кнопку продолжения авторизации или на кнопку отмены, в зависимости от содержимого полей ввода логина
-//  и пароля.
-    @FXML public void onActionPasswordTypingDone (ActionEvent actionEvent)
-    {
+/** Если при вводе пароля пользователь нажал ENTER, то переводим фокус ффода на следующий элемент управления —
+  на кнопку продолжения авторизации или на кнопку отмены, в зависимости от содержимого полей ввода логина
+  и пароля.   */
+    @FXML public void onActionPasswordTypingDone (ActionEvent actionEvent) {
         String login = txtfldLogin.getText();
         String pass = getTextFromPasswordControl();
 
-        if (sayNoToEmptyStrings (login, pass))
-            buttnLogin.requestFocus();
-        else
-            buttnCancel.requestFocus();
+        if (sayNoToEmptyStrings(login, pass)) { buttnLogin.requestFocus(); }
+        else { buttnCancel.requestFocus(); }
     }
 
-//Нажатие на кнопку «Авторизация»
-    @FXML public void onActionStartLogin (ActionEvent actionEvent)
-    {
+//Нажатие на кнопку «Авторизация»   */
+    @FXML public void onActionStartLogin (ActionEvent actionEvent) {
         login = txtfldLogin.getText();
         password = getTextFromPasswordControl();
 
-        if (!isUserNameValid (login))
-        {
-            messageBox (ALERTHEADER_AUTHENTIFICATION, PROMPT_INVALID_USER_NAME, Alert.AlertType.ERROR);
+        if (!isUserNameValid(login)) {
+            messageBox(ALERTHEADER_AUTHENTIFICATION, PROMPT_INVALID_USER_NAME, Alert.AlertType.ERROR);
             txtfldLogin.requestFocus();
         }
-        else
-        if (!sayNoToEmptyStrings(password))
-        {
-            messageBox (ALERTHEADER_AUTHENTIFICATION, PROMPT_INVALID_PASSWORD, Alert.AlertType.ERROR);
+        else if (!sayNoToEmptyStrings(password)) {
+            messageBox(ALERTHEADER_AUTHENTIFICATION, PROMPT_INVALID_PASSWORD, Alert.AlertType.ERROR);
             setFocusOnPasswordControl();
         }
-        else
-        {
+        else {
             buttnLoginPressed = true;
             dialogStage.close();
         }
     }
 
-//Нажатие на кнопку «Отмена».
-    @FXML public void onActionCancel (ActionEvent actionEvent)
-    {
+/** Нажатие на кнопку «Отмена».   */
+    @FXML public void onActionCancel (ActionEvent actionEvent) {
         login = null;
         password = null;
         buttnLoginPressed = false;
         dialogStage.close();
     }
 
-//---------------------------------------------------------------------------------------------------------------*/
+    public boolean isButtnLoginPressed () { return buttnLoginPressed; }
 
-    public boolean isButtnLoginPressed()    {   return buttnLoginPressed;   }
-    public String getLogin()    {   return login;    }
-    public String getPassword() {   return password;    }
+    public String getLogin () { return login; }
 
-    public void setDialogStage (Stage dialogStage)   {   this.dialogStage = dialogStage;   }
+    public String getPassword () { return password; }
 
-//---------------------------------------------------------------------------------------------------------------*/
+    public void setDialogStage (Stage dialogStage) { this.dialogStage = dialogStage; }
 
-    private void setFocusOnPasswordControl()
-    {
-        if (txtfldPassword.isVisible())
-            txtfldPassword.requestFocus();
-        else
-            pswfldPassword.requestFocus();
+    private void setFocusOnPasswordControl () {
+        if (txtfldPassword.isVisible()) { txtfldPassword.requestFocus(); }
+        else { pswfldPassword.requestFocus(); }
     }
 
-    private String getTextFromPasswordControl()
-    {
-        return txtfldPassword.isVisible()
-                    ? txtfldPassword.getText()
-                    : pswfldPassword.getText();
+    private String getTextFromPasswordControl () {
+        return txtfldPassword.isVisible() ? txtfldPassword.getText() : pswfldPassword.getText();
     }
-
 }

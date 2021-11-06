@@ -3,8 +3,7 @@ package ru.gb.simplenas.client.services;
 import ru.gb.simplenas.common.services.Manipulator;
 import ru.gb.simplenas.common.structs.NasMsg;
 
-public interface ClientManipulator extends Manipulator
-{
+public interface ClientManipulator extends Manipulator {
     //эти методы нужны только клиенту
 
     boolean startListRequest (NasMsg nm);

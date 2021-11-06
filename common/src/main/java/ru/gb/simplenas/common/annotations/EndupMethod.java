@@ -9,7 +9,7 @@ import java.lang.annotation.Target;
 
 @Retention (RetentionPolicy.RUNTIME)
 @Target (ElementType.METHOD)
-public @interface EndupMethod
-{
+public @interface EndupMethod {
+
     OperationCodes[] opcodes();
 }
