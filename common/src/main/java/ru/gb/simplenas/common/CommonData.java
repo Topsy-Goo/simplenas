@@ -1,6 +1,7 @@
 package ru.gb.simplenas.common;
 
 import java.nio.file.FileSystems;
+import java.time.ZoneId;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
@@ -17,15 +18,16 @@ public class CommonData {
     public static final boolean ENABLE =     true, DISABLE =       !ENABLE;
     public static final boolean CONNECTED =  true, NOT_CONNECTED = !CONNECTED;
 
-    public static final TimeUnit filetimeUnits = TimeUnit.SECONDS;
-    public static final String FILETIME_FORMAT_PATTERN = " yyyy-MM-dd | HH:mm:ss ";
+    public static final ZoneId   ZONE_ID = ZoneId.systemDefault();
+    public static final Locale   RU_LOCALE      = new Locale ("ru", "RU");
+    public static final String   FILE_SEPARATOR = FileSystems.getDefault().getSeparator();
+    public static final TimeUnit FILETIME_UNITS = TimeUnit.SECONDS;
+    public static final String   FILETIME_FORMAT_PATTERN = " yyyy-MM-dd | HH:mm:ss ";
 
     public static final String PROPFILE_COMMENT = "Этот файл настроек сгенерирован/обновлён автоматически.";
     public static final long FILESIZE_KILOBYTE = 1024L;
     public static final String MAINWND_TITLE = "Simple.NAS client";
-    public static final String strFileSeparator = FileSystems.getDefault().getSeparator();
     public static final String STR_EMPTY = "";
-    public static final Locale RU_LOCALE = new Locale ("ru", "RU");
     public static final String ERROR_UNABLE_TO_PERFORM = "Не удалось выполнить операцию!";
     public static final String PROMPT_CONNECTION_GETTING_CLOSED = "Сервер разорвал соединение.";
     public static final String FOLDER_MARK = "DIR";

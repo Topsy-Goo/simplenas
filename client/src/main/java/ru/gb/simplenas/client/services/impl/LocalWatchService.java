@@ -13,8 +13,8 @@ import static java.nio.file.StandardWatchEventKinds.*;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static ru.gb.simplenas.common.Factory.*;
 
-public class LocalWatchService implements ClientWatchService
-{
+public class LocalWatchService implements ClientWatchService {
+
     private WatchService localWatcher;
     private WatchKey     localWatchingKey;
     private NasCallback  callbackOnCurrentFolderEvents = this::callbackDummy;

@@ -12,25 +12,26 @@ import java.util.List;
 
 public class SFactory {
 
-    public static final String ERROR_INVALID_FILDER_SPECIFIED  = "Указано некорректное имя папки.";
-    public static final String ERR_FORMAT_LOGIN_REJECTED       = "Авторизация отклонена. Возможно, пользователь уже подключен:\n\n%s";
-    public static final String ERR_FORMAT_UNALLOWABLE_USERNAME = "Недопустимое имя пользователя:\n\n%s\n";
-    public static final String ERROR_SERVER_UNABLE_TO_PERFORM  = "Сервер не смог выполнить операцию!";
-    public static final String ERR_FORMAT_NOT_REGISTERED       = "Пользователь не зарегистрирован:\n\n%s\n";
+    public static final int    DEFAULT_PUBLIC_PORT_NUMBER    = 8289;
+    public static final String
+        ERROR_INVALID_FILDER_SPECIFIED  = "Указано некорректное имя папки.",
+        ERR_FORMAT_LOGIN_REJECTED       = "Авторизация отклонена. Возможно, пользователь уже подключен:\n\n%s",
+        ERR_FORMAT_UNALLOWABLE_USERNAME = "Недопустимое имя пользователя:\n\n%s\n",
+        ERROR_SERVER_UNABLE_TO_PERFORM  = "Сервер не смог выполнить операцию!",
+        ERR_FORMAT_NOT_REGISTERED       = "Пользователь не зарегистрирован:\n\n%s\n",
     //public static final String ERROR_ALREADY_REGISTERED = "Повторная регистрация?";
 
-    public static final String PROPERTY_FILE_NAME_SERVER     = "server.properties";   //< файл настроек (property file)
-    public static final int    DEFAULT_PUBLIC_PORT_NUMBER    = 8289;
-    public static final String DEFUALT_CLOUD_NAME            = "cloud";
-    public static final String DEFUALT_WELCOM_FOLDERS_STRING = "documentes, pictures";
-    public static final String PROPNAME_CLOUD_NAME           = "CLOUD.NAME";
-    public static final String PROPNAME_PUBLIC_PORT          = "PUBLIC.PORT.NUMBER";
-    public static final String PROPNAME_WELCOM_FOLDERS       = "WELCOME.FOLDERS";
-    public static final String PROPNAME_WELCOM_FILES         = "WELCOME.FILES";
+        PROPERTY_FILE_NAME_SERVER     = "server.properties",   //< файл настроек (property file)
+        DEFUALT_CLOUD_NAME            = "cloud",
+        DEFUALT_WELCOM_FOLDERS_STRING = "documentes, pictures",
+        PROPNAME_CLOUD_NAME           = "CLOUD.NAME",
+        PROPNAME_PUBLIC_PORT          = "PUBLIC.PORT.NUMBER",
+        PROPNAME_WELCOM_FOLDERS       = "WELCOME.FOLDERS",
+        PROPNAME_WELCOM_FILES         = "WELCOME.FILES",
 
-    public static final String CLASS_NAME   = "org.sqlite.JDBC";
-    public static final String DATABASE_URL = "jdbc:sqlite:SimpleNAS.db";
-    public static final String TABLE_NAME   = "simplenas_users";
+        CLASS_NAME   = "org.sqlite.JDBC",
+        DATABASE_URL = "jdbc:sqlite:SimpleNAS.db",
+        TABLE_NAME   = "simplenas_users";
 
 
     private SFactory () {}

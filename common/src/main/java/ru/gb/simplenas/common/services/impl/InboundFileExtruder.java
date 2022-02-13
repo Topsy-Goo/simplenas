@@ -97,9 +97,9 @@ public class InboundFileExtruder implements FileExtruder {
                 Files.move (pFileInTmpFolder, pTargetFile, REPLACE_EXISTING);  //< разрешение на перезапись у нас уже есть
                 //поправляем время создания и время изменения
                 Files.getFileAttributeView (pTargetFile, BasicFileAttributeView.class)
-                     .setTimes (FileTime.from (nm.fileInfo().getModified(), CommonData.filetimeUnits),
+                     .setTimes (FileTime.from (nm.fileInfo().getModified(), CommonData.FILETIME_UNITS),
                                 null,
-                                FileTime.from (nm.fileInfo().getCreated(), CommonData.filetimeUnits));
+                                FileTime.from (nm.fileInfo().getCreated(), CommonData.FILETIME_UNITS));
                 ok = true;
             }
         }

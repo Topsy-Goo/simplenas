@@ -13,8 +13,9 @@ public class ContextMenuManager {
 /** Обработчик контекстного меню. Вызывается перед тем, как меню будет показано. Здесь мы выбираем, какие
  пункты следует сделать доступными, а какие — нет. Чтобы не усложнять способ определения пунктов, им
  назначены атрибуты userData (см. FXML-файл).    */
-    public static void setContextMenuEventHandler_OnShoing (ContextMenu menu, TableView<TableFileInfo> tv) {
-
+    public static void setContextMenuEventHandler_OnShoing (
+                        ContextMenu menu, TableView<TableFileInfo> tv)
+    {
         if (menu != null && tv != null)
             menu.setOnShowing(new EventHandler<WindowEvent>() {
 

@@ -49,7 +49,7 @@ public class LocalPropertyManager implements ClientPropertyManager
     @Override public void initialize() {
 
         properties = new Properties();
-        pPropertyFile = Paths.get(PROPERTY_FILE_NAME_CLIENT).toAbsolutePath();
+        pPropertyFile = Paths.get(CLIENT_PROPERTY_FILE_NAME).toAbsolutePath();
 
         if (Files.exists (pPropertyFile) && Files.isRegularFile(pPropertyFile)) {
             try (FileInputStream fis = new FileInputStream (pPropertyFile.toString());) {

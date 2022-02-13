@@ -18,6 +18,7 @@ import ru.gb.simplenas.common.structs.OperationCodes;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -54,8 +55,8 @@ public class LocalManipulator implements ClientManipulator {
 
     public LocalManipulator (NasCallback callbackChannelActive,
                              NasCallback callbackMsgIncoming,
-                             NasCallback callbackInfo, SocketChannel sC) {
-
+                             NasCallback callbackInfo, SocketChannel sC)
+    {
         this.callbackChannelActive = callbackChannelActive;
         this.callbackMsgIncoming = callbackMsgIncoming;
         this.callbackInfo = callbackInfo;
@@ -78,10 +79,6 @@ public class LocalManipulator implements ClientManipulator {
             }
         }
         return inputstream;
-
-        //TODO : для некоторых файлов система не даёт создать InputStream. Должно быть, дело в правах
-        //       доступа, т.к. каждый раз эти файлы выглядят служебными. Иногда попытка удаётся, но
-        //       не с первого раза.
     }
 //-----------------------------------------------------------------------------------------
 
@@ -156,7 +153,7 @@ public class LocalManipulator implements ClientManipulator {
     private void manipulateListQueue (NasMsg nm) {
 
         if (dialogue != null) {
-            //dialogue.add(nm);     TODO : проверить в тесте,что здесь nm не записывается в dialogue
+            //dialogue.add(nm);    < нельзя!
             print("l");
             if (dialogue.infolist() != null) {
                 dialogue.infolist().add(nm.fileInfo());
@@ -205,16 +202,15 @@ public class LocalManipulator implements ClientManipulator {
     }
 
     @ManipulateMethod (opcodes = LOAD2LOCAL)
-    private void manipulateLoad2LocalQueue (NasMsg nm)                                      //IN, IN, ..., IN
-    {
+    private void manipulateLoad2LocalQueue (NasMsg nm) {                                      //IN, IN, ..., IN
+
         if (dialogue != null) {
-            //dialogue.add(nm);  TODO : проверить в тесте,что здесь nm не записывается в dialogue
+            //dialogue.add(nm);  < нельзя!
             dialogue.writeDataBytes2File(nm);
             //полyчаем кусочки файла от сервера и записываем их в файл; если в процессе возникнут
             // ошибки на нашей стороне, передачу не прерываем, а просто ждём её окончания.
         }
     }
-//---------------------------------- LOAD2SERVER ----------------------------------------------------------------*/
 
     @EndupMethod (opcodes = LOAD2LOCAL)
     private void endupLoad2LocalRequest (NasMsg nm) {                                        //IN
@@ -228,16 +224,17 @@ public class LocalManipulator implements ClientManipulator {
             stopTalking(nm);
         }
     }
+//---------------------------------- LOAD2SERVER ----------------------------------------------------------------*/
 
     @Override public boolean startLoad2ServerRequest (String fromLocalFolder, NasMsg nm) {   //OUT
 
         boolean result = false;
         if (nm != null && nm.fileInfo() != null && schannel != null) {
 
-            InputStream is = inputstreamByFilename(fromLocalFolder, nm.fileInfo().getFileName());
+            InputStream is = inputstreamByFilename (fromLocalFolder, nm.fileInfo().getFileName());
             if (is == null) {
                 nm.setOpCode(ERROR);
-                nm.setmsg(sformat(PROMPT_FORMAT_UPLOADERROR_SRCFILE_ACCESS, fromLocalFolder, strFileSeparator, nm.fileInfo().getFileName()));
+                nm.setmsg(sformat(PROMPT_FORMAT_UPLOADERROR_SRCFILE_ACCESS, fromLocalFolder, FILE_SEPARATOR, nm.fileInfo().getFileName()));
             }
             else if (newDialogue(nm, is)) {
                 schannel.writeAndFlush(nm);
@@ -249,8 +246,7 @@ public class LocalManipulator implements ClientManipulator {
     }
 
     @ManipulateMethod (opcodes = LOAD2SERVER)
-    private void manipulateLoad2ServerQueue (NasMsg nm) {                                    //IN, OUT, OUT, ..., OUT
-
+    private void manipulateLoad2ServerQueue (NasMsg nm) {           //IN, OUT, OUT, ..., OUT
         if (dialogue != null) {
             dialogue.add(nm);
             boolean result = false;
@@ -268,14 +264,19 @@ public class LocalManipulator implements ClientManipulator {
     }
 
     private boolean sendFileToServer (NasMsg nm) throws IOException {
-
         InputStream istream = null;
-        if (nm.fileInfo() == null || dialogue == null || schannel == null || (istream = dialogue.inputStream()) == null) return false;
+
+        if (nm.fileInfo() == null
+        || dialogue == null
+        || schannel == null
+        || (istream = dialogue.inputStream()) == null)
+        {
+            return false;
+        }
 
         final long size = nm.fileInfo().getFilesize();
         long       read = 0L;
         long       rest = size;
-
         final int bufferSize = (int) Math.min(INT_MAX_BUFFER_SIZE, size);
         byte[]    array      = new byte[bufferSize];
 
@@ -385,7 +386,7 @@ public class LocalManipulator implements ClientManipulator {
             return false;
         }
         if (inputStream != null) {
-            dialogue = new NasDialogue(nm, inputStream);
+            dialogue = new NasDialogue (nm, inputStream);
         }
         return dialogue != null;
     }

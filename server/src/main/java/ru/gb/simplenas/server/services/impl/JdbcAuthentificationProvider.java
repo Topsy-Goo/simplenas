@@ -15,17 +15,19 @@ import static ru.gb.simplenas.server.SFactory.getDbConnection;
 
 public class JdbcAuthentificationProvider implements Authentificator {
 
-    public static final  String FILD_LOGIN                              = "login";
-    public static final  String FILD_PASS                               = "password";
-    public static final  String FORMAT_STATEMENT_SELECT_1BY1            = "SELECT %s FROM [%s] WHERE %s = '%s';";
-    public static final  String FORMAT_PREPARED_STATEMENT_INSERT_2FILDS = "INSERT INTO [%s] (%s, %s) VALUES (?, ?);";
-    private static final Logger LOGGER = LogManager.getLogger(JdbcAuthentificationProvider.class);
+    public static final String
+        FILD_LOGIN = "login",
+        FILD_PASS  = "password",
+        FORMAT_STATEMENT_SELECT_1BY1 = "SELECT %s FROM [%s] WHERE %s = '%s';",
+        FORMAT_PREPARED_STATEMENT_INSERT_2FILDS = "INSERT INTO [%s] (%s, %s) VALUES (?, ?);";
 
     private Statement         statement;
     private PreparedStatement psInsert3Fld;
     private PreparedStatement psDeleteBy1;
     private DbConnection      dbConnection;
-    private boolean           jdbcReady;
+
+    private static final Logger LOGGER = LogManager.getLogger(JdbcAuthentificationProvider.class);
+
 
     public JdbcAuthentificationProvider () {
         dbConnection = getDbConnection();
@@ -35,17 +37,13 @@ public class JdbcAuthentificationProvider implements Authentificator {
         try {
             psInsert3Fld = connection.prepareStatement (sformat(FORMAT_PREPARED_STATEMENT_INSERT_2FILDS,
                                                                 TABLE_NAME, FILD_LOGIN, FILD_PASS));
-            jdbcReady = true;
         }
         catch (SQLException sqle) {
-            sqle.printStackTrace();
             close();
-            throw new RuntimeException("\nCannot create object JdbcAuthentificationProvider.");
+            throw new RuntimeException("\nCannot create object JdbcAuthentificationProvider.", sqle);
         }
     }
 //---------------------------------------------------------------------------------------------------------------*/
-
-    @Override public boolean isReady () { return this.jdbcReady; }
 
     @Override public void close () {
         if (dbConnection != null) dbConnection.close();

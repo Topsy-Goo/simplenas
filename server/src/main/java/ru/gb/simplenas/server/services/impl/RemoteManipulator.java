@@ -142,9 +142,7 @@ nm.fileInfo.fileNAme — имя файла, котрый нужно создат
         }
         else {   // Клиент Шлёт файл. Получаем первый/очередной кусочек данных. Если в процессе произойдёт ошибка, то прерывать клиента не будем, чтобы не усложнять процесс, — пусть передаст всё, а потом, когда от клиента придёт сообщений об окончании передачи данных, мы сообщим о результате в ответном сообщении -- сделаем это в endupLoad2ServerRequest().
             dialogue.writeDataBytes2File(nm);
-            //if (dialogue != null)   < не будем записывать эти сообщения, т.к. их запись фактически равносильна
-            //    dialogue.add(nm);     записи передаваемого файла ещё и в dialogue.
-            //                          TODO : убедиться, что запись не ведётся и добавить эту проверку в тэсты.
+            //if (dialogue != null)    dialogue.add(nm);   < нельзя!
         }
     }
 
@@ -524,11 +522,12 @@ nm.fileInfo.fileNAme — имя файла, котрый нужно создат
 
         LOGGER.info("Получено сообщение " + OperationCodes.EXIT);
         if (sayNoToEmptyStrings(userName) && socketChannel != null) {
+
             discardCurrentOperation();
             if (userName != null) clientsListRemove(this, userName);
             userName = null;
             socketChannel.disconnect();
-            ctx.disconnect();//close(); //TODO : соединение завершают оба вызова.
+            ctx.disconnect();//close();
         }
     }
 

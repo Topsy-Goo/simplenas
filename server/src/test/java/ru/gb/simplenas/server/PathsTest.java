@@ -14,8 +14,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import static ru.gb.simplenas.common.CommonData.STR_EMPTY;
-import static ru.gb.simplenas.common.CommonData.strFileSeparator;
-import static ru.gb.simplenas.common.Factory.lnprint;
+import static ru.gb.simplenas.common.CommonData.FILE_SEPARATOR;
 import static ru.gb.simplenas.common.Factory.printf;
 import static ru.gb.simplenas.server.SFactory.getServerFileManager;
 import static ru.gb.simplenas.server.SFactory.isNameValid;
@@ -37,7 +36,7 @@ public class PathsTest
         cloud = sfm.getCloud();
         printf("\nT.Папка облака: <%s>", cloud);
 
-        if (strFileSeparator == null || strFileSeparator.isEmpty())
+        if (FILE_SEPARATOR == null || FILE_SEPARATOR.isEmpty())
         {
             Assertions.fail();
         }
@@ -92,14 +91,14 @@ public class PathsTest
         List<Arguments> list = new ArrayList<>();
         list.add (Arguments.arguments (true, "user1"));
         list.add (Arguments.arguments (true, strCloudName));   //< сейчас юзер может выбрать себе такой логин
-        list.add (Arguments.arguments (false, ".." +strFileSeparator+"user1"));
-        list.add (Arguments.arguments (false, ".." +strFileSeparator+ ".." +strFileSeparator+"user1"));
-        list.add (Arguments.arguments (false, ".." +strFileSeparator+ ".." +strFileSeparator));
-        list.add (Arguments.arguments (false, ".." +strFileSeparator+ ".."));
-        list.add (Arguments.arguments (false, ".." +strFileSeparator));
+        list.add (Arguments.arguments (false, ".." + FILE_SEPARATOR + "user1"));
+        list.add (Arguments.arguments (false, ".." + FILE_SEPARATOR + ".." + FILE_SEPARATOR + "user1"));
+        list.add (Arguments.arguments (false, ".." + FILE_SEPARATOR + ".." + FILE_SEPARATOR));
+        list.add (Arguments.arguments (false, ".." + FILE_SEPARATOR + ".."));
+        list.add (Arguments.arguments (false, ".." + FILE_SEPARATOR));
         list.add (Arguments.arguments (false, ".."));
-        list.add (Arguments.arguments (false, "user1"+strFileSeparator));
-        list.add (Arguments.arguments (false, "user1"+strFileSeparator+"tmp"));
+        list.add (Arguments.arguments (false, "user1" + FILE_SEPARATOR));
+        list.add (Arguments.arguments (false, "user1" + FILE_SEPARATOR + "tmp"));
         list.add (Arguments.arguments (false, STR_EMPTY));
         list.add (Arguments.arguments (false, null));
         return list.stream();

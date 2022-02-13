@@ -30,12 +30,12 @@ public class RemoteServer implements Server {
     private final static Logger LOGGER   = LogManager.getLogger (RemoteServer.class.getName());
     public  final static String CMD_EXIT = "exit";
 
-    private static RemoteServer    instance;
-    private static Authentificator authentificator;
+    private static       RemoteServer    instance;
+    private static final Object          MONITOR = new Object();
+    private static       Authentificator authentificator;
 
     private final ServerFileManager fileNamager;
     private final int               publicPort;
-    private       Thread            consoleReader;
     private       boolean           serverGettingOff;
     private       Channel           channelOfChannelFuture;
 
@@ -47,27 +47,21 @@ public class RemoteServer implements Server {
         fileNamager = getServerFileManager(serverPropertyManager.getCloudName(),
                                            serverPropertyManager.getWelcomeFolders(), //< папки, которые должны быть в папке у нового пользователя.
                                            serverPropertyManager.getWelcomeFiles());  //< файлы, которые должны быть в папке у нового пользователя.
-
         authentificator = new JdbcAuthentificationProvider();
-        if (consoleReader == null) {
-
-            consoleReader = new Thread(this::runConsoleReader);
-            consoleReader.start();
-        }
+        new Thread (this::runConsoleReader).start();
         LOGGER.debug("создан RemoteServer");
     }
 
     public static Server getInstance () {
-        if (instance == null) {
-            instance = new RemoteServer();
-            if (authentificator != null && authentificator.isReady()) {
-                instance.run(); //< Здесь поток main переходит на обслуживание только метода run(), а всю
-            }                   //  работу по обслуживанию клиентов выполняют потоки пулов.
-        }
+        if (instance == null)
+            synchronized (MONITOR) {
+                if (instance == null)
+                    instance = new RemoteServer();
+            }
         return instance;
     }
 
-    private void run () {
+    @Override public void run () {
         LOGGER.info("run(): start");
         // В этом методе мы настраиваем сервер на приём клиентов и на обработку других запросов клиентов, а затем запускаем
         // бесконечный цикл ожидания клиентов и обработки их запросов. (Пока непонятно, что именно прерывает этот цикл.)
@@ -108,7 +102,7 @@ public class RemoteServer implements Server {
 
                 .childHandler(new ChannelInitializer<SocketChannel>() {   //< когда к нам кто-то подключиться, …
 
-                    @Override protected void initChannel (SocketChannel socketChannel) throws Exception { //< … мы его инициализируем в этом методе
+                    @Override protected void initChannel (SocketChannel socketChannel) { //< … мы его инициализируем в этом методе
 
                         LOGGER.trace("\t{}.initChannel (SocketChannel " + socketChannel.toString() + ") start");
                         // ChannelPipeline (конвейер канала) будет передавать данные на обработку всем обработчикам в том порядке,
@@ -141,35 +135,28 @@ public class RemoteServer implements Server {
             lnprint("\n\t\t*** Ready to getting clients (" + publicPort + "). ***\n");
             channelOfChannelFuture = cfuture.channel();
 
-            // ChannelFuture позволит отслеживать работу сервера (точнее работу sb). Из всех
-            // состояний сервера нас здесь интересует только факт его остановки, поэтому мы следующей строкой указываем свои
-            // намерения — ждать, когда сервер остановится:
+            // ChannelFuture позволит отслеживать работу сервера (точнее работу sb). Из всех состояний сервера нас здесь интересует только факт его остановки, поэтому мы следующей строкой указываем свои намерения — ждать, когда сервер остановится:
             //      channel() — это геттер
             //      closeFuture() — описывает ожидаемое событие
             //      sync() — запускает ожидание.
-            //  (К тому же это, кажется, предотвращает мгновенное закрытие канала. По крайней мере это так для клиента,
-            //  который создаёт канал не в ответ на входящее соединение, а для установки соединения.)
+            // (К тому же это, кажется, предотвращает мгновенное закрытие канала. По крайней мере это так для клиента, который создаёт канал не в ответ на входящее соединение, а для установки соединения.)
 
             cfuture.channel().closeFuture().sync();
             LOGGER.trace("run(): ChannelFuture.channel closed");
 
-            // Это как-бы подвесит (заблокирует) наш поток до остановки сервера. Если бы мы хотели выполнять какие-то действия
-            // параллельно с работой сервера, то их нужно было бы вставить между вызовами
+            // Это как-бы подвесит (заблокирует) наш поток до остановки сервера. Если бы мы хотели выполнять какие-то действия параллельно с работой сервера, то их нужно было бы вставить между вызовами
             // sb.bind(port).sync()
             // и
             // cfuture.channel().closeFuture().sync()
 
-            // (Сервер представлен тем же объектом, который его
-            // инициализировал. Не очень удачное название для объекта, учитывая, что bootstrap = шнуровка: шнуровка давно закончилась,
-            // началась и закончилась работа, а объект всё ещё называется bootstrap.)
-            //ещё можносделать одной строкой:
+            //ещё можно сделать одной строкой:
             //b.bind(PORT).sync().channel().closeFuture().sync();
             // Future — позволяет зарегистрировать слушателя, который будет уведомлен о выполнении операции.
             // ChannelFuture — может блокировать выполнение потока до окончания выполнения операции.
         }
         catch (Exception e) {e.printStackTrace();}
-        finally {   // В конце работы сервера освобождаем ресурсы и потоки, которыми пользовались циклы событий (иначе
-            //  программа не завершиться):
+        finally {
+            // В конце работы сервера освобождаем ресурсы и потоки, которыми пользовались циклы событий (иначе программа не завершиться):
             groupParent.shutdownGracefully();
             groupChild.shutdownGracefully();
             LOGGER.info("run(): end");
@@ -195,7 +182,6 @@ public class RemoteServer implements Server {
             else LOGGER.error("runConsoleReader(): unsupported command detected: " + msg);
         }
         scanner.close();
-        consoleReader = null;
         LOGGER.trace("runConsoleReader(): end");
     }
 //---------------------------------------------------------------------------------------------------------------*/

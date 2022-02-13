@@ -114,8 +114,8 @@ public class TableFileInfo {
 
     @Override public String toString() {
     //Для папок вместо времени создания и изменения возвращаются 0L, поэтому не будем их высчитывать.
-        String  tm = (getFolder()) ? "-" : FileTime.from (getModified(), filetimeUnits).toString(),
-                tc = (getFolder()) ? "-" : FileTime.from (getCreated(), filetimeUnits).toString();
+        String  tm = (getFolder()) ? "-" : FileTime.from (getModified(), FILETIME_UNITS).toString(),
+                tc = (getFolder()) ? "-" : FileTime.from (getCreated(), FILETIME_UNITS).toString();
 
         String name = getFileName();
         if (name == null)

@@ -9,7 +9,6 @@ import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
 import java.text.DecimalFormat;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -52,9 +51,9 @@ public class LocalFileManager extends NasFileManager {
 
     public static String formatFileTime (long time) {    //TableFileInfo
 
-        FileTime          ft  = FileTime.from (time, CommonData.filetimeUnits);
-        LocalDateTime     ldt = LocalDateTime.ofInstant (ft.toInstant(), ZoneId.systemDefault());
-        DateTimeFormatter dtf = DateTimeFormatter.ofPattern (CommonData.FILETIME_FORMAT_PATTERN, CommonData.RU_LOCALE);
+        FileTime          ft  = FileTime.from (time, FILETIME_UNITS);
+        LocalDateTime     ldt = LocalDateTime.ofInstant (ft.toInstant(), ZONE_ID);
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern (FILETIME_FORMAT_PATTERN, RU_LOCALE);
         return ldt.format(dtf);
     }
 

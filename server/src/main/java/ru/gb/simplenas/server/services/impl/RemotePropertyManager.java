@@ -57,7 +57,8 @@ public class RemotePropertyManager implements ServerPropertyManager {
 
     private void readAllProperties (@NotNull Path pPropertyFile) {
 
-        try (FileInputStream fis = new FileInputStream(pPropertyFile.toString());) {
+        try (FileInputStream fis = new FileInputStream(pPropertyFile.toString());)
+        {
             printf("\nчтение настроек из файла <%s>", pPropertyFile.toString());
             properties.loadFromXML(fis);
 
@@ -71,8 +72,8 @@ public class RemotePropertyManager implements ServerPropertyManager {
 
     private List<String> readAsList (String strPropertyName) {
         List<String> flist = new ArrayList<>();
-        if (strPropertyName != null && !strPropertyName.isEmpty()) {
 
+        if (strPropertyName != null && !strPropertyName.isEmpty()) {
             String   strFolders  = properties.getProperty(strPropertyName, STR_EMPTY);
             String[] arrstrNames = strFolders.split(REGEX);
 
@@ -94,7 +95,6 @@ public class RemotePropertyManager implements ServerPropertyManager {
     }
 
     private String readCloudName () {
-
         String strCloudName = this.properties.getProperty(PROPNAME_CLOUD_NAME, DEFUALT_CLOUD_NAME);
         printf("\nServerPropertyManager: %s : <%s>", PROPNAME_CLOUD_NAME, strCloudName);
         return strCloudName;
@@ -103,42 +103,37 @@ public class RemotePropertyManager implements ServerPropertyManager {
     private void checkPropertiesValues (@NotNull Path pPropertyFile) {
         boolean needWrite = false;
         if (publicPort <= 0) {
-
             properties.setProperty(PROPNAME_PUBLIC_PORT, String.valueOf(DEFAULT_PUBLIC_PORT_NUMBER));
             needWrite = true;
             publicPort = DEFAULT_PUBLIC_PORT_NUMBER;
         }
         if (!sayNoToEmptyStrings(strPathCloud)) {
-
             properties.setProperty(PROPNAME_CLOUD_NAME, DEFUALT_CLOUD_NAME);
             needWrite = true;
             strPathCloud = DEFUALT_CLOUD_NAME;
         }
         if (welcomeFolders == null) {
-
             properties.setProperty(PROPNAME_WELCOM_FOLDERS, DEFUALT_WELCOM_FOLDERS_STRING);
             needWrite = true;
             welcomeFolders = new ArrayList<>();
         }
         if (welcomeFiles == null) {
-
             properties.setProperty(PROPNAME_WELCOM_FILES, STR_EMPTY);
             needWrite = true;
             welcomeFiles = new ArrayList<>();
         }
         if (needWrite) {
-
             errprintf("\nНе удалось (частично или полностью) прочитать файл настроек: <%s>\n", pPropertyFile);
-            if (!createFile(pPropertyFile) || !writeProperties(pPropertyFile)) {
+            if (!createFile(pPropertyFile) || !writeProperties(pPropertyFile))
                 errprintf("\nНе удалось создать/обновить файл настроек <%s>\n", pPropertyFile);
-            }
         }
     }
 
     private boolean writeProperties (@NotNull Path pPropertyFile) {
 
         boolean ok = false;
-        try (FileOutputStream fos = new FileOutputStream(pPropertyFile.toString());) {
+        try (FileOutputStream fos = new FileOutputStream(pPropertyFile.toString());)
+        {
             printf("\nзапись настроек в файл <%s>\n", pPropertyFile.toString());
             properties.storeToXML(fos, PROPFILE_COMMENT);
         // (Кирилические символы нормально записываются тоько для XML-файла (исп-ся UTF-8). В текстовом формате они преобразуются в /uxxxx.)

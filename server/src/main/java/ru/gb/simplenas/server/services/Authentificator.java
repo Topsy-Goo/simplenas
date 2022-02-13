@@ -9,6 +9,4 @@ public interface Authentificator {
     void remove (String login);
 
     void close();
-
-    boolean isReady();
 }

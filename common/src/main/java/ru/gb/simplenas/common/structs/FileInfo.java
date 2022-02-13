@@ -52,8 +52,8 @@ public class FileInfo implements Serializable {
                     directory = attributes.isDirectory();
                     if (!directory) {
                         filesize = attributes.size();
-                        modified = attributes.lastModifiedTime().to(CommonData.filetimeUnits);
-                        created = attributes.creationTime().to(CommonData.filetimeUnits);
+                        modified = attributes.lastModifiedTime().to(CommonData.FILETIME_UNITS);
+                        created = attributes.creationTime().to(CommonData.FILETIME_UNITS);
                     }
                 }
             }
@@ -103,8 +103,8 @@ public class FileInfo implements Serializable {
     public String toString () {
 
         //Для папок вместо времени создания и изменения возвращаются 0L, поэтому не будем их высчитывать.
-        String tm = (directory) ? "-" : FileTime.from (modified, CommonData.filetimeUnits).toString();
-        String tc = (directory) ? "-" : FileTime.from (created, CommonData.filetimeUnits).toString();
+        String tm = (directory) ? "-" : FileTime.from (modified, CommonData.FILETIME_UNITS).toString();
+        String tc = (directory) ? "-" : FileTime.from (created, CommonData.FILETIME_UNITS).toString();
         String name = fileName;
 
         if (name == null)

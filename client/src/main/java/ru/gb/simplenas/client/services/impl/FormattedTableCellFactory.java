@@ -18,7 +18,9 @@ import static ru.gb.simplenas.common.CommonData.STR_EMPTY;
 // S – The type of the TableView generic type (i.e. S == TableView<S>). This should also match with the
 //     first generic type in TableColumn.
 // T - The type of the item contained within the Cell.
-public class FormattedTableCellFactory<P, T> implements Callback<TableColumn<P, T>, TableCell<P, T>> {
+public class FormattedTableCellFactory<P, T>
+             implements Callback<TableColumn<P, T>, TableCell<P, T>>
+{
     private TextAlignment alignment;
     private Format        format = new DecimalFormat(",###");   //< форматируем размер (если в таблицу вписывать
     // отфрматированную строку, то она будет сортироваться лексиграфически, а не по значению; к тому же так мы

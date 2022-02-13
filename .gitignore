@@ -27,3 +27,5 @@
 /excluded.files/заметки.txt
 /excluded.files/описание.txt
 /excluded.files/кусочки.java
+/client/src/main/java/ru/gb/simplenas/client/CPoligon.java
+/server/src/main/java/ru/gb/simplenas/server/SPoligon.java
