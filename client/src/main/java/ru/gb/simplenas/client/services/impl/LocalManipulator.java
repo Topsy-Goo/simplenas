@@ -1,15 +1,13 @@
 package ru.gb.simplenas.client.services.impl;
 
-import com.sun.istack.internal.NotNull;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.socket.SocketChannel;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import ru.gb.simplenas.client.services.ClientManipulator;
+import ru.gb.simplenas.common.NasCallback;
 import ru.gb.simplenas.common.annotations.EndupMethod;
 import ru.gb.simplenas.common.annotations.ManipulateMethod;
-import ru.gb.simplenas.common.NasCallback;
-import ru.gb.simplenas.common.services.FileExtruder;
 import ru.gb.simplenas.common.structs.FileInfo;
 import ru.gb.simplenas.common.structs.NasDialogue;
 import ru.gb.simplenas.common.structs.NasMsg;
@@ -45,8 +43,8 @@ public class LocalManipulator implements ClientManipulator {
     private       Map<OperationCodes, Method> mapManipulateMetods, mapEndupMetods;
 
     private NasCallback   callbackChannelActive = this::callbackDummy;  //< для последовательного процесса подключения
-    private NasCallback   callbackMsgIncoming   = this::callbackDummy;    //< для доставки результатов запросов
-    private NasCallback   callbackInfo          = this::callbackDummy;           //< для сообщений, которых никто не ждёт
+    private NasCallback   callbackMsgIncoming   = this::callbackDummy;  //< для доставки результатов запросов
+    //private NasCallback   callbackInfo          = this::callbackDummy;  //< для сообщений, которых никто не ждёт
     private NasDialogue   dialogue;
 
 
@@ -56,7 +54,7 @@ public class LocalManipulator implements ClientManipulator {
     {
         this.callbackChannelActive = callbackChannelActive;
         this.callbackMsgIncoming = callbackMsgIncoming;
-        this.callbackInfo = callbackInfo;
+        //this.callbackInfo = callbackInfo;
         this.schannel = sC;
         buildMethodsMaps();
         LOGGER.debug("создан LocalManipulator");
@@ -65,8 +63,8 @@ public class LocalManipulator implements ClientManipulator {
 
     void callbackDummy (Object... objects) {}
 
-    @Override public void handle (ChannelHandlerContext ctx, NasMsg nm) throws IOException {
-
+    @Override public void handle (ChannelHandlerContext ctx, NasMsg nm) //throws IOException
+    {
         if (nm != null && nm.inbound() == OUTBOUND) {
             nm.setinbound (INBOUND);
             OperationCodes opcode = nm.opCode();
@@ -176,8 +174,17 @@ public class LocalManipulator implements ClientManipulator {
     }
 
 //---------------------------------- LOAD2LOCAL ------------------------------------------------*/
-/** Отправа серверу запроса на пересылку файла от сервера к клиенту. */
-    @Override public boolean startLoad2LocalRequest (String toLocalFolder, NasMsg nm) {      //OUT
+/** Отправка серверу запроса на пересылку файла от сервера к клиенту.<p>
+    Отправляем серверу сообщение с кодом {@code NM_OPCODE_LOAD2LOCAL}. Этот код будет
+    присутствовать во всех сообщениях во время передачи файла. «Уточняющие» коды сообщений
+    будут находится в NasMsg.msg. (На данном этапе уточняющий код не требуется, зато есть
+    обязательное условие — <b>NasMsg.data</b> == NULL.)<p>
+    На этом этапе <b>NasMsg.msg</b> содержит полное название папки на стороне сервера, из которой
+    нужно передать файл. Остальная информация о файле — в NasMsg.FileInfo.
+*/
+    @SuppressWarnings("All")
+    @Override public boolean startLoad2LocalRequest (String toLocalFolder, NasMsg nm)
+    {
         boolean result = false;
         String  errMsg = ERROR_UNABLE_TO_PERFORM;
 
@@ -204,61 +211,66 @@ public class LocalManipulator implements ClientManipulator {
         return result;
     }
 
+/** Метод используется при передаче файла к клиенту от сервера.<br>
+    • Код операции в NasMsg.opCode == NM_OPCODE_LOAD2LOCAL не меняется в течение всей передачи;<br>
+    • NasMsg.msg — содержит уточняющий код операции (в виде строки);<br>
+    • NasMsg.data — содержит передаваемую часть файла, если уточняющий код == NM_OPCODE_DATA. Во всех
+    остальных случаях в этом поле может находиться любое значение;<br>
+    • NasMsg.fileInfo.filesize — содержит размер передаваемой части файла, если уточняющий код == NM_OPCODE_DATA.
+*/
     @ManipulateMethod (opcodes = NM_OPCODE_LOAD2LOCAL)
-    private void manipulateLoad2LocalQueue (NasMsg nm) throws IOException {                //IN, IN, ..., IN
-        if (dialogue != null)
+    private void manipulateLoad2LocalQueue (NasMsg nm) throws IOException {
+
+        String msg = null;
+        OperationCodes opcode = OperationCodes.valueOf (nm.msg());
+
+        if (dialogue == null) {
+            if (DEBUG) throw new RuntimeException();
+            else provideErrorMessage (nm, ERROR_UNABLE_TO_PERFORM);
+        }
+        else switch (opcode)
         {
-        //сервер сообщает, что готов передавать файл (на этом шаге пока нет никаких
-        // действий с нашей стороны; просто отвечаем тем же сообщением):
-            if (nm.msg().equals (NM_OPCODE_READY.name())) {
+            case NM_OPCODE_READY: {
                 sendempty (nm);
                 printf ("\nПринимаем файл <%s>\n", dialogue.tc.path);
-            }
-        //сервер передаёт часть файла (или целый короткий файл):
-            else if (nm.msg().equals (NM_OPCODE_DATA.name())) {
-                if (dialogue.tc.fileDownloadAndWrite (nm)) {
+            } break;
+            case NM_OPCODE_DATA:  {   //сервер передаёт часть файла (или целый короткий файл):
+                if (dialogue.tc.fileDownloadAndWrite (nm))
                     sendempty (nm);
-                }
-                else {
-                    String msg = String.format ("Не удалось принять файл: <%s>.", dialogue.tc.path);
-                    LOGGER.error (msg);
-                    transferCleanup (nm, msg);
-                }
-            }
-        //сервер рапортует о нормальном окончании передачи файла:
-            else if (nm.msg().equals (NM_OPCODE_OK.name())) {
+                else
+                    manipulateLoad2ServerQueue (  //меняем уточняющий код сообщения и вызываем самих себя
+                        nm.setmsg (NM_OPCODE_ERROR.name())
+                          .setdata (sformat ("Не удалось принять файл: <%s>.", dialogue.tc.path)));
+            } break;
+            case NM_OPCODE_OK:    {    //сервер рапортует о нормальном окончании передачи файла:
                 if (dialogue.tc.endupDownloading (nm)) {
                     printf ("\nПринят файл <%s>.\n", dialogue.tc.path);
                     nm.setOpCode (NM_OPCODE_OK); //< (старый стиль) чтобы в контроллере увидели успех
                     transferCleanup (nm, USE_DEFAULT_MSG);
+                    break;
                 }
-                else {  //меняем код сообщения и вызываем самих себя
-                    nm.setmsg (NM_OPCODE_ERROR.name());
-                    manipulateLoad2LocalQueue (nm);
-                }
+                //nm.setmsg (NM_OPCODE_ERROR.name());
+                nm.setdata ("Не удалось сохранить полученный файл.");
             }
-        //во время передачи произошла ошибка (nm.data содержит сообщение от сервера):
-            else if (nm.msg().equals (NM_OPCODE_ERROR.name())) {
-                String msg = (String) nm.data();
-                if (msg == null)
-                    msg = String.format ("Не удалось принять файл: <%s>.", dialogue.tc.path);
+            case NM_OPCODE_ERROR: {    //во время передачи произошла ошибка (nm.data содержит сообщение от сервера):
+                msg = (String) nm.data();
+                if (msg == null)    msg = sformat ("Не удалось принять файл: <%s>.", dialogue.tc.path);
                 LOGGER.error (msg);
                 nm.setOpCode (NM_OPCODE_ERROR); //< (старый стиль) чтобы в контроллере увидели ошибку
                 transferCleanup (nm, msg);
-            }
-        //нужно разорвать соединение, не дожидаясь окончания передачи файла (мы не
-        //знаем, откуда оно пришло, поэтому дублируем его на сервер):
-            else if (nm.msg().equals (NM_OPCODE_EXIT.name())) {
+            } break;
+            case NM_OPCODE_EXIT:  {
+                //нужно разорвать соединение, не дожидаясь окончания передачи файла (мы не
+                //знаем, откуда сообщение пришло, поэтому дублируем его на сервер):
                 sendempty (nm);
                 transferCleanup (nm, "Передача файла прервана.");
+            } break;
+            default: {
+                msg = sformat ("Неизвестный код операции: %s", nm.msg());
+                if (DEBUG) throw new UnsupportedOperationException (msg);
+                else transferCleanup (nm, msg);
             }
-            else {
-                String msg = String.format ("Неизвестный код операции: %s", nm.msg());
-                transferCleanup (nm, msg);
-                throw new UnsupportedOperationException (msg);
-            }
-        }
-        else provideErrorMessage (nm, ERROR_UNABLE_TO_PERFORM);
+        }//switch
     }
 
 //---------------------------------- LOAD2SERVER -------------------------------------------------*/
@@ -266,13 +278,13 @@ public class LocalManipulator implements ClientManipulator {
 /** Отправка серверу запроса на пересылку файла от клиента к серверу.<p>
     Отправляем серверу сообщение с кодом {@code NM_OPCODE_LOAD2SERVER}. Этот код будет
     присутствовать во всех сообщениях во время передачи файла. «Уточняющие» коды сообщений
-    будут находится в NasMsg.msg.<p>
-    В этом методе также создаётся объект InputStream, при помощи которого будет считываться
-    файл, если сервер ответит готовностью принять файл.<p>
+    будут находится в NasMsg.msg. (На данном этапе уточняющий код не требуется, зато есть
+    обязательное условие — <b>NasMsg.data</b> == NULL.)<p>
     На этом этапе <b>NasMsg.msg</b> содержит полное название папки на стороне сервера, в которую
-    планируется поместить передаваемый файл. Значение <b>NasMsg.data</b> должно быть равным NULL.
+    планируется поместить передаваемый файл. Остальная информация о файле — в NasMsg.FileInfo.
 */
-    @Override public boolean startLoad2ServerRequest (String fromLocalFolder, NasMsg nm) {   //OUT
+    @Override public boolean startLoad2ServerRequest (String fromLocalFolder, NasMsg nm)
+    {
         boolean result = false;
         String errMsg = ERROR_UNABLE_TO_PERFORM;
 
@@ -291,85 +303,83 @@ public class LocalManipulator implements ClientManipulator {
                 lnprint("M:отправлено сообщение: " + nm.opCode() + "\n");
                 result = true;
             }
-            else {  //оставим сообщение об ошибке в nm, чтобы вызывающий метод мог его прочитать:
+            else   //оставим сообщение об ошибке в nm, чтобы вызывающий метод мог его прочитать:
                 errMsg += sformat (PROMPT_FORMAT_UPLOADERROR_SRCFILE_ACCESS,
                                   fromLocalFolder, FILE_SEPARATOR, nm.fileInfo().getFileName());
-            }
         }
         if (!result)
             provideErrorMessage (nm, errMsg);
         return result;
     }
 
-/** В ответ на предложение передать файл от клиента к серверу, сервер ответил готовностью принять файл.<p>
-    При передаче файла некоторые поля NasMsg и NasMsg.FileInfo имеют иное назначение:<br>
-    • NasMsg.msg — содержит, если можно так выразится, код вложенной операции NM_OPCODE_READY или
-    NM_OPCODE_DATA (основной код операции по-прежнему остаётся в NasMsg.opCode);<br>
-    • NasMsg.data — содержит передаваемую часть файла;<br>
-    • NasMsg.fileInfo.filesize — содержит размер передаваемой части файла;<br>
-    • ;<br>
+/** Метод используется при передаче файла от клиента к серверу.<br>
+    • Код операции в NasMsg.opCode == NM_OPCODE_LOAD2SERVER не меняется в течение всей передачи;<br>
+    • NasMsg.msg — содержит уточняющий код операции (в виде строки);<br>
+    • NasMsg.data — содержит передаваемую часть файла, если уточняющий код == NM_OPCODE_DATA. Во всех
+    остальных случаях в этом поле должно находиться любое <b>ненулевое</b> значение, достаточно лёгкое,
+    чтобы не нагружать сеть, например, пустая строка;<br>
+    • NasMsg.fileInfo.filesize — содержит размер передаваемой части файла, если уточняющий код == NM_OPCODE_DATA.
 */
     @ManipulateMethod (opcodes = NM_OPCODE_LOAD2SERVER)
     private void manipulateLoad2ServerQueue (NasMsg nm) throws IOException {
-        if (dialogue != null)
+
+        String msg = null;
+        OperationCodes opcode = OperationCodes.valueOf (nm.msg());
+
+        if (dialogue == null) {
+            if (DEBUG) throw new RuntimeException();
+            else provideErrorMessage (nm, ERROR_UNABLE_TO_PERFORM);
+        }
+        else switch (opcode)
         {
-        // отдача первой/единственной части файла:
-            if (nm.msg().equals (NM_OPCODE_READY.name())) {
+            case NM_OPCODE_READY: {    // отдача первой/единственной части файла:
                 printf ("\nОтдаём файл <%s>\n", dialogue.tc.path);
                 nm.setmsg (NM_OPCODE_DATA.name());
                 dialogue.tc.prepareToUpload(nm);
-                dialogue.tc.fileReadAndUpload (nm, funcSendNasMsg());
-            }
-        //отдача промежуточной/последней части файла:
-            else if (nm.msg().equals (NM_OPCODE_DATA.name())) {
-                if (dialogue.tc.rest > 0L)
+                //dialogue.tc.fileReadAndUpload (nm, funcSendNasMsg());
+            }//break;
+            case NM_OPCODE_DATA:  {
+                if (dialogue.tc.rest > 0L) {    //отдача промежуточной/последней части файла:
                     dialogue.tc.fileReadAndUpload (nm, funcSendNasMsg());
-                else
-                if (dialogue.tc.rest == 0L) {
-                    //сообщаем серверу, что мы благополучно завершили свою часть работы:
+                }
+                else if (dialogue.tc.rest == 0L) {   //сообщаем серверу, что мы благополучно завершили свою часть работы:
                     nm.setmsg (NM_OPCODE_OK.name());
                     sendempty (nm);
                 }
-                else {
-                    transferCleanup (nm, null);
-                    throw new RuntimeException (nm.msg());
-                }
-            }
-        //сервер подтвердил успешное завершение передачи:
-            else if (nm.msg().equals (NM_OPCODE_OK.name())) {
+                else manipulateLoad2ServerQueue (  //меняем уточняющий код сообщения и вызываем самих себя
+                        nm.setmsg (NM_OPCODE_ERROR.name())
+                          .setdata("Ошибка при передаче файла на сервер."));
+            }break;
+            case NM_OPCODE_OK:    {   //сервер подтвердил успешное завершение передачи:
                 printf ("\nОтдан файл <%s>\n", dialogue.tc.path);
                 nm.setOpCode (NM_OPCODE_OK);    //< (старый стиль) чтобы в контроллере увидели успех
                 transferCleanup (nm, USE_DEFAULT_MSG);
-            }
-        //во время передачи произошла ошибка (nm.data содержит сообщение от сервера):
-            else if (nm.msg().equals (NM_OPCODE_ERROR.name())) {
-                String msg = (String) nm.data();
-                if (msg == null)
-                    msg = String.format ("Не удалось отдать файл: <%s>.", dialogue.tc.path);
+            }break;
+            case NM_OPCODE_ERROR: {   //во время передачи произошла ошибка (nm.data содержит сообщение от сервера):
+                msg = (String) nm.data();
+                if (msg == null)    msg = String.format ("Не удалось отдать файл: <%s>.", dialogue.tc.path);
                 LOGGER.error (msg);
                 nm.setOpCode (NM_OPCODE_ERROR); //< (старый стиль) чтобы в контроллере увидели ошибку
                 transferCleanup (nm, msg);
-            }
-        //нужно разорвать соединение, не дожидаясь окончания отдачи файла (мы не
-        //знаем, откуда оно пришло, поэтому дублируем его на сервер):
-            else if (nm.msg().equals (NM_OPCODE_EXIT.name())) {
+            }break;
+            case NM_OPCODE_EXIT:  {
+                //нужно разорвать соединение, не дожидаясь окончания отдачи файла (мы не знаем,
+                // откуда оно пришло, поэтому дублируем его на сервер):
                 sendempty (nm);
                 transferCleanup (nm, "Передача файла прервана.");
+            }break;
+            default: {
+                msg = sformat ("Неизвестный код операции: %s", nm.msg());
+                if (DEBUG) throw new UnsupportedOperationException (msg);
+                else transferCleanup (nm, msg);
             }
-        //неизвестный код сообщения
-            else {
-                String msg = String.format ("Неизвестный код операции: %s", nm.msg());
-                transferCleanup (nm, msg);
-                throw new UnsupportedOperationException (msg);
-            }
-        }
-        else provideErrorMessage (nm, ERROR_UNABLE_TO_PERFORM);
+        }//switch
     }
 
 //--------------------------------- EXIT ------------------------------------------------------
 /** NetClient прислал задачу отправить серверу сообщение EXIT. Завершаем текущую операцию и
     отсылаем EXIT серверу. */
-    @Override public void startExitRequest () {     //OUT
+    @Override public void startExitRequest () {
 
         discardCurrentOperation ();  //< скорее всего это не понадобиться, т.к. GUI блокируется на время операции
         if (schannel != null) {
@@ -400,8 +410,8 @@ public class LocalManipulator implements ClientManipulator {
 
 //сервер прислал EXIT. Прерываем текущую задачу и сообщаем юзеру об обрыве связи.
     @ManipulateMethod (opcodes = NM_OPCODE_EXIT)
-    private void manipulateExitRequest (NasMsg nm) throws IOException {         //IN
-
+    private void manipulateExitRequest (NasMsg nm) //throws IOException
+    {
         lnprint("M:Получено сообщение " + OperationCodes.NM_OPCODE_EXIT);
         discardCurrentOperation();
     /*  если от сервера EXIT пришёл во время выполнения запроса юзера, то opCode = ERROR заставит
@@ -413,7 +423,6 @@ public class LocalManipulator implements ClientManipulator {
 
 //---------------------------------- общение с InboundHandler'ом ---------------------------
 
-//Возможно, эти три метода нужно будет похерить, но это будет видно позже; сейчас они нужны серверу для
     @Override public void onChannelActive (ChannelHandlerContext ctx) {
 
         lnprint("onChannelActive(): открыто соединение: cts: " + ctx.channel());
@@ -490,6 +499,7 @@ public class LocalManipulator implements ClientManipulator {
 
 /** Этот метод делает то же, что и метод {@code LocalManipulator.send()}, но предназначен
     для передачи в качестве параметра. */
+    @SuppressWarnings("All")
     private Function<NasMsg, Void> funcSendNasMsg () {
         return new Function<NasMsg, Void>() {
             @Override public Void apply (NasMsg nasMsg) {
@@ -510,6 +520,7 @@ public class LocalManipulator implements ClientManipulator {
 
 /** Проверяем, не занят ли клиент обработкой к-л. запроса и, если занят, составляем для юзера
  сообщение и помещаем его в <b>nm.msg</b>. */
+    @SuppressWarnings("All")
     private boolean isManipulatorBusy (NasMsg nm) {
         boolean busy = dialogue != null;
         if (busy)
@@ -522,8 +533,8 @@ public class LocalManipulator implements ClientManipulator {
     private static void provideErrorMessage (NasMsg nm, String errMsg) {
         if (nm != null) {
             nm.setOpCode (NM_OPCODE_ERROR);
-            nm.setmsg(errMsg);
+            nm.setmsg (errMsg);
         }
-        else errprint(errMsg);
+        else errprint (errMsg);
     }
 }

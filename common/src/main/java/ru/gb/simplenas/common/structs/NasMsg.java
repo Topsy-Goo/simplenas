@@ -77,7 +77,10 @@ public class NasMsg implements Serializable {
 
     public String msg () { return msg; }
 
-    public void setmsg (String msg) { this.msg = msg; }
+    public NasMsg setmsg (String msg) {
+        this.msg = msg;
+        return this;
+    }
 
     public FileInfo fileInfo () { return fileInfo; }
 

@@ -27,6 +27,7 @@ import java.util.function.Function;
 
 import static ru.gb.simplenas.common.CommonData.*;
 import static ru.gb.simplenas.common.Factory.*;
+import static ru.gb.simplenas.common.Factory.printf;
 import static ru.gb.simplenas.common.structs.NasDialogue.NasDialogueForDownloading;
 import static ru.gb.simplenas.common.structs.NasDialogue.NasDialogueForUploading;
 import static ru.gb.simplenas.common.structs.OperationCodes.*;
@@ -136,64 +137,85 @@ public class RemoteManipulator implements Manipulator {
 
 //------------------------------- LOAD2SERVER ---------------------------------------------------*/
 
-/** nm.msg — папка на стороне сервера (относит. путь).<br>
-nm.fileInfo.fileNAme — имя файла, котрый нужно создать.   */
+/** Обрабатываем получение запроса от клиента на передачу файла от клиента к серверу.<p>
+    Папка назначения на стороне сервера не обязана быть текущей папкой, но обязана находиться
+    внутри дискового простарнства юзера (ДПП).<p>
+    Признаком начала запроса считается условие NasMsg.data == null.<p>
+
+    NasMsg.msg — относит. путь к папке на стороне сервера (в самом начале, когда NasMsg.data == null);
+    в остальных случаях это поле содержит уточняющий код операции.<p>
+    NasMsg.fileInfo == вся остальная информация о файле.
+*/
     @ManipulateMethod (opcodes = NM_OPCODE_LOAD2SERVER)
     private void manipulateLoad2ServerRequest (NasMsg nm) throws IOException {
         String errorMessage = null;
 
     //если nm.data == null, то это означает, что клиент запрашивает подтверждение готовности:
         if (nm.data() == null) {
-            if (dialogue != null)
+            if (dialogue == null)
+                errorMessage = inlinePrepareToDownloading (nm);
+            else
                 replyWithErrorMessage (nm, String.format ("Сервер занят выполнением операции: %s.",
                                                           dialogue.getTheme()));
-            else {
-                Path ptargetfile = getSafeTargetFilePath (nm);
-                if (ptargetfile != null) {
-                    dialogue = NasDialogueForDownloading (nm, ptargetfile);
-                    nm.setmsg (NM_OPCODE_READY.name());
-                    senddata(nm);
-                    printf ("\nПринимаем файл <%s>\n", dialogue.tc.path);
-                }
-                else errorMessage = ERROR_INVALID_FOLDER_SPECIFIED;
-            }
         }
-        else if (dialogue != null) {
-    //клиент передаёт части файла:
-            if (nm.msg().equals (NM_OPCODE_DATA.name())) {
-                if (dialogue.tc.fileDownloadAndWrite (nm)) {
-                    sendempty (nm);
-                }
-                else errorMessage = ERROR_SERVER_UNABLE_TO_PERFORM;
-            }
-    //клиент закончил передавать данные:
-            else if (nm.msg().equals (NM_OPCODE_OK.name())) {
-                if (dialogue.tc.endupDownloading (nm)) {
-                    nm.setmsg (NM_OPCODE_OK.name());
-                    senddata (nm);
-                    printf ("\nПринят файл <%s>.\n", dialogue.tc.path);
-                    stopTalking();
-                }
-                else errorMessage = ERROR_SERVER_UNABLE_TO_PERFORM;
-            }
-    //нужно разорвать соединение, не закончив передавать файл:
-            else if (nm.msg().equals (NM_OPCODE_EXIT.name())) {
-                manipulateExitRequest (nm);
-                stopTalking();
-            }
-    //неизвестный код операции:
-            else {
-                errorMessage = String.format ("Неизвестный код операции: %s", nm.msg());
-                //replyWithErrorMessage (nm, errorMessage);
-                //stopTalking();
-                //if (DEBUG) throw new UnsupportedOperationException (errorMessage);
-            }
-        }
+        else if (dialogue != null)
+            errorMessage = inlineDownloading (nm);
+        else
+            errorMessage = ERROR_UNABLE_TO_PERFORM;
 
         if (errorMessage != null) {
             replyWithErrorMessage (nm, errorMessage);
-            stopTalking();
+            stopTalking (errorMessage);
         }
+    }
+
+//Подставляемая функция для manipulateLoad2ServerRequest (nm).
+    private String inlinePrepareToDownloading (NasMsg nm) throws IOException
+    {
+        String errorMessage = null;
+        Path ptargetfile = getSafeTargetFilePath (nm);
+        if (ptargetfile != null) {
+            dialogue = NasDialogueForDownloading (nm, ptargetfile);
+            nm.setmsg (NM_OPCODE_READY.name());
+            senddata(nm);
+            printf ("\nПринимаем файл <%s>\n", dialogue.tc.path);
+        }
+        else errorMessage = ERROR_INVALID_FOLDER_SPECIFIED;
+        return errorMessage;
+    }
+
+//Подставляемая функция для manipulateLoad2ServerRequest (nm).
+    private String inlineDownloading (NasMsg nm) throws IOException
+    {
+        String errorMessage = null;
+        switch (OperationCodes.valueOf (nm.msg()))
+        {
+            //case NM_OPCODE_READY: {}break;
+            case NM_OPCODE_DATA:  {  //клиент передаёт части файла:
+                if (dialogue.tc.fileDownloadAndWrite (nm))
+                    sendempty (nm);
+                else errorMessage = sformat ("Не удалось принять файл: <%s>.", dialogue.tc.path);
+            }break;
+            case NM_OPCODE_OK:    {    //клиент закончил передавать данные:
+                if (dialogue.tc.endupDownloading (nm)) {
+                    nm.setmsg (NM_OPCODE_OK.name());
+                    senddata (nm);
+                    stopTalking (sformat ("\nПринят файл <%s>.\n", dialogue.tc.path));
+                }
+                else errorMessage = "Не удалось сохранить полученный файл.";
+            }break;
+            case NM_OPCODE_EXIT:  {    //нужно разорвать соединение, не закончив передавать файл:
+                manipulateExitRequest (nm);
+            }break;
+            case NM_OPCODE_ERROR: { //клиент сообщил об ошибке
+                stopTalking (sformat ("Не удалось принять файл: <%s>.", dialogue.tc.path));
+            }break;
+            default: {  //неизвестный код операции:
+                errorMessage = String.format ("Неизвестный код операции: %s", nm.msg());
+                if (DEBUG) throw new UnsupportedOperationException (errorMessage);
+            }
+        }//switch
+        return errorMessage; //< Это сообщение об ошибке будет отправлено клиенту.
     }
 
 /** Метод составляет полное имя файла, считая, что в NasMsg.msg == путь к файлу, а
@@ -222,110 +244,115 @@ nm.fileInfo.fileNAme — имя файла, котрый нужно создат
 
 /** Обрабатываем получение запроса от клиента на передачу файла от сервера к клиенту.<p>
     Запрошенный файл не обязан находиться в текущей папке, но обязан находиться внутри
-    дискового простарнства клиента.<p>
-    NasMsg.msg == имя папки, <br>
+    дискового простарнства юзера (ДПП).<p>
+    Признаком начала запроса считается условие NasMsg.data == null.<p>
+    NasMsg.msg == имя папки-источника на стороне сервера (в самом начале, когда NasMsg.data == null);
+    в остальных случаях это поле содержит уточняющий код операции.<p>
     NasMsg.fileInfo == вся остальная информация о файле.
 */
     @ManipulateMethod (opcodes = NM_OPCODE_LOAD2LOCAL)
     private void manipulateLoad2LocalRequest (NasMsg nm) throws IOException {
 
-    //клиент изъявил желание загрузить файл с сервера:
-        if (nm.data() == null) {
-            if (dialogue != null) {
-                String errorMessage = String.format ("Сервер занят выполнением задачи: %s.",
-                                                     dialogue.getTheme());
-                replyWithErrorMessage (nm, errorMessage);
-                return;
-            }
-            boolean  result = false;
-            FileInfo fi = nm.fileInfo();
-            String   strPath = nm.msg();
-            String   strName;
-            String   errMsg  = "Не удалось прочитать указанный файл. ";
-
-            if (fi == null || !sayNoToEmptyStrings (strName = fi.getFileName(), strPath))
-                errMsg += "Некорректное имя файла";
-            else if (fi.isDirectory())
-                errMsg += "Файл является папкой.";
-            else {
-                Path p      = Paths.get (strPath, strName);
-                Path valid  = sfm.absolutePathToUserSpace (userName, p, NOT_FOLDER);
-
-                if (valid == null || !sfm.isFileExists (valid))
-                    errMsg += "Файл не существует.";
-                else if (!sfm.isReadable (valid))
-                    errMsg += "Отказано в доступе.";
-                else {
-                    fi.setExists (true);
-                    fi.setFilesize (sfm.fileSize (valid));
-
-                    dialogue = NasDialogueForUploading (nm, valid);
-                    nm.setdata (null);
-                    nm.setmsg (NM_OPCODE_READY.name());
-                    senddata(nm);
-                    result = true;
-                }
-            }
-            if (!result)
-                replyWithErrorMessage (nm, errMsg);
+        if (nm.data() == null)    //< клиент изъявил желание загрузить файл с сервера:
+        {
+            if (dialogue == null)
+                inlinePrepareToUploading (nm);
+            else
+                replyWithErrorMessage (nm, sformat ("Сервер занят выполнением задачи: %s.", dialogue.getTheme()));
         }
-        else if (dialogue == null) {
+        else if (dialogue != null)
+            inlineUploading (nm);
+        else {
             String errMsg = "\nОШИБКА: dialogue == null.\n";
             replyWithErrorMessage (nm, errMsg);
             if (DEBUG) throw new RuntimeException (errMsg);    else LOGGER.error (errMsg);
         }
-    //клиент сообщил о готовности принимать файл:
-        else if (nm.msg().equals (NM_OPCODE_READY.name())) {
-            printf ("\nОтдаём файл <%s>\n", dialogue.tc.path);
-            nm.setmsg (NM_OPCODE_DATA.name());
-            dialogue.tc.prepareToUpload(nm);
-            dialogue.tc.fileReadAndUpload(nm, funcSendNasMsg());
-        }
-    //отдача промежуточной/последней части файла:
-        else if (nm.msg().equals (NM_OPCODE_DATA.name())) {
-            if (dialogue.tc.rest > 0L)
-                dialogue.tc.fileReadAndUpload (nm, funcSendNasMsg());
+    }
+
+//Подставляемая функция для manipulateLoad2LocalRequest (nm).
+    private void inlinePrepareToUploading (NasMsg nm) throws IOException
+    {
+        boolean  result = false;
+        FileInfo fi = nm.fileInfo();
+        String   strPath = nm.msg();
+        String   strName;
+        String   errMsg  = "Не удалось прочитать указанный файл. ";
+
+        if (fi == null || !sayNoToEmptyStrings (strName = fi.getFileName(), strPath))
+            errMsg += "Некорректное имя файла";
+        else if (fi.isDirectory())
+            errMsg += "Файл является папкой.";
+        else {
+            Path p      = Paths.get (strPath, strName);
+            Path valid  = sfm.absolutePathToUserSpace (userName, p, NOT_FOLDER);
+
+            if (valid == null || !sfm.isFileExists (valid))
+                errMsg += "Файл не существует.";
+            else if (!sfm.isReadable (valid))
+                errMsg += "Отказано в доступе.";
             else {
-                nm.setdata (STR_EMPTY);  //< чтобы клиент правильно обработал сообщение
-                if (dialogue.tc.rest == 0L) {
-                    //сообщаем клиенту, что мы благополучно завершили свою часть работы:
-                    nm.setmsg (NM_OPCODE_OK.name());
-                    senddata(nm);
-                    LOGGER.info (String.format ("Передача файла успешно завершена: <%s>.", dialogue.tc.path));
-                    stopTalking();
-                }
-                else {
-                    String errMsg = String.format ("Ошибка во время выполнения %s %s : rest = %d.",
-                                                   dialogue.getTheme(), nm.msg(), dialogue.tc.rest);
-                    replyWithErrorMessage (nm, errMsg);
-                    stopTalking();
-                    if (DEBUG) throw new RuntimeException (errMsg);    else LOGGER.error(errMsg);
-                }
+                fi.setExists (true);
+                fi.setFilesize (sfm.fileSize (valid));
+
+                dialogue = NasDialogueForUploading (nm, valid);
+                nm.setdata (null);
+                nm.setmsg (NM_OPCODE_READY.name());
+                senddata(nm);
+                result = true;
             }
         }
-    //клиент подтвердил успешное завершение передачи:
-        else if (nm.msg().equals (NM_OPCODE_OK.name())) {
-            printf ("\nОтдан файл <%s>\n", dialogue.tc.path);
-        }
-    //во время передачи произошла ошибка:
-        else if (nm.msg().equals (NM_OPCODE_ERROR.name())) {
-            LOGGER.error (String.format ("Не удалось отдать файл: <%s>.", dialogue.tc.path));
-            stopTalking();
-        }
-    //нужно разорвать соединение, не дожидаясь окончания отдачи файла (мы не
-    //знаем, откуда оно пришло, поэтому дублируем его клиенту):
-        else if (nm.msg().equals (NM_OPCODE_EXIT.name())) {
-            nm.setdata (STR_EMPTY);  //< чтобы клиент правильно обработал сообщение
-            manipulateExitRequest (nm);
-        }
-    //неизвестный код сообщения
-        else {
-            String errMsg = String.format ("Неизвестный код операции: %s. Операция %s прервана.",
-                                           nm.msg(), dialogue.getTheme());
+        if (!result)
             replyWithErrorMessage (nm, errMsg);
-            stopTalking();
-            if (DEBUG) throw new UnsupportedOperationException (errMsg);    else LOGGER.error(errMsg);
-        }
+    }
+
+//Подставляемая функция для manipulateLoad2LocalRequest (nm).
+    private void inlineUploading (NasMsg nm) throws IOException
+    {
+        OperationCodes opcode = OperationCodes.valueOf (nm.msg());
+        switch (opcode)
+        {
+            case NM_OPCODE_READY: {    //клиент сообщил о готовности принимать файл:
+                printf ("\nОтдаём файл <%s>\n", dialogue.tc.path);
+                nm.setmsg (NM_OPCODE_DATA.name());
+                dialogue.tc.prepareToUpload (nm);
+                //dialogue.tc.fileReadAndUpload (nm, funcSendNasMsg());
+            }//break;
+            case NM_OPCODE_DATA:  {
+                if (dialogue.tc.rest > 0L)
+                    dialogue.tc.fileReadAndUpload (nm, funcSendNasMsg());
+                else {
+                    if (dialogue.tc.rest == 0L) {
+                        nm.setmsg (NM_OPCODE_OK.name());
+                        sendempty (nm);
+                        stopTalking (sformat ("Отдан файл: <%s>.", dialogue.tc.path));
+                    }
+                    else {
+                        String errMsg = sformat ("Ошибка во время выполнения %s / %s : rest = %d.",
+                                                 dialogue.getTheme(), nm.msg(), dialogue.tc.rest);
+                        replyWithErrorMessage (nm, errMsg);
+                        stopTalking (errMsg);
+                        if (DEBUG) throw new RuntimeException (errMsg);
+                    }
+                }
+            }break;
+            case NM_OPCODE_OK:    {    //клиент подтвердил успешное завершение передачи:
+                stopTalking (sformat ("Отдан файл <%s>\n", dialogue.tc.path));
+            }break;
+            case NM_OPCODE_ERROR: {    //клиент сообщил об ошибке:
+                stopTalking (sformat ("Не удалось отдать файл: <%s>.\n", dialogue.tc.path));
+            }break;
+            case NM_OPCODE_EXIT:  {
+                //нужно разорвать соединение, не дожидаясь окончания отдачи файла (мы не знаем,
+                // откуда сообщение пришло, поэтому дублируем его клиенту):
+                manipulateExitRequest (nm);
+            }break;
+            default: {    //неизвестный код сообщения
+                String errMsg = String.format ("Неизвестный код операции: %s. Операция %s прервана.", nm.msg(), dialogue.getTheme());
+                replyWithErrorMessage (nm, errMsg);
+                stopTalking (errMsg);
+                if (DEBUG) throw new UnsupportedOperationException (errMsg);
+            }
+        }//switch
     }
 
 //---------------------------- LOGIN, FILEINFO, COUNTITEMS, CREATE, RENAME, DELETE ------------------------------*/
@@ -525,11 +552,12 @@ nm.fileInfo.fileNAme — имя файла, котрый нужно создат
 /** закрываем dialogue <br>
     вызывает transferCleanup()
 */
-    private void stopTalking () {
-        if (dialogue != null) {
-            dialogue.close();
-            dialogue = null;
-        }
+    private void stopTalking (String consoleMessage) {
+        if (consoleMessage != null)
+            lnprint (consoleMessage);
+
+        if (dialogue != null)
+            dialogue.close();    dialogue = null;
     }
 
     private void informClientWithOperationCode (NasMsg nm, OperationCodes opcode) {
@@ -585,12 +613,11 @@ nm.fileInfo.fileNAme — имя файла, котрый нужно создат
 */
     @ManipulateMethod (opcodes = NM_OPCODE_EXIT)
     private void manipulateExitRequest (NasMsg nm) {
-        LOGGER.info("Клиент разрывает соединение.");
+        lnprint ("Клиент разрывает соединение.\n");
         if (socketChannel != null) {
             discardCurrentOperation();
             discardUser();
             socketChannel.disconnect();
-            //ctx.disconnect();//close();
         }
     }
 
@@ -600,10 +627,10 @@ nm.fileInfo.fileNAme — имя файла, котрый нужно создат
     }
 
 /** вызывается ТОЛЬКО из обработчиков EXIT с целью прервать текущую операцию */
-    private void discardCurrentOperation () {
+    private void discardCurrentOperation ()
+    {
         if (dialogue != null) {
             OperationCodes theme = dialogue.getTheme();
-
             switch (theme) {
                 case NM_OPCODE_LOAD2SERVER:
                     replyWithErrorMessage (new NasMsg (theme, null, OUTBOUND), NM_OPCODE_EXIT.name());
@@ -614,7 +641,7 @@ nm.fileInfo.fileNAme — имя файла, котрый нужно создат
                     replyWithErrorMessage (new NasMsg (theme, null, OUTBOUND), NM_OPCODE_EXIT.name());
                     break;
             }
-            stopTalking();
+            stopTalking (USE_DEFAULT_MSG);
         }
     }
 
