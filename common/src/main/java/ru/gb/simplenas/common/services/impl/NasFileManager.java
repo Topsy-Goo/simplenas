@@ -7,12 +7,14 @@ import org.apache.logging.log4j.Logger;
 import ru.gb.simplenas.common.structs.FileInfo;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
 
+import static java.nio.file.StandardOpenOption.READ;
 import static ru.gb.simplenas.common.CommonData.MAX_USERNAME_LENGTH;
 import static ru.gb.simplenas.common.CommonData.STR_EMPTY;
 import static ru.gb.simplenas.common.Factory.sayNoToEmptyStrings;

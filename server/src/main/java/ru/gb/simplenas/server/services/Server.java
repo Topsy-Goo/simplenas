@@ -5,7 +5,7 @@ public interface Server extends Runnable {
 
     boolean clientsListAdd (RemoteManipulator manipulator, String userName);
 
-    void clientsListRemove (RemoteManipulator manipulator, String userName);
+    void clientRemove (RemoteManipulator manipulator, String userName);
 
     boolean validateOnLogin (String login, String password);
 }

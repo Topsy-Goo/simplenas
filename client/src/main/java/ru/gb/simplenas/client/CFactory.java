@@ -67,7 +67,7 @@ public class CFactory {
         PROMPT_FORMAT_FOLDER_DELETION_CONFIRMATION = "Удаляемая папка НЕ пуста. Всё равно удалить её?\n\n%s\n",
         PROMPT_FORMAT_FILE_DELETION_CONFIRMATION = "Подтвердите удаление файла:\n\n%s\n",
         PROMPT_FORMAT_RENAMING_ALREADY_EXISTS = "Переименование отклонено, — папка или файл с таким имененм уже существуют:\n\n%s\n",
-        PROMPT_FORMAT_UPLOADERROR_SRCFILE_ACCESS = "Не удалось получить доступ к фалу:\n%s%s%s\n",
+        PROMPT_FORMAT_UPLOADERROR_SRCFILE_ACCESS = " т.к. не удалось получить доступ к фалу:\n%s%s%s\n",
         PROMPT_FOLDERS_EXCHANGE_NOT_SUPPORTED = "Пересылка папок не поддерживается.",
         PROMPT_CONFIRM_CREATE_FOLDER = "Введите имя для новой папки и нажмите ENTER.",
         PROMPT_DIR_ENTRY_DOESNOT_EXISTS = "Папка или файл не существуют!",

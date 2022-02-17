@@ -200,13 +200,15 @@ public class RemoteServer implements Server {
         return ok;
     }
 
-    @Override public void clientsListRemove (RemoteManipulator manipulator, String userName) {
+    @Override public void clientRemove (RemoteManipulator manipulator, String userName) {
 
-        if (DEBUG) lnprint("RemoteServer.clientsListRemove(): call.");
+        if (DEBUG)
+            lnprint("RemoteServer.clientsListRemove(): call.");
         //CHANNELS.remove (userName);
         if (userName != null && CHANNELS.get(userName) == manipulator) {
-            CHANNELS.remove(userName);
-            if (DEBUG) lnprint("RemoteServer.clientsListRemove(): клиент <" + userName + "> удалён.");
+            CHANNELS.remove (userName);
+            if (DEBUG)
+                lnprint("RemoteServer.clientsListRemove(): клиент <" + userName + "> отключен.");
         }
     }
 
@@ -215,7 +217,7 @@ public class RemoteServer implements Server {
 
         for (Map.Entry<String, RemoteManipulator> e : entries) {
             RemoteManipulator manipulator = e.getValue();
-            manipulator.startExitRequest(null);
+            manipulator.startExitRequest();
         }
     }
 

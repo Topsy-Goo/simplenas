@@ -202,11 +202,11 @@ public class Controller implements Initializable {
         if (netClient == null || (null == (nm = netClient.login(name, password)))) {
             messageBox(ALERTHEADER_AUTHENTIFICATION, ERROR_UNABLE_TO_PERFORM, ERROR);
         }
-        else if (nm.opCode() == OK) {
+        else if (nm.opCode() == NM_OPCODE_OK) {
             userName = name;
             updateControlsOnSuccessfulLogin();
         }
-        else if (nm.opCode() == OperationCodes.ERROR) {
+        else if (nm.opCode() == OperationCodes.NM_OPCODE_ERROR) {
             String strErr = nm.msg();
 
             if (!sayNoToEmptyStrings(strErr)) {
@@ -345,10 +345,10 @@ public class Controller implements Initializable {
         if (nasMsg == null) {
             errMsg = ERROR_UNABLE_TO_PERFORM;
         }
-        else if (nasMsg.opCode() == OperationCodes.ERROR) {
+        else if (nasMsg.opCode() == OperationCodes.NM_OPCODE_ERROR) {
             errMsg = nasMsg.msg();
         }
-        else if (nasMsg.opCode() == OK) {
+        else if (nasMsg.opCode() == NM_OPCODE_OK) {
             addTvItemAsFolder(name, REMOTE);
         }
         if (errMsg != null) messageBox(ALERTHEADER_FOLDER_CREATION, errMsg, ERROR);
@@ -602,7 +602,7 @@ nm.data   = список содержимого этой папки (если н
  @return true если nm.opCode() == OK. С остальным пусть разбирается вызывающая функция.    */
     @SuppressWarnings ("unchecked") private boolean workUpAListRequestResult (NasMsg nm) {
         boolean ok = false;
-        if (nm != null && nm.opCode() == OK) {
+        if (nm != null && nm.opCode() == NM_OPCODE_OK) {
             ok = true;
             List<FileInfo> infolist = (List<FileInfo>) nm.data();
             if (infolist != null) {
@@ -760,8 +760,8 @@ nm.data   = список содержимого этой папки (если н
 
         if (ok) {
             OperationCodes opcode = netClient.delete(strCurrentServerPath, fi).opCode();
-            ok = opcode == OK;
-            error = opcode == OperationCodes.ERROR;
+            ok = opcode == NM_OPCODE_OK;
+            error = opcode == OperationCodes.NM_OPCODE_ERROR;
         }
         if (error) messageBox(ALERTHEADER_DELETION, ERROR_UNABLE_TO_PERFORM, ERROR);
         return ok;
@@ -786,10 +786,10 @@ nm.data   = список содержимого этой папки (если н
                 if (isItSafeToDownloadFile(strTarget)) {
                     NasMsg nm = netClient.download(strCurrentLocalPath, strCurrentServerPath, tfi.toFileInfo());
                     if (nm != null) {
-                        if (nm.opCode() == OperationCodes.ERROR) {
+                        if (nm.opCode() == OperationCodes.NM_OPCODE_ERROR) {
                             if (nm.msg() != null) strErr = nm.msg();
                         }
-                        else if (nm.opCode() == OK) {
+                        else if (nm.opCode() == NM_OPCODE_OK) {
                             // Из-за ошибки с передачей больших файлов мы не можем просто добавить пункт
                             // в таблицу. Поэтому пойдём длинным путём — обновим список файлов.
                             applyStringAsNewLocalPath(strCurrentLocalPath);
@@ -816,7 +816,7 @@ nm.data   = список содержимого этой папки (если н
                                                        Alert.AlertType.CONFIRMATION);
     }
 
-/** выгружаем файл на сервера в текущую удалённую папку; если файл уже существует, запрашиваем подтверждение пользователя.    */
+/** выгружаем файл на сервер в текущую удалённую папку; если файл уже существует, запрашиваем подтверждение пользователя.    */
     private String uploadFileByTfi (TableFileInfo tfi) {
 
         String strTargetName = tfi.getFileName();
@@ -836,7 +836,7 @@ nm.data   = список содержимого этой папки (если н
                     if (workUpAListRequestResult (netClient.list (strCurrentServerPath)))
                         strErr = null;
                     else
-                    if (nm.opCode() == OperationCodes.ERROR  &&  nm.msg() != null)
+                    if (nm.opCode() == OperationCodes.NM_OPCODE_ERROR && nm.msg() != null)
                         strErr = nm.msg();
                 }
             }

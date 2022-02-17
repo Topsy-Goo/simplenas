@@ -1,96 +1,82 @@
 package ru.gb.simplenas.common.services.impl;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import ru.gb.simplenas.common.CommonData;
 import ru.gb.simplenas.common.services.FileExtruder;
 import ru.gb.simplenas.common.structs.NasMsg;
 
 import java.io.IOException;
-import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.FileTime;
 
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
-import static java.nio.file.StandardOpenOption.*;
-import static ru.gb.simplenas.common.Factory.print;
+import static java.nio.file.StandardOpenOption.CREATE_NEW;
+import static java.nio.file.StandardOpenOption.WRITE;
 import static ru.gb.simplenas.common.CommonData.WF_;
+import static ru.gb.simplenas.common.Factory.print;
 
 public class InboundFileExtruder implements FileExtruder {
 
-    protected OutputStream outputStream;
-    protected Path pTmpDir;
-    protected Path pFileInTmpFolder;
-    protected Path pTargetDir;
-    protected Path pTargetFile;
-    protected boolean extrudingError;
-    //private static final Logger LOGGER = LogManager.getLogger(InboundFileExtruder.class.getName());
+    protected FileChannel outputFileChannel;
+    protected  Path    pTargetFile;   //< полное имя файла назначения
+    protected  Path    pTargetDir;    //< папка, куда юзер хочет поместить файл
+    protected  Path    pTmpDir;       //< временная папка, где файл будет создан и записан
+    protected  Path    pFileInTmpFolder;  //< полное имя временного файла
+    protected  boolean extrudingError;
+    private static final Logger  LOGGER = LogManager.getLogger(InboundFileExtruder.class.getName());
 
-    private InboundFileExtruder instance;
-
-    public InboundFileExtruder (Path ptargetfile) {
-        if (ptargetfile != null) { initialize(ptargetfile); }
-        else { throw new IllegalArgumentException(); }
+    public InboundFileExtruder (Path path) {
+        if (!initialize (path))
+            throw new IllegalArgumentException();
     }
 
-    //@Override public boolean initialize (Path ptargetfile) {   return false;   }
-
-    //подготовка к скачиванию файла от клиента
-    @Override public boolean initialize (Path ptargetfile) {
+//подготовка к скачиванию файла
+    private boolean initialize (Path path) {
         boolean result = false;
-        if (instance == null && ptargetfile != null) {
-            instance = this;
-            this.pTargetFile = ptargetfile;
+        if (path != null) {
+            pTargetFile = path;
             try {
                 pTargetDir = pTargetFile.getParent();
-                pTmpDir = Files.createTempDirectory(pTargetDir, null);
+                pTmpDir = Files.createTempDirectory (pTargetDir, null);
 
-                pFileInTmpFolder = pTmpDir.resolve(pTargetFile.getFileName());
-                outputStream = Files.newOutputStream(pFileInTmpFolder, CREATE_NEW, WRITE/*, APPEND, SYNC*/);
+                pFileInTmpFolder = pTmpDir.resolve (pTargetFile.getFileName());
+                outputFileChannel = FileChannel.open (pFileInTmpFolder, CREATE_NEW, WRITE);
                 result = true;
+                LOGGER.debug("initializing successfully done");
             }
             catch (IOException e) {e.printStackTrace();}
             finally {
-                if (!result) {
+                if (!result)
                     cleanup();
-                }
                 extrudingError = !result;
             }
         }
         return result;
     }
 
-
-    @Override public boolean getState () { return !extrudingError; }
-
-    @Override public int writeDataBytes2File (final NasMsg nm) {
-        int chunks = 0;
-        if (!extrudingError) {
-            byte[] array = (byte[]) nm.data();
-            int size = (int) nm.fileInfo().getFilesize();  //< количество байтов для считывания из nm.data.
-
-            if (array != null && size > 0) {
-                //LOGGER.debug("получены данные("+size+").");
-                try {
-                    outputStream.write(array, 0, size);
-                    outputStream.flush();
-                    //LOGGER.debug("данные записаны.");
-                    print(WF_ + size);
-                    chunks++;
-                }
-                catch (IOException e) {
-                    extrudingError = true;
-                    cleanup();
-                    e.printStackTrace();
-                }
+    @Override public void writeDataBytes2File (byte[] data, int size) throws IOException
+    {
+        if (!extrudingError && data != null && size > 0) {
+            try {
+                ByteBuffer bb = ByteBuffer.wrap (data, 0, size);
+                outputFileChannel.write (bb);
+                print(WF_ + size);
+            }
+            catch (IOException e) {
+                extrudingError = true;
+                cleanup();
+                throw e;
             }
         }
-        return chunks;
     }
 
+/** переносим файл из временной папки в папку назначения.  */
     @Override public boolean endupExtruding (NasMsg nm) {
-        //переносим файл из временной папки в папку назначения
-        //    LOGGER.debug("endupExtruding() start");
         boolean ok = false;
         try {
             if (!extrudingError) {
@@ -101,16 +87,14 @@ public class InboundFileExtruder implements FileExtruder {
                                 null,
                                 FileTime.from (nm.fileInfo().getCreated(), CommonData.FILETIME_UNITS));
                 ok = true;
+                LOGGER.info("перемещение файла в папку завершено");
             }
         }
         catch (IOException e) {
             extrudingError = true;
             e.printStackTrace();
         }
-        finally {
-            cleanup();
-            //LOGGER.debug("endupExtruding() end");
-        }
+        finally { cleanup(); }
         return ok;
     }
 
@@ -120,11 +104,9 @@ public class InboundFileExtruder implements FileExtruder {
 
     //завершение операции получения файла от клиента + очистка полей, используемых при выполнении такой операции
     protected void cleanup () {
-        //LOGGER.debug("cleanup() start");
         try {
-            if (outputStream != null) {
-                outputStream.flush();
-                outputStream.close();
+            if (outputFileChannel != null) {
+                outputFileChannel.close();
             }
             if (pFileInTmpFolder != null) Files.deleteIfExists(pFileInTmpFolder);
             if (pTmpDir != null) Files.deleteIfExists(pTmpDir);
@@ -135,8 +117,8 @@ public class InboundFileExtruder implements FileExtruder {
             pTargetDir = null;
             pFileInTmpFolder = null;
             pTargetFile = null;
-            outputStream = null;
-            //LOGGER.debug("cleanup() end");
+            outputFileChannel = null;
+            LOGGER.debug("cleanup end");
         }
     }
 }

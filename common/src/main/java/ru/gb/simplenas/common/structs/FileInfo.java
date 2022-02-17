@@ -32,14 +32,15 @@ public class FileInfo implements Serializable {
         this.exists = e;
     }
 
-    public FileInfo (String name, boolean dir, boolean exists, boolean symbolic, long size, long created, long modified) {
-        this(name, dir, exists);
+    public FileInfo (String name, boolean dir, boolean exists, boolean symbolic,
+                     long size, long created, long modified)
+    {   this(name, dir, exists);
         this.modified = modified;
-        this.created = created;
+        this.created  = created;
         this.filesize = size;
         this.symbolic = symbolic;
     }
-//------------------------------- гетеры и сетеры ---------------------------------------------------------------*/
+//------------------------------- гетеры и сетеры ----------------------------------------------*/
 
     public FileInfo (@NotNull Path path) {
         if (path != null && path.getNameCount() > 0) {
@@ -54,54 +55,38 @@ public class FileInfo implements Serializable {
                         filesize = attributes.size();
                         modified = attributes.lastModifiedTime().to(CommonData.FILETIME_UNITS);
                         created = attributes.creationTime().to(CommonData.FILETIME_UNITS);
-                    }
-                }
-            }
-        }
+        }   }   }   }
     }
 
     public static FileInfo copy (FileInfo fi) {
-        if (fi == null) {
+        if (fi == null)
             return null;
-        }
-        return new FileInfo(fi.fileName, fi.directory, fi.exists, fi.symbolic, fi.filesize, fi.created, fi.modified);
+        return new FileInfo (fi.fileName, fi.directory, fi.exists, fi.symbolic,
+                             fi.filesize, fi.created, fi.modified);
     }
 
     public String getFileName () { return fileName; }
-
     public void setFileName (String fileName) { this.fileName = fileName; }
 
+    public void setDirectory (boolean directory) { this.directory = directory; }
     public boolean isDirectory () { return directory; }
 
+    public void setExists (boolean exists) { this.exists = exists; }
     public boolean isExists () { return exists; }
 
+    public void setSymbolic (boolean symbolic) { this.symbolic = symbolic; }
     public boolean isSymbolic () { return symbolic; }
 
-    public void setDirectory (boolean directory) { this.directory = directory; }
-
-    public void setExists (boolean exists) { this.exists = exists; }
-
-    public void setSymbolic (boolean symbolic) { this.symbolic = symbolic; }
-
     public long getFilesize () { return filesize; }
-
-    public long getCreated () { return created; }
-
-    public long getModified () { return modified; }
-
     public void setFilesize (long filesize) { this.filesize = filesize; }
 
-//---------------------------------------------------------------------------------------------------------------*/
-
+    public long getCreated () { return created; }
     public void setCreated (long created) { this.created = created; }
 
-//---------------------------------------------------------------------------------------------------------------*/
-
+    public long getModified () { return modified; }
     public void setModified (long modified) { this.modified = modified; }
 
-    @Override
-    public String toString () {
-
+    @Override public String toString () {
         //Для папок вместо времени создания и изменения возвращаются 0L, поэтому не будем их высчитывать.
         String tm = (directory) ? "-" : FileTime.from (modified, CommonData.FILETIME_UNITS).toString();
         String tc = (directory) ? "-" : FileTime.from (created, CommonData.FILETIME_UNITS).toString();

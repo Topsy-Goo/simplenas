@@ -23,7 +23,7 @@ import static javafx.scene.control.Alert.AlertType.WARNING;
 import static ru.gb.simplenas.client.CFactory.*;
 import static ru.gb.simplenas.common.CommonData.*;
 import static ru.gb.simplenas.common.Factory.sayNoToEmptyStrings;
-import static ru.gb.simplenas.common.structs.OperationCodes.OK;
+import static ru.gb.simplenas.common.structs.OperationCodes.NM_OPCODE_OK;
 
 public class TableViewManager
 {
@@ -125,7 +125,7 @@ public class TableViewManager
         if (netClient != null && position >= 0 && old != null && sayNoToEmptyStrings(newName)) {
             NasMsg nm = netClient.rename(old, newName);
 
-            if (nm != null) if (nm.opCode() == OK) {
+            if (nm != null) if (nm.opCode() == NM_OPCODE_OK) {
                 ok = true;
             }
             else if (nm.msg() != null) {

@@ -43,8 +43,9 @@ public class NasMsg implements Serializable {
     }
 //---------------------------------------------------------------------------------------------------------------*/
 
-    public NasMsg (@NotNull OperationCodes code, String msg, String filePath, String fileName, boolean inbound) {
-
+    public NasMsg (@NotNull OperationCodes code, String msg, String filePath,
+                   String fileName, boolean inbound)
+    {
         this(code, msg, inbound);
         if (filePath != null && fileName != null && !fileName.isEmpty()) {
             Path path = Paths.get(filePath, fileName);
@@ -53,16 +54,13 @@ public class NasMsg implements Serializable {
     }
 
     public static NasMsg nmcopy (NasMsg nm) {
-
         NasMsg copy = null;
         if (nm != null) {
             copy = new NasMsg(nm.opCode, nm.msg, nm.inbound);
             copy.data = nm.data;
-            if (nm.fileInfo != null) {
-                copy.fileInfo = ficopy(nm.fileInfo);
-            }
+            if (nm.fileInfo != null)
+                copy.fileInfo = ficopy (nm.fileInfo);
         }
-        else { copy = new NasMsg(); }
         return copy;
     }
 
@@ -72,7 +70,10 @@ public class NasMsg implements Serializable {
 
     public boolean inbound () { return inbound; }
 
-    public void setinbound (boolean inbound) { this.inbound = inbound; }
+    public NasMsg setinbound (boolean inbound) {
+        this.inbound = inbound;
+        return this;
+    }
 
     public String msg () { return msg; }
 
@@ -85,7 +86,10 @@ public class NasMsg implements Serializable {
 
     public Object data () { return data; }
 
-    public void setdata (Object data) { this.data = data; }
+    public NasMsg setdata (Object data) {
+        this.data = data;
+        return this;
+    }
 
     @Override public String toString () {
         return String.format(FORMAT_NASMSG, version, opCode, inbound ? "IN" : "OUT", msg, (fileInfo == null ? "(null)" : fileInfo.toString()), (data == null) ? "null" : "data");

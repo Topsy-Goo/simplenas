@@ -88,7 +88,7 @@ public class LocalNetClient implements NetClient {
 /** Вызывается из манипулятора. Служит для информирования юзером о событиях.  */
     void callbackInfo (Object... objects) {
         NasMsg nm = (NasMsg) objects[0];
-        if (nm != null && nm.opCode() == EXIT) {
+        if (nm != null && nm.opCode() == NM_OPCODE_EXIT) {
             Platform.runLater(()->{
                 messageBox(CFactory.ALERTHEADER_CONNECTION, PROMPT_CONNECTION_GETTING_CLOSED, Alert.AlertType.WARNING);
             });
@@ -209,7 +209,7 @@ public class LocalNetClient implements NetClient {
 
             synchronized (syncObj) {
 
-                NasMsg nm = new NasMsg(LOGIN, username, OUTBOUND);
+                NasMsg nm = new NasMsg(NM_OPCODE_LOGIN, username, OUTBOUND);
                 nm.setdata(password);
                 nmSyncResult = null;
 
@@ -224,9 +224,9 @@ public class LocalNetClient implements NetClient {
             }//sync
 
             if (result == null) {
-                result = new NasMsg(ERROR, ERROR_UNABLE_TO_PERFORM, INBOUND);
+                result = new NasMsg(NM_OPCODE_ERROR, ERROR_UNABLE_TO_PERFORM, INBOUND);
             }
-            else if (result.opCode() == OperationCodes.OK) {
+            else if (result.opCode() == OperationCodes.NM_OPCODE_OK) {
                 this.userName = result.msg();
             }
         }
@@ -238,8 +238,8 @@ public class LocalNetClient implements NetClient {
         NasMsg result = null;
         if (sayNoToEmptyStrings(folder)) {
 
-            result = new NasMsg(ERROR, ERROR_UNABLE_TO_PERFORM, OUTBOUND);
-            NasMsg nm = new NasMsg(LIST, Paths.get(folder, subfolders).toString(), OUTBOUND);
+            result = new NasMsg(NM_OPCODE_ERROR, ERROR_UNABLE_TO_PERFORM, OUTBOUND);
+            NasMsg nm = new NasMsg(NM_OPCODE_LIST, Paths.get(folder, subfolders).toString(), OUTBOUND);
 
             synchronized (syncObj) {
                 nmSyncResult = null;
@@ -261,8 +261,8 @@ public class LocalNetClient implements NetClient {
         NasMsg result = null;
         if (sayNoToEmptyStrings(newfoldername)) {
 
-            result = new NasMsg(ERROR, ERROR_UNABLE_TO_PERFORM, OUTBOUND);
-            NasMsg nm = new NasMsg(OperationCodes.CREATE, newfoldername, OUTBOUND);
+            result = new NasMsg(NM_OPCODE_ERROR, ERROR_UNABLE_TO_PERFORM, OUTBOUND);
+            NasMsg nm = new NasMsg(OperationCodes.NM_OPCODE_CREATE, newfoldername, OUTBOUND);
 
             synchronized (syncObj) {
                 nmSyncResult = null;
@@ -284,8 +284,8 @@ public class LocalNetClient implements NetClient {
         NasMsg result = null;
         if (sayNoToEmptyStrings(newName) && old != null) {
 
-            result = new NasMsg(ERROR, ERROR_UNABLE_TO_PERFORM, OUTBOUND);
-            NasMsg nm = new NasMsg(OperationCodes.RENAME, newName, OUTBOUND);
+            result = new NasMsg(NM_OPCODE_ERROR, ERROR_UNABLE_TO_PERFORM, OUTBOUND);
+            NasMsg nm = new NasMsg(OperationCodes.NM_OPCODE_RENAME, newName, OUTBOUND);
             nm.setfileInfo(old);
 
             synchronized (syncObj) {
@@ -303,17 +303,19 @@ public class LocalNetClient implements NetClient {
         return result;
     }
 
-    @Override public @NotNull NasMsg upload (@NotNull String strLocalFolder, @NotNull String strServerFolder,
-                                             @NotNull FileInfo fileInfo) {
-        NasMsg result = null;
+    @Override public @NotNull NasMsg upload (@NotNull String strLocalFolder,
+                                             @NotNull String strServerFolder,
+                                             @NotNull FileInfo fileInfo)
+    {   NasMsg result = null;
         if (fileInfo != null
-        && sayNoToEmptyStrings(strLocalFolder, fileInfo.getFileName())
-        && !fileInfo.isDirectory()) {
-            result = new NasMsg(LOAD2SERVER, strServerFolder, OUTBOUND);
+        && sayNoToEmptyStrings (strLocalFolder, fileInfo.getFileName())
+        && !fileInfo.isDirectory())
+        {
+            result = new NasMsg (NM_OPCODE_LOAD2SERVER, strServerFolder, OUTBOUND);
             result.setfileInfo(fileInfo);
 
             synchronized (syncObj) {
-                if (manipulator.startLoad2ServerRequest(strLocalFolder, result)) {
+                if (manipulator.startLoad2ServerRequest (strLocalFolder, result)) {
                     nmSyncResult = null;
                     try {
                         while (nmSyncResult == null) syncObj.wait();
@@ -327,18 +329,19 @@ public class LocalNetClient implements NetClient {
         return result;
     }
 
-    @Override public @NotNull NasMsg download (@NotNull String strLocalFolder, @NotNull String strServerFolder, @NotNull FileInfo fileInfo) {
-
-        NasMsg result = null;
+    @Override public @NotNull NasMsg download (@NotNull String strLocalFolder,
+                                               @NotNull String strServerFolder,
+                                               @NotNull FileInfo fileInfo)
+    {   NasMsg result = null;
         if (fileInfo != null
         && sayNoToEmptyStrings(strLocalFolder, fileInfo.getFileName())
-        && !fileInfo.isDirectory()) {
-
-            result = new NasMsg(LOAD2LOCAL, strServerFolder, OUTBOUND);
-            result.setfileInfo(fileInfo);
+        && !fileInfo.isDirectory())
+        {
+            result = new NasMsg (NM_OPCODE_LOAD2LOCAL, strServerFolder, OUTBOUND);
+            result.setfileInfo (fileInfo);
 
             synchronized (syncObj) {
-                if (manipulator.startLoad2LocalRequest(strLocalFolder, result)) {
+                if (manipulator.startLoad2LocalRequest (strLocalFolder, result)) {
                     nmSyncResult = null;
                     try {
                         while (nmSyncResult == null) syncObj.wait();
@@ -357,7 +360,7 @@ public class LocalNetClient implements NetClient {
         FileInfo result = null;
         if (sayNoToEmptyStrings(folder, fileName)) {
 
-            NasMsg nm = new NasMsg(FILEINFO, folder, OUTBOUND);
+            NasMsg nm = new NasMsg(NM_OPCODE_FILEINFO, folder, OUTBOUND);
             nm.setfileInfo(new FileInfo(fileName, NOT_FOLDER, EXISTS));
 
             synchronized (syncObj) {
@@ -381,7 +384,7 @@ public class LocalNetClient implements NetClient {
         int result = -1;
         if (sayNoToEmptyStrings(strParent)) {
 
-            NasMsg nm = new NasMsg(OperationCodes.COUNTITEMS, strParent, OUTBOUND);
+            NasMsg nm = new NasMsg(OperationCodes.NM_OPCODE_COUNTITEMS, strParent, OUTBOUND);
             nm.setfileInfo(fi);
 
             synchronized (syncObj) {
@@ -395,7 +398,7 @@ public class LocalNetClient implements NetClient {
                     catch (InterruptedException e) {e.printStackTrace();}
                 }
             }//sync
-            if (nm.opCode() != ERROR) {
+            if (nm.opCode() != NM_OPCODE_ERROR) {
                 result = (int) nm.fileInfo().getFilesize();
             }
         }
@@ -407,8 +410,8 @@ public class LocalNetClient implements NetClient {
         NasMsg result = null;
         if (sayNoToEmptyStrings(strParent)) {
 
-            result = new NasMsg(ERROR, ERROR_UNABLE_TO_PERFORM, OUTBOUND);
-            NasMsg nm = new NasMsg(OperationCodes.DELETE, strParent, OUTBOUND);
+            result = new NasMsg(NM_OPCODE_ERROR, ERROR_UNABLE_TO_PERFORM, OUTBOUND);
+            NasMsg nm = new NasMsg(OperationCodes.NM_OPCODE_DELETE, strParent, OUTBOUND);
             nm.setfileInfo(fi);
 
             synchronized (syncObj) {
@@ -431,14 +434,13 @@ public class LocalNetClient implements NetClient {
         if (folder != null) {
             return list(folder, subfolders);
         }
-        return new NasMsg(ERROR, ERROR_UNABLE_TO_PERFORM, OUTBOUND);
+        return new NasMsg(NM_OPCODE_ERROR, ERROR_UNABLE_TO_PERFORM, OUTBOUND);
     }
 
-//Отправляем серверу сообщене EXIT
+/** Отправляем серверу сообщене EXIT  */
     void sendExitMessage () {
-
         if (schannel != null && schannel.isOpen()) {
-            manipulator.startExitRequest(null);
+            manipulator.startExitRequest();
         }
     }
 }

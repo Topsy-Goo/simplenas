@@ -2,94 +2,159 @@ package ru.gb.simplenas.common.structs;
 
 import org.jetbrains.annotations.NotNull;
 import ru.gb.simplenas.common.services.FileExtruder;
-import ru.gb.simplenas.common.Factory;
+import ru.gb.simplenas.common.services.impl.InboundFileExtruder;
 
 import java.io.IOException;
-import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Function;
 
-import static ru.gb.simplenas.common.CommonData.DEBUG;
+import static java.nio.file.StandardOpenOption.READ;
+import static ru.gb.simplenas.common.CommonData.*;
+import static ru.gb.simplenas.common.Factory.*;
 
 public class NasDialogue {
 
-    private final Deque<NasMsg> conversation;
-    private Path target;
-    private long chunks;
+    private final List<NasMsg> conversation;
     private FileExtruder fileExtruder;
     private List<FileInfo> infolist;
-    private InputStream inputStream;
+    private FileChannel    inputFileChannel;
+    public final TransferContext tc;
     //private static final Logger LOGGER = LogManager.getLogger(NasDialogue.class.getName());
 
+/* поля класса TransferContext используются только при передаче файла (чтобы не возиться с набором
+ переменных, входящих в контекст операции отдачи/приёма файла):
+*/
+    public class TransferContext {
+        private byte[] array;
+        private ByteBuffer bb;
+        public Path path;
+        public long rest;
 
-    private NasDialogue () {
-        conversation = new LinkedList<>();
-        chunks = 0L;
-        //LOGGER.debug("создан NasDialogue");
-        //clipboard = new LinkedList<>();
+        public void prepareToUpload (@NotNull NasMsg nm) {
+            rest = nm.fileInfo().getFilesize();
+            array = new byte [(int) Math.min (INT_MAX_BUFFER_SIZE, rest)];
+            bb = ByteBuffer.wrap (array);
+        }
+
+        public int fileReadAndUpload (@NotNull NasMsg nm,
+                                      @NotNull Function <NasMsg,Void> sendFunction) throws IOException
+        {
+            int read = -2;
+            if (inputFileChannel != null && inputFileChannel.isOpen()) {
+                read = inputFileChannel.read ((ByteBuffer) bb.clear());
+                if (read > 0) {
+                    rest -= read;
+                    print (RF_ + read);
+    /* Возможна ситуация, когда array велик, а остаток файла, записанный в него, сравнительно
+    мал. В этом случае встаёт вопрос: передавать по сети частично заполненный массив, или создать
+    новый массив меньшего размера. Попытка решить проблему при пом.
+    ByteBuffer.slice() и ByteBuffer.wrap(buf, 0, size) не дали результат, — массив остаётся тот же
+    самый и той же длины.
+        Наболее разумным кажется вариант: махнуть на это рукой, и заставить принимающую сторону
+    внимательнее относиться к значению в NasMsg.FileInfo.size.  */
+                    nm.setdata (array);
+                    nm.fileInfo().setFilesize (read);
+                    sendFunction.apply (nm);
+                }
+            }
+            if (read <= 0)
+                throw new IOException (String.format (
+                    "Ошибка чтения файла <%s>: считано %d байтов при остатке %d.", path, read, rest));
+            return read;
+        }
+
+        public boolean fileDownloadAndWrite (@NotNull NasMsg nm) throws IOException {
+            if (fileExtruder != null) {
+                fileExtruder.writeDataBytes2File ((byte[]) nm.data(), (int) nm.fileInfo().getFilesize());
+                return true;
+            }
+            else if (DEBUG) throw new RuntimeException ("ОШИБКА: NasDialogue.fileExtruder == null.");
+            return false;
+        }
+
+        public boolean endupDownloading (@NotNull NasMsg nm) {
+            return endupExtruding (nm);
+        }
     }
 
-    public NasDialogue (@NotNull NasMsg nm) {
+//---------------------- Конструирование ----------------------------------------------------*/
+
+    private NasDialogue () {
+        conversation = new ArrayList<>();
+        tc = new TransferContext();
+    }
+
+    private NasDialogue (@NotNull NasMsg nm) {
         this();
-        if (nm == null) throw new IllegalArgumentException();
+        if (nm == null)
+            throw new IllegalArgumentException();
         conversation.add(nm);
     }
 
-    public NasDialogue (@NotNull NasMsg nm, @NotNull FileExtruder extruder) {
+    private NasDialogue (@NotNull NasMsg nm, @NotNull Path path) {
         this(nm);
-        fileExtruder = extruder;
+        fileExtruder = new InboundFileExtruder (path);
+        tc.path = path;
     }
 
-    public NasDialogue (@NotNull NasMsg nm, @NotNull List<FileInfo> infolist) {
+    private NasDialogue (@NotNull NasMsg nm, @NotNull List<FileInfo> infolist) {
         this(nm);
         this.infolist = infolist;
     }
 
-    public NasDialogue (@NotNull NasMsg nm, @NotNull InputStream inputStream) {
-        this(nm);
-        this.inputStream = inputStream;
+
+    public static NasDialogue NasDialogueForDownloading (@NotNull NasMsg nm, @NotNull Path path) {
+        NasDialogue d = new NasDialogue (nm, path);
+        return d;
     }
 
-//---------------------------------------------------------------------------------------------------------------*/
-
-    public boolean add (NasMsg nm) {
-        if (nm == null) {
-            return false;
+    public static NasDialogue NasDialogueForUploading (@NotNull NasMsg nm, @NotNull Path path) {
+        NasDialogue d = null;
+        FileChannel fc;
+        try {
+            fc = FileChannel.open (path, READ);
+            if (fc != null) {
+                d = new NasDialogue (nm, path);
+                d.inputFileChannel = fc;
+                fc.position (0L);
+            }
         }
-        NasMsg copy = Factory.nmcopy(nm);
-        return conversation.add(copy);
+        catch (IOException e) { e.printStackTrace(); }
+        return d;
     }
 
-    public OperationCodes getTheme () { return conversation.getFirst().opCode(); } //< подскажет, с чего всё началось
+    public static NasDialogue NasDialogueForList (@NotNull NasMsg nm) {
+        return new NasDialogue (nm, newInfolist());
+    }
 
-    public long getChunks () { return chunks; }
+    public static NasDialogue NasDialogueForSimpleRequest (@NotNull NasMsg nm) {
+        return new NasDialogue (nm);
+    }
 
-    public void incChunks () { chunks++; }
+//-------------------------------------------------------------------------------------------*/
 
-//---------------------------------------------------------------------------------------------------------------*/
+/** Добавляет в список <b>NasDialogue.conversation</b> копию <b>nm</b>.
+    @return true, если <u>{@code nm != null}</u> и <u>{@code conversation != null}</u> */
+    public boolean add (NasMsg nm) {
+        boolean ok = false;
+        if (conversation != null && nm != null) {
+            NasMsg copy = nmcopy (nm);
+            ok = (copy != null) && conversation.add (copy);
+        }
+        return ok;
+    }
+
+    public OperationCodes getTheme () { return conversation.get(0).opCode(); } //< подскажет, с чего всё началось
 
     public List<FileInfo> infolist () { return infolist; }
 
-    public InputStream inputStream () { return inputStream; }
+//------------------------------ методы для работы с FileExtruder'ом -----------------------*/
 
-//------------------------------ методы для работы с FileExtruder'ом -----------------------------------------*/
-
-    //public boolean initializeFileExtruder (Path ptargetfile)
-    //{
-    //    if (fileExtruder != null)
-    //    {
-    //        return
-    //    }
-    //    return false;
-    //}
-
-    public boolean transferStateIsOk () { return fileExtruder.getState(); }
-
-    public void writeDataBytes2File (NasMsg nm) {
-        if (fileExtruder != null) {
-            chunks = fileExtruder.writeDataBytes2File(nm);
-        }
-    }
+    public FileExtruder getFileExtruder () {   return fileExtruder;   }
 
     public boolean endupExtruding (NasMsg nm) {
         boolean ok = false;
@@ -109,24 +174,15 @@ public class NasDialogue {
         fileExtruder.close();
         fileExtruder = null;
     }
-//---------------------------------------------------------------------------------------------------------------*/
-
+//---------------------------------------------------------------------------------------------*/
     public void close () {
-        if (conversation != null) conversation.clear();
+        //if (conversation != null) conversation.clear(); <-- само очистится. К тому же
+        // в LocalNetClient.callbackOnMsgIncoming это может понадобиться (но пока не понадобилось).
         if (fileExtruder != null) cleanupFileExtruder();
-
         try {
-            if (inputStream != null) inputStream.close();
+            if (inputFileChannel != null)
+                inputFileChannel.close();   inputFileChannel = null;
         }
         catch (IOException e) {e.printStackTrace();}
-    }
-//---------------------------------------------------------------------------------------------------------------*/
-//test-test-test-test
-    protected void finalize () throws Throwable {   //< вызывается сборщиком мусора
-
-        if (DEBUG) {
-            super.finalize();
-            //LOGGER.trace("_______A dialogue object is being processed by GC right now._______");
-        }
     }
 }

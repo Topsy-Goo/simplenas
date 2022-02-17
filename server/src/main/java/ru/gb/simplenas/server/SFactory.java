@@ -12,9 +12,9 @@ import java.util.List;
 
 public class SFactory {
 
-    public static final int    DEFAULT_PUBLIC_PORT_NUMBER    = 8289;
+    public static final int DEFAULT_PUBLIC_PORT_NUMBER = 8289;
     public static final String
-        ERROR_INVALID_FILDER_SPECIFIED  = "Указано некорректное имя папки.",
+        ERROR_INVALID_FOLDER_SPECIFIED = "Указано некорректное имя папки.",
         ERR_FORMAT_LOGIN_REJECTED       = "Авторизация отклонена. Возможно, пользователь уже подключен:\n\n%s",
         ERR_FORMAT_UNALLOWABLE_USERNAME = "Недопустимое имя пользователя:\n\n%s\n",
         ERROR_SERVER_UNABLE_TO_PERFORM  = "Сервер не смог выполнить операцию!",
@@ -52,8 +52,8 @@ public class SFactory {
         return server().clientsListAdd(manipulator, userName);
     }
 
-    public static void clientsListRemove (RemoteManipulator manipulator, String userName) {
-        server().clientsListRemove(manipulator, userName);
+    public static void clientRemove (RemoteManipulator manipulator, String userName) {
+        server().clientRemove(manipulator, userName);
     }
 //--------------------------------- NasServerPropertyManager ------------------------------
 
@@ -64,8 +64,12 @@ public class SFactory {
         return new RemoteFileManager(strCloud);
     }
 
-    public static ServerFileManager getServerFileManager (@NotNull String strCloud, @NotNull List<String> welcomeFolders, @NotNull List<String> welcomeFiles) {
-        return new RemoteFileManager(strCloud, welcomeFolders, welcomeFiles);
+    public static ServerFileManager getServerFileManager (
+                        @NotNull String strCloud,
+                        @NotNull List<String> welcomeFolders,
+                        @NotNull List<String> welcomeFiles)
+    {
+        return new RemoteFileManager (strCloud, welcomeFolders, welcomeFiles);
     }
 //--------------------------------- NasFileManager ----------------------------------------
 
