@@ -17,6 +17,8 @@ import static ru.gb.simplenas.client.CFactory.*;
 import static ru.gb.simplenas.common.CommonData.PROPFILE_COMMENT;
 import static ru.gb.simplenas.common.CommonData.STR_EMPTY;
 import static ru.gb.simplenas.common.Factory.*;
+import static ru.gb.simplenas.common.services.impl.NasFileManager.createFile;
+import static ru.gb.simplenas.common.services.impl.NasFileManager.isStringOfRealPath;
 
 public class LocalPropertyManager implements ClientPropertyManager
 {
@@ -99,7 +101,7 @@ public class LocalPropertyManager implements ClientPropertyManager
             needUpdate = true;
             hostName = DEFAULT_HOST_NAME;
         }
-        if (!sayNoToEmptyStrings(strDefaultLocalPath) || !isStringOfRealPath(strDefaultLocalPath)) {
+        if (!sayNoToEmptyStrings(strDefaultLocalPath) || !isStringOfRealPath (strDefaultLocalPath)) {
 
             properties.setProperty (PROPNAME_PATH_LOCAL, System.getProperty (STR_DEF_FOLDER));
             needUpdate = true;

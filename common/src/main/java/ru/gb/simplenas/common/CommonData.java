@@ -36,6 +36,7 @@ public class CommonData {
         ;
 
     public static final int MAX_USERNAME_LENGTH = 32;
+    public static final long NO_SIZE_VALUE = -1L;
 
     public static final int INT_MAX_OBJECT_SIZE = 1024 * 1024 * 100/* +512*/;
     public static final int INT_MAX_BUFFER_SIZE = INT_MAX_OBJECT_SIZE; //< макс.размер буфера в байтах (сначала размер был

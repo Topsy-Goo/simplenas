@@ -8,6 +8,7 @@ import org.jetbrains.annotations.NotNull;
 import ru.gb.simplenas.common.annotations.EndupMethod;
 import ru.gb.simplenas.common.annotations.ManipulateMethod;
 import ru.gb.simplenas.common.services.Manipulator;
+import ru.gb.simplenas.common.services.impl.NasFileManager;
 import ru.gb.simplenas.common.structs.FileInfo;
 import ru.gb.simplenas.common.structs.NasDialogue;
 import ru.gb.simplenas.common.structs.NasMsg;
@@ -28,6 +29,7 @@ import java.util.function.Function;
 import static ru.gb.simplenas.common.CommonData.*;
 import static ru.gb.simplenas.common.Factory.*;
 import static ru.gb.simplenas.common.Factory.printf;
+import static ru.gb.simplenas.common.services.impl.NasFileManager.*;
 import static ru.gb.simplenas.common.structs.NasDialogue.NasDialogueForDownloading;
 import static ru.gb.simplenas.common.structs.NasDialogue.NasDialogueForUploading;
 import static ru.gb.simplenas.common.structs.OperationCodes.*;
@@ -286,13 +288,13 @@ public class RemoteManipulator implements Manipulator {
             Path p      = Paths.get (strPath, strName);
             Path valid  = sfm.absolutePathToUserSpace (userName, p, NOT_FOLDER);
 
-            if (valid == null || !sfm.isFileExists (valid))
+            if (valid == null || !isFileExists (valid))
                 errMsg += "Файл не существует.";
-            else if (!sfm.isReadable (valid))
+            else if (!isReadable (valid))
                 errMsg += "Отказано в доступе.";
             else {
                 fi.setExists (true);
-                fi.setFilesize (sfm.fileSize (valid));
+                fi.setFilesize (fileSize (valid));
 
                 dialogue = NasDialogueForUploading (nm, valid);
                 nm.setdata (null);
@@ -371,7 +373,7 @@ public class RemoteManipulator implements Manipulator {
         if (userName != null) {
             LOGGER.debug("manipulateLoginRequest(): userName = " + userName);
         }
-        else if (!isNameValid(name)) {
+        else if (!isNameValid (name)) {
             errMsg = sformat(ERR_FORMAT_UNALLOWABLE_USERNAME, name);
         }
         else if (!validateOnLogin(name, password)) {
@@ -494,7 +496,7 @@ public class RemoteManipulator implements Manipulator {
             if (valid != null && Files.exists(valid)) {
 
                 pathCurrentAbsolute = valid;
-                sendFileInfoList(listFolderContents(valid));
+                sendFileInfoList (listFolderContents(valid));
 
                 nm.setmsg(sfm.relativizeByUserName(userName, valid).toString());  //< эту строку клиент должен отобразить в соотв. поле ввода.
                 informClientWithOperationCode(nm, NM_OPCODE_OK);

@@ -10,7 +10,7 @@ import javafx.util.Callback;
 import java.text.DecimalFormat;
 import java.text.Format;
 
-import static ru.gb.simplenas.client.CFactory.NO_SIZE_VALUE;
+import static ru.gb.simplenas.common.CommonData.NO_SIZE_VALUE;
 import static ru.gb.simplenas.common.CommonData.STR_EMPTY;
 
 

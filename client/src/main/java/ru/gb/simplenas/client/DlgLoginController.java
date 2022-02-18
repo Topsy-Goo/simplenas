@@ -12,8 +12,8 @@ import java.util.ResourceBundle;
 
 import static ru.gb.simplenas.client.CFactory.*;
 import static ru.gb.simplenas.client.Controller.messageBox;
-import static ru.gb.simplenas.common.Factory.isUserNameValid;
 import static ru.gb.simplenas.common.Factory.sayNoToEmptyStrings;
+import static ru.gb.simplenas.common.services.impl.NasFileManager.isNameValid;
 
 public class DlgLoginController implements Initializable {
 
@@ -73,7 +73,7 @@ public class DlgLoginController implements Initializable {
         login = txtfldLogin.getText();
         password = getTextFromPasswordControl();
 
-        if (!isUserNameValid(login)) {
+        if (!isNameValid (login)) {
             messageBox(ALERTHEADER_AUTHENTIFICATION, PROMPT_INVALID_USER_NAME, Alert.AlertType.ERROR);
             txtfldLogin.requestFocus();
         }

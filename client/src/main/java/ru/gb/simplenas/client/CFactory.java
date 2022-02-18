@@ -7,6 +7,7 @@ import ru.gb.simplenas.client.services.ClientPropertyManager;
 import ru.gb.simplenas.client.services.NetClient;
 import ru.gb.simplenas.client.services.impl.*;
 import ru.gb.simplenas.common.NasCallback;
+import ru.gb.simplenas.common.services.impl.NasFileManager;
 import ru.gb.simplenas.common.structs.FileInfo;
 import ru.gb.simplenas.client.structs.TableFileInfo;
 
@@ -69,6 +70,7 @@ public class CFactory {
         PROMPT_FORMAT_RENAMING_ALREADY_EXISTS = "Переименование отклонено, — папка или файл с таким имененм уже существуют:\n\n%s\n",
         PROMPT_FORMAT_UPLOADERROR_SRCFILE_ACCESS = " т.к. не удалось получить доступ к фалу:\n%s%s%s\n",
         PROMPT_FOLDERS_EXCHANGE_NOT_SUPPORTED = "Пересылка папок не поддерживается.",
+        PROMPT_FILE_IS_NOT_ACCESSIBLE = "Доступ к файлу закрыт.",
         PROMPT_CONFIRM_CREATE_FOLDER = "Введите имя для новой папки и нажмите ENTER.",
         PROMPT_DIR_ENTRY_DOESNOT_EXISTS = "Папка или файл не существуют!",
         ERROR_UNABLE_CONNECT_TO_SERVER = "Не удалось подключиться к серверу.",
@@ -80,7 +82,6 @@ public class CFactory {
         PROMPT_INVALID_USER_NAME = "Указано недопустимое имя пользователя. Имя пользователя должно содержать только буквы и цифры.",
         PROMPT_INVALID_PASSWORD = "Указан недопустимый пароль.";
         //PROMPT_FORMAT_UNABLE_APPLY_PATH = "Не удалось вывести список содержимого папки.\n\n%s\n";
-    public static final long NO_SIZE_VALUE = -1L;
 
 
     private CFactory () {}
@@ -110,39 +111,7 @@ public class CFactory {
     public static void deleteTvItem (TableView<TableFileInfo> tv, TableFileInfo t) {
         TableViewManager.deleteTvItem(tv, t);
     }
-//--------------------------------- LocalFileManager ------------------------------------------------------------*/
 
-    public static boolean isStringOfRealPath (@NotNull String string) {
-        return LocalFileManager.isStringOfRealPath(string);
-    }
-
-    public static String stringPath2StringAbsoluteParentPath (@NotNull String s) {
-        return LocalFileManager.stringPath2StringAbsoluteParentPath(s);
-    }
-
-    public static String formatFileTime (long time) {
-        return LocalFileManager.formatFileTime(time);
-    }
-
-    public static Path createSubfolder (Path parent, String strChild) {
-        return LocalFileManager.createSubfolder(parent, strChild);
-    }
-
-    public static FileInfo rename (@NotNull Path pathParentAbsolute, @NotNull String oldName, @NotNull String newName) {
-        return LocalFileManager.rename(pathParentAbsolute, oldName, newName);
-    }
-
-    public static int countDirectoryEntries (@NotNull Path pFolder) {
-        return LocalFileManager.countDirectoryEntries(pFolder);
-    }
-
-    public static boolean deleteFileOrDirectory (@NotNull Path path) {
-        return LocalFileManager.deleteFileOrDirectory(path);
-    }
-
-    public static List<FileInfo> getRootsAsFileinfoList () {
-        return LocalFileManager.getRootsAsFileinfoList();
-    }
 //--------------------------------- ClientPropertyManager --------------------------------------------------------*/
 
     public static ClientPropertyManager getProperyManager () {

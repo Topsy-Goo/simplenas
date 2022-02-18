@@ -17,6 +17,7 @@ import java.util.Properties;
 
 import static ru.gb.simplenas.common.CommonData.*;
 import static ru.gb.simplenas.common.Factory.*;
+import static ru.gb.simplenas.common.services.impl.NasFileManager.createFile;
 import static ru.gb.simplenas.server.SFactory.*;
 
 public class RemotePropertyManager implements ServerPropertyManager {
@@ -124,7 +125,7 @@ public class RemotePropertyManager implements ServerPropertyManager {
         }
         if (needWrite) {
             errprintf("\nНе удалось (частично или полностью) прочитать файл настроек: <%s>\n", pPropertyFile);
-            if (!createFile(pPropertyFile) || !writeProperties(pPropertyFile))
+            if (!createFile (pPropertyFile) || !writeProperties(pPropertyFile))
                 errprintf("\nНе удалось создать/обновить файл настроек <%s>\n", pPropertyFile);
         }
     }

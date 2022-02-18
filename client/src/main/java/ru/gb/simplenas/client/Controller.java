@@ -1,15 +1,14 @@
 package ru.gb.simplenas.client;
 
-import org.jetbrains.annotations.NotNull;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Text;
@@ -17,20 +16,22 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
 import ru.gb.simplenas.client.services.ClientPropertyManager;
 import ru.gb.simplenas.client.services.ClientWatchService;
 import ru.gb.simplenas.client.services.NetClient;
 import ru.gb.simplenas.client.services.impl.LocalWatchService;
 import ru.gb.simplenas.client.services.impl.TableViewManager;
+import ru.gb.simplenas.client.structs.TableFileInfo;
 import ru.gb.simplenas.common.structs.FileInfo;
 import ru.gb.simplenas.common.structs.NasMsg;
 import ru.gb.simplenas.common.structs.OperationCodes;
-import ru.gb.simplenas.client.structs.TableFileInfo;
 
 import java.awt.*;
 import java.io.IOException;
 import java.net.URL;
-import java.nio.file.*;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Optional;
 import java.util.ResourceBundle;
@@ -40,12 +41,12 @@ import java.util.stream.Collectors;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static javafx.scene.control.Alert.AlertType.*;
-import static javafx.scene.control.Alert.AlertType.ERROR;
 import static ru.gb.simplenas.client.CFactory.*;
 import static ru.gb.simplenas.common.CommonData.*;
 import static ru.gb.simplenas.common.Factory.*;
-import static ru.gb.simplenas.common.services.impl.NasFileManager.getParentFromRelative;
-import static ru.gb.simplenas.common.structs.OperationCodes.*;
+import static ru.gb.simplenas.common.services.impl.NasFileManager.*;
+import static ru.gb.simplenas.common.structs.OperationCodes.NM_OPCODE_ERROR;
+import static ru.gb.simplenas.common.structs.OperationCodes.NM_OPCODE_OK;
 
 public class Controller implements Initializable {
 
@@ -206,7 +207,7 @@ public class Controller implements Initializable {
             userName = name;
             updateControlsOnSuccessfulLogin();
         }
-        else if (nm.opCode() == OperationCodes.NM_OPCODE_ERROR) {
+        else if (nm.opCode() == NM_OPCODE_ERROR) {
             String strErr = nm.msg();
 
             if (!sayNoToEmptyStrings(strErr)) {
@@ -345,7 +346,7 @@ public class Controller implements Initializable {
         if (nasMsg == null) {
             errMsg = ERROR_UNABLE_TO_PERFORM;
         }
-        else if (nasMsg.opCode() == OperationCodes.NM_OPCODE_ERROR) {
+        else if (nasMsg.opCode() == NM_OPCODE_ERROR) {
             errMsg = nasMsg.msg();
         }
         else if (nasMsg.opCode() == NM_OPCODE_OK) {
@@ -357,7 +358,7 @@ public class Controller implements Initializable {
 /** Создание локальной папки в текущей папке. */
     @FXML public void onactionMenuClient_CreateFolder (ActionEvent actionEvent) {
         String name = generateDefaultFolderName(tvClientSide);
-        Path pSubfolder = createSubfolder(Paths.get(strCurrentLocalPath), name);
+        Path pSubfolder = createSubfolder (Paths.get(strCurrentLocalPath), name);
 
         if (null == pSubfolder) messageBox(ALERTHEADER_FOLDER_CREATION, ERROR_UNABLE_TO_PERFORM, ERROR);
     }
@@ -427,9 +428,10 @@ public class Controller implements Initializable {
                 errMsg = PROMPT_FOLDERS_EXCHANGE_NOT_SUPPORTED;
                 alertType = INFORMATION;
             }
-            else { errMsg = uploadFileByTfi(tfi); }
+            else  errMsg = uploadFileByTfi (tfi);
         }
-        if (errMsg != null) messageBox(ALERTHEADER_LOCAL2SERVER, errMsg, alertType);
+        if (errMsg != null)
+            messageBox(ALERTHEADER_LOCAL2SERVER, errMsg, alertType);
     }
 
 /** В поле ввода textfieldCurrentPath_Client нажат ENTER. */
@@ -455,7 +457,7 @@ public class Controller implements Initializable {
 /** Переходим в родительскую папку, если таковая существует.  */
     @FXML public void onactionButton_Client_LevelUp (ActionEvent actionEvent) {
         // !!! Игнорируем содержимое поля ввода textfieldCurrentPath_Client)
-        String strParent = stringPath2StringAbsoluteParentPath(strCurrentLocalPath);
+        String strParent = stringPath2StringAbsoluteParentPath (strCurrentLocalPath);
 
         if (strParent != null) {
             if (strParent.isEmpty()) {
@@ -465,7 +467,7 @@ public class Controller implements Initializable {
                 try {
                     if (lockSuspendWatching.tryLock (2000, MILLISECONDS)) {
 
-                        populateTableView(listFolderContents(strParent), LOCAL);
+                        populateTableView (listFolderContents (strParent), LOCAL);
                         strCurrentLocalPath = strParent;
 
                         textfieldCurrentPath_Client.setText(strCurrentLocalPath);
@@ -631,7 +633,7 @@ nm.data   = список содержимого этой папки (если н
         }
         if (isStringOfRealPath(strPath)) {
             strCurrentLocalPath = strPath;
-            List<FileInfo> infolist = listFolderContents(strCurrentLocalPath);
+            List<FileInfo> infolist = listFolderContents (strCurrentLocalPath);
             populateTableView(infolist, LOCAL);
             ok = true;
         }
@@ -761,7 +763,7 @@ nm.data   = список содержимого этой папки (если н
         if (ok) {
             OperationCodes opcode = netClient.delete(strCurrentServerPath, fi).opCode();
             ok = opcode == NM_OPCODE_OK;
-            error = opcode == OperationCodes.NM_OPCODE_ERROR;
+            error = opcode == NM_OPCODE_ERROR;
         }
         if (error) messageBox(ALERTHEADER_DELETION, ERROR_UNABLE_TO_PERFORM, ERROR);
         return ok;
@@ -781,23 +783,19 @@ nm.data   = список содержимого этой папки (если н
             // которая создаётся при загрузке.
             if (lockSuspendWatching.tryLock (2000, MILLISECONDS))
             {
-                String strTarget = Paths.get(strCurrentLocalPath, tfi.getFileName()).toString();
+                String strTarget = Paths.get (strCurrentLocalPath, tfi.getFileName()).toString();
 
-                if (isItSafeToDownloadFile(strTarget)) {
-                    NasMsg nm = netClient.download(strCurrentLocalPath, strCurrentServerPath, tfi.toFileInfo());
+                if (isStringOfRealPath (strTarget) && !isItSafeToDownloadFile (strTarget))
+                    strErr = null;
+                else {
+                    NasMsg nm = netClient.download (strCurrentLocalPath, strCurrentServerPath, tfi.toFileInfo());
                     if (nm != null) {
-                        if (nm.opCode() == OperationCodes.NM_OPCODE_ERROR) {
-                            if (nm.msg() != null) strErr = nm.msg();
-                        }
-                        else if (nm.opCode() == NM_OPCODE_OK) {
-                            // Из-за ошибки с передачей больших файлов мы не можем просто добавить пункт
-                            // в таблицу. Поэтому пойдём длинным путём — обновим список файлов.
+                        if (nm.opCode() == NM_OPCODE_OK) {
                             applyStringAsNewLocalPath(strCurrentLocalPath);
                             strErr = null;
-                            //Службу слежения за папкой, как оказалось, тут тоже использовать сложно, т.к. она реагирует на
-                            //  временную папку, которая создаётся при загрузке. Служба реагирует быстро, и, если файл маленький,
-                            //  то происходят накладки по времени.
                         }
+                        else if (nm.opCode() == NM_OPCODE_ERROR && nm.msg() != null)
+                            strErr = nm.msg();
                     }
                 }
                 lockSuspendWatching.unlock();
@@ -810,33 +808,36 @@ nm.data   = список содержимого этой папки (если н
 /** проверяем, существует ли файл и, если существует, запрашиваем у юзера подтверждение на перезапись   */
     private boolean isItSafeToDownloadFile (String strTarget) {
 
-        String s = String.format (PROMPT_FORMAT_REPLACE_CONFIRMATION, strTarget);
-        return !isStringOfRealPath(strTarget)
-               || ANSWER_OK == messageBoxConfirmation (ALERTHEADER_DOWNLOADING, s,
-                                                       Alert.AlertType.CONFIRMATION);
+        String s = sformat (PROMPT_FORMAT_REPLACE_CONFIRMATION, strTarget);
+        return ANSWER_OK == messageBoxConfirmation (ALERTHEADER_DOWNLOADING, s,
+                                                    Alert.AlertType.CONFIRMATION);
     }
 
 /** выгружаем файл на сервер в текущую удалённую папку; если файл уже существует, запрашиваем подтверждение пользователя.    */
     private String uploadFileByTfi (TableFileInfo tfi) {
 
         String strTargetName = tfi.getFileName();
-        String strErr = ERROR_UNABLE_TO_PERFORM + " %";
+        String strErr = ERROR_UNABLE_TO_PERFORM;
         FileInfo fi = netClient.fileInfo(strCurrentServerPath, strTargetName);
 
         if (fi != null) {
-            if (fi.isDirectory())
-                messageBox(ALERTHEADER_LOCAL2SERVER, PROMPT_FOLDERS_EXCHANGE_NOT_SUPPORTED, WARNING);
-            else
-            if (isItSafeToUploadFile(strTargetName, fi.isExists())) {
-
+            if (fi.isDirectory()) {
+                messageBox (ALERTHEADER_LOCAL2SERVER, PROMPT_FOLDERS_EXCHANGE_NOT_SUPPORTED, WARNING);
+                strErr = null;
+            }
+            else if (!isReadable (Paths.get (strCurrentLocalPath, fi.getFileName()))) {
+                messageBox (ALERTHEADER_LOCAL2SERVER, PROMPT_FILE_IS_NOT_ACCESSIBLE, WARNING);
+                strErr = null;
+            }
+            else if (fi.isExists() && !isItSafeToUploadFile (strTargetName))
+                strErr = null;
+            else {
                 NasMsg nm = netClient.upload (strCurrentLocalPath, strCurrentServerPath, tfi.toFileInfo());
                 if (nm != null) {
-                    /* Из-за ошибки с передачей больших файлов мы не можем просто добавить пункт
-                    в таблицу. Поэтому пойдём длинным путём — запросим список файлов у сервера.   */
                     if (workUpAListRequestResult (netClient.list (strCurrentServerPath)))
                         strErr = null;
                     else
-                    if (nm.opCode() == OperationCodes.NM_OPCODE_ERROR && nm.msg() != null)
+                    if (nm.opCode() == NM_OPCODE_ERROR && nm.msg() != null)
                         strErr = nm.msg();
                 }
             }
@@ -845,14 +846,13 @@ nm.data   = список содержимого этой папки (если н
     }
 
 /** проверяем, существует ли файл и, если существует, запрашиваем у юзера подтверждение на перезапись   */
-    private boolean isItSafeToUploadFile (String strTargetName, boolean exists) {
+    private boolean isItSafeToUploadFile (String strTargetName) {
 
-        String strPath = Paths.get(strCurrentServerPath, strTargetName).toString();
-        String s = String.format(CFactory.PROMPT_FORMAT_REPLACE_CONFIRMATION, strPath);
+        String strPath = Paths.get (strCurrentServerPath, strTargetName).toString();
+        String s = sformat (PROMPT_FORMAT_REPLACE_CONFIRMATION, strPath);
 
-        return !exists
-               || ANSWER_OK == messageBoxConfirmation (ALERTHEADER_UPLOADING, s,
-                                                       Alert.AlertType.CONFIRMATION);
+        return ANSWER_OK == messageBoxConfirmation (ALERTHEADER_UPLOADING, s,
+                                                    Alert.AlertType.CONFIRMATION);
     }
 
 /** Устанавливаем размер шрифта (в пикселах) для окна.    */

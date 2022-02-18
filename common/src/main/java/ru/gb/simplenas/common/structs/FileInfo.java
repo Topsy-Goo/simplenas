@@ -10,8 +10,7 @@ import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 
-import static ru.gb.simplenas.common.Factory.readBasicFileAttributes2;
-
+import static ru.gb.simplenas.common.services.impl.NasFileManager.readBasicFileAttributes2;
 
 public class FileInfo implements Serializable {
 
@@ -47,7 +46,7 @@ public class FileInfo implements Serializable {
             fileName = path.getFileName().toString();
             exists = Files.exists(path);
             if (exists) {
-                BasicFileAttributes attributes = readBasicFileAttributes2(path);
+                BasicFileAttributes attributes = readBasicFileAttributes2 (path);
                 if (attributes != null) {
                     symbolic = attributes.isSymbolicLink();
                     directory = attributes.isDirectory();

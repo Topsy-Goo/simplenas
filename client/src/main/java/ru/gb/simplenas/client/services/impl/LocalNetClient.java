@@ -312,7 +312,7 @@ public class LocalNetClient implements NetClient {
         && !fileInfo.isDirectory())
         {
             result = new NasMsg (NM_OPCODE_LOAD2SERVER, strServerFolder, OUTBOUND);
-            result.setfileInfo(fileInfo);
+            result.setfileInfo (fileInfo);
 
             synchronized (syncObj) {
                 if (manipulator.startLoad2ServerRequest (strLocalFolder, result)) {

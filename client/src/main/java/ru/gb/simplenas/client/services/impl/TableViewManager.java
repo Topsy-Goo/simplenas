@@ -23,6 +23,7 @@ import static javafx.scene.control.Alert.AlertType.WARNING;
 import static ru.gb.simplenas.client.CFactory.*;
 import static ru.gb.simplenas.common.CommonData.*;
 import static ru.gb.simplenas.common.Factory.sayNoToEmptyStrings;
+import static ru.gb.simplenas.common.services.impl.NasFileManager.rename;
 import static ru.gb.simplenas.common.structs.OperationCodes.NM_OPCODE_OK;
 
 public class TableViewManager

@@ -1,16 +1,15 @@
 package ru.gb.simplenas.client.structs;
 
-import org.jetbrains.annotations.NotNull;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleLongProperty;
 import javafx.beans.property.SimpleStringProperty;
+import org.jetbrains.annotations.NotNull;
 import ru.gb.simplenas.common.structs.FileInfo;
 
 import java.nio.file.attribute.FileTime;
 
-import static ru.gb.simplenas.client.CFactory.NO_SIZE_VALUE;
 import static ru.gb.simplenas.common.CommonData.*;
-import static ru.gb.simplenas.client.CFactory.formatFileTime;
+import static ru.gb.simplenas.common.services.impl.NasFileManager.formatFileTime;
 
 /** Класс содержит данные для одной строки таблицы, а также методы, необходимые для того, чтобы JFX могла
  работать со строкой.<p>
@@ -23,7 +22,7 @@ import static ru.gb.simplenas.client.CFactory.formatFileTime;
 public class TableFileInfo {
 
 //строковые поля служат для отображения в таблице. Ими оперирует jfx.
-    private final SimpleStringProperty folderMark   = new SimpleStringProperty(STR_EMPTY);    //< пустая строка останется пустой для файлов
+    private final SimpleStringProperty folderMark   = new SimpleStringProperty (STR_EMPTY);    //< пустая строка останется пустой для файлов
     private final SimpleStringProperty fileName     = new SimpleStringProperty (STR_EMPTY);
     private final SimpleStringProperty timeModified = new SimpleStringProperty (STR_EMPTY); //< пустая строка останется пустой для папок
     private final SimpleStringProperty timeCreated  = new SimpleStringProperty (STR_EMPTY); //< ...

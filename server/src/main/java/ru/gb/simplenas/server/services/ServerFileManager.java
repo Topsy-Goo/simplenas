@@ -2,7 +2,6 @@ package ru.gb.simplenas.server.services;
 
 import ru.gb.simplenas.common.structs.FileInfo;
 
-import java.io.IOException;
 import java.nio.file.Path;
 
 public interface ServerFileManager {
@@ -30,10 +29,4 @@ public interface ServerFileManager {
     boolean safeDeleteFileOrDirectory (Path path, String userNAme);
 
     Path getCloud();
-
-    boolean isFileExists (Path path);
-
-    boolean isReadable (Path path);
-
-    long fileSize (Path path) throws IOException;
 }

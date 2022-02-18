@@ -18,8 +18,8 @@ import static ru.gb.simplenas.common.Factory.*;
 
 public class NasDialogue {
 
-    private final List<NasMsg> conversation;
-    private FileExtruder fileExtruder;
+    private OperationCodes theme;
+    private FileExtruder   fileExtruder;
     private List<FileInfo> infolist;
     private FileChannel    inputFileChannel;
     public final TransferContext tc;
@@ -83,16 +83,13 @@ public class NasDialogue {
 
 //---------------------- Конструирование ----------------------------------------------------*/
 
-    private NasDialogue () {
-        conversation = new ArrayList<>();
-        tc = new TransferContext();
-    }
+    private NasDialogue () {  tc = new TransferContext();  }
 
     private NasDialogue (@NotNull NasMsg nm) {
         this();
         if (nm == null)
             throw new IllegalArgumentException();
-        conversation.add(nm);
+        theme = nm.opCode();
     }
 
     private NasDialogue (@NotNull NasMsg nm, @NotNull Path path) {
@@ -137,18 +134,7 @@ public class NasDialogue {
 
 //-------------------------------------------------------------------------------------------*/
 
-/** Добавляет в список <b>NasDialogue.conversation</b> копию <b>nm</b>.
-    @return true, если <u>{@code nm != null}</u> и <u>{@code conversation != null}</u> */
-    public boolean add (NasMsg nm) {
-        boolean ok = false;
-        if (conversation != null && nm != null) {
-            NasMsg copy = nmcopy (nm);
-            ok = (copy != null) && conversation.add (copy);
-        }
-        return ok;
-    }
-
-    public OperationCodes getTheme () { return conversation.get(0).opCode(); } //< подскажет, с чего всё началось
+    public OperationCodes getTheme () { return theme; } //< подскажет, с чего всё началось
 
     public List<FileInfo> infolist () { return infolist; }
 

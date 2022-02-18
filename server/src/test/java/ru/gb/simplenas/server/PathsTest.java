@@ -16,8 +16,8 @@ import java.util.stream.Stream;
 import static ru.gb.simplenas.common.CommonData.STR_EMPTY;
 import static ru.gb.simplenas.common.CommonData.FILE_SEPARATOR;
 import static ru.gb.simplenas.common.Factory.printf;
+import static ru.gb.simplenas.common.services.impl.NasFileManager.isNameValid;
 import static ru.gb.simplenas.server.SFactory.getServerFileManager;
-import static ru.gb.simplenas.server.SFactory.isNameValid;
 
 //класс для проверки возможности пользователя выйти за пределлы своего дискового пространства на сервере.
 public class PathsTest
@@ -80,7 +80,7 @@ public class PathsTest
     @MethodSource ("generator4UserNameValidityTest")
     public void testUserNameValidity (boolean ok, String name)
     {
-        boolean validated = isNameValid(name);
+        boolean validated = isNameValid (name);
         Assertions.assertEquals(ok, validated);
     }
 

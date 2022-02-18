@@ -21,7 +21,7 @@ import static ru.gb.simplenas.common.Factory.sayNoToEmptyStrings;
     Основу проверки составляет метод getSafeAbsolutePathBy(…), который в качестве параметра принимает
     имя корневой папки ДПП (фактически, — принимает логин пользователя).
 */
-public class RemoteFileManager extends NasFileManager implements ServerFileManager {
+public class RemoteFileManager implements ServerFileManager {
 
     private static final Logger LOGGER = LogManager.getLogger(RemoteFileManager.class.getName());
     private Path         cloud;
@@ -57,7 +57,7 @@ public class RemoteFileManager extends NasFileManager implements ServerFileManag
 
         boolean exists = Files.exists(cloud);
         if (!exists) {
-            cloud = createFolder(cloud);
+            cloud = NasFileManager.createFolder (cloud);
             if (cloud != null) exists = Files.exists(cloud);
         }
         return exists && Files.isDirectory(cloud);
@@ -85,7 +85,7 @@ public class RemoteFileManager extends NasFileManager implements ServerFileManag
 
             Path pChildAbsolute = getSafeAbsolutePathBy(pParent.resolve(strChild), userName);
             if (pChildAbsolute != null) {
-                Path p = createFolder(pChildAbsolute);
+                Path p = NasFileManager.createFolder(pChildAbsolute);
                 if (p != null)
                     result = new FileInfo(p);
             }
@@ -100,7 +100,7 @@ public class RemoteFileManager extends NasFileManager implements ServerFileManag
         Path    userroot = constructAbsoluteUserRoot(userName);
 
         if (userroot != null) {
-            if (!Files.exists(userroot) && createFolder(userroot) != null) try {
+            if (!Files.exists(userroot) && NasFileManager.createFolder(userroot) != null) try {
                 createNewUserFolders(userroot);
                 createNewUserFiles(userroot);
             }
@@ -115,7 +115,7 @@ public class RemoteFileManager extends NasFileManager implements ServerFileManag
         {
             for (String s : welcomeFolders) {    //< список стандартных папок
                 Path dir = userroot.resolve(s);
-                createFolder(dir);
+                NasFileManager.createFolder(dir);
             }
         }
     }
@@ -155,7 +155,7 @@ public class RemoteFileManager extends NasFileManager implements ServerFileManag
                                           @NotNull String newName, @NotNull String userName)
     {   FileInfo result = null;
         if ((pParent = getSafeAbsolutePathBy(pParent, userName)) != null)
-            result = rename(pParent, oldName, newName);
+            result = NasFileManager.rename(pParent, oldName, newName);
         return result;
     }
 
@@ -163,7 +163,7 @@ public class RemoteFileManager extends NasFileManager implements ServerFileManag
     @Override public Path constructAbsoluteUserRoot (@NotNull String userName) {
         Path userroot = null;
 
-        if (isNameValid(userName)) {
+        if (NasFileManager.isNameValid(userName)) {
             Path ptmp = Paths.get(userName);
             if (ptmp.getNameCount() == 1)
                 userroot = cloud.resolve(ptmp);
@@ -195,7 +195,7 @@ public class RemoteFileManager extends NasFileManager implements ServerFileManag
     {
         Path tmp = getSafeAbsolutePathBy(pFolder, userName);
         if (tmp != null)
-            return countDirectoryEntries(tmp);
+            return NasFileManager.countDirectoryEntries(tmp);
         return -1;
     }
 
@@ -204,7 +204,7 @@ public class RemoteFileManager extends NasFileManager implements ServerFileManag
     {
         Path tmp = getSafeAbsolutePathBy(path, userName);
         if (tmp != null)
-            return deleteFileOrDirectory(path);
+            return NasFileManager.deleteFileOrDirectory(path);
         return false;
     }
 
@@ -237,17 +237,5 @@ public class RemoteFileManager extends NasFileManager implements ServerFileManag
                 result = cloud.relativize(path).toString();
         }
         return result;
-    }
-
-    @Override public boolean isFileExists (Path path) {
-        return Files.exists (path);
-    }
-
-    @Override public boolean isReadable (Path path) {
-        return Files.isReadable (path);
-    }
-
-    @Override public long fileSize (Path path) throws IOException {
-        return Files.size (path);
     }
 }

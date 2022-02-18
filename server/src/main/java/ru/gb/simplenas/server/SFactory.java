@@ -71,11 +71,7 @@ public class SFactory {
     {
         return new RemoteFileManager (strCloud, welcomeFolders, welcomeFiles);
     }
-//--------------------------------- NasFileManager ----------------------------------------
 
-    public static boolean isNameValid (@NotNull String userName) {
-        return NasFileManager.isNameValid(userName);
-    }
 //---------------------------------- JdbcConnection ---------------------------------------
     public static DbConnection getDbConnection () { return JdbcConnection.getInstance(); }
 }

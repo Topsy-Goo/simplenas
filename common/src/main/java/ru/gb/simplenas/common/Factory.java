@@ -1,20 +1,10 @@
 package ru.gb.simplenas.common;
 
-import org.jetbrains.annotations.NotNull;
-import ru.gb.simplenas.common.services.impl.NasFileManager;
 import ru.gb.simplenas.common.structs.FileInfo;
 import ru.gb.simplenas.common.structs.NasMsg;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
-
-import static java.nio.file.StandardOpenOption.READ;
 
 public class Factory {
 
@@ -65,36 +55,5 @@ public class Factory {
 
     public static String sformat (String format, Object... objects) {
         return String.format(format, objects);
-    }
-
-//--------------------------------- NasFileManager --------------------------------------------------------------*/
-
-    public static BasicFileAttributes readBasicFileAttributes2 (@NotNull Path path) {
-        return NasFileManager.readBasicFileAttributes2(path);
-    }
-
-    public static List<FileInfo> listFolderContents (@NotNull String folderName) {
-        return NasFileManager.listFolderContents(folderName);
-    }
-
-    public static List<FileInfo> listFolderContents (@NotNull Path folder) {
-        return NasFileManager.listFolderContents(folder);
-    }
-
-    public static boolean createFile (@NotNull Path pFile) {
-        return NasFileManager.createFile(pFile);
-    }
-
-    public static boolean createFile (@NotNull String strFile) {
-        return NasFileManager.createFile(strFile);
-    }
-
-    //public static String relativizeByFolderName (@NotNull String folderName, @NotNull String strPath)
-    //{
-    //    return NasFileManager.relativizeByFolderName(folderName, strPath);
-    //}
-
-    public static boolean isUserNameValid (String userName) {
-        return NasFileManager.isNameValid(userName);
     }
 }
