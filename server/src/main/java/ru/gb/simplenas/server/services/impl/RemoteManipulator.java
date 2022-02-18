@@ -95,8 +95,8 @@ public class RemoteManipulator implements Manipulator {
             try {
                 Method m = mapManipulateMetods.get (nm.opCode());
                 if (m == null)
-                    throw new UnsupportedOperationException (String.format(
-                        "Нет метода для кода операции: «%s».", opcode));
+                    throw new UnsupportedOperationException (
+                                sformat ("Нет метода для кода операции: «%s».", opcode));
 
                 methodName = m.getName();
 
@@ -130,8 +130,8 @@ public class RemoteManipulator implements Manipulator {
             OperationCodes opcode = dialogue.getTheme();
             Method m = mapEndupMetods.get (opcode);
             if (m == null)
-                throw new UnsupportedOperationException (String.format(
-                        "Нет метода для кода операции: «%s».", opcode));
+                throw new UnsupportedOperationException (
+                            sformat ("Нет метода для кода операции: «%s».", opcode));
             m.invoke (this, nm);
         }
         catch (IllegalArgumentException | ReflectiveOperationException e) {e.printStackTrace();}
@@ -157,8 +157,8 @@ public class RemoteManipulator implements Manipulator {
             if (dialogue == null)
                 errorMessage = inlinePrepareToDownloading (nm);
             else
-                replyWithErrorMessage (nm, String.format ("Сервер занят выполнением операции: %s.",
-                                                          dialogue.getTheme()));
+                replyWithErrorMessage (nm, sformat ("Сервер занят выполнением операции: %s.",
+                                                    dialogue.getTheme()));
         }
         else if (dialogue != null)
             errorMessage = inlineDownloading (nm);
@@ -213,7 +213,7 @@ public class RemoteManipulator implements Manipulator {
                 stopTalking (sformat ("Не удалось принять файл: <%s>.", dialogue.tc.path));
             }break;
             default: {  //неизвестный код операции:
-                errorMessage = String.format ("Неизвестный код операции: %s", nm.msg());
+                errorMessage = sformat ("Неизвестный код операции: %s", nm.msg());
                 if (DEBUG) throw new UnsupportedOperationException (errorMessage);
             }
         }//switch
@@ -349,7 +349,8 @@ public class RemoteManipulator implements Manipulator {
                 manipulateExitRequest (nm);
             }break;
             default: {    //неизвестный код сообщения
-                String errMsg = String.format ("Неизвестный код операции: %s. Операция %s прервана.", nm.msg(), dialogue.getTheme());
+                String errMsg = sformat ("Неизвестный код операции: %s. Операция %s прервана.",
+                                         nm.msg(), dialogue.getTheme());
                 replyWithErrorMessage (nm, errMsg);
                 stopTalking (errMsg);
                 if (DEBUG) throw new UnsupportedOperationException (errMsg);
@@ -374,17 +375,17 @@ public class RemoteManipulator implements Manipulator {
             LOGGER.debug("manipulateLoginRequest(): userName = " + userName);
         }
         else if (!isNameValid (name)) {
-            errMsg = sformat(ERR_FORMAT_UNALLOWABLE_USERNAME, name);
+            errMsg = sformat (ERR_FORMAT_UNALLOWABLE_USERNAME, name);
         }
-        else if (!validateOnLogin(name, password)) {
-            errMsg = sformat(ERR_FORMAT_NOT_REGISTERED, name);
+        else if (!validateOnLogin (name, password)) {
+            errMsg = sformat (ERR_FORMAT_NOT_REGISTERED, name);
         }
-        else if (!clientsListAdd(this, name)) {
-            errMsg = sformat(ERR_FORMAT_LOGIN_REJECTED, name);
+        else if (!clientsListAdd (this, name)) {
+            errMsg = sformat (ERR_FORMAT_LOGIN_REJECTED, name);
         }
         else {
-            pathCurrentAbsolute = sfm.constructAbsoluteUserRoot(name);
-            if (sfm.checkUserFolder(name) && pathCurrentAbsolute != null) {
+            pathCurrentAbsolute = sfm.constructAbsoluteUserRoot (name);
+            if (sfm.checkUserFolder (name) && pathCurrentAbsolute != null) {
                 userName = name;
                 informClientWithOperationCode (nm, NM_OPCODE_OK);
                 printf ("\nПодключен клиент: <%s>.\n", userName);

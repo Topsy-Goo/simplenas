@@ -208,7 +208,7 @@ public class RemoteServer implements Server {
         if (userName != null && CHANNELS.get(userName) == manipulator) {
             CHANNELS.remove (userName);
             if (DEBUG)
-                lnprint("RemoteServer.clientsListRemove(): клиент <" + userName + "> отключен.");
+                lnprint ("RemoteServer.clientsListRemove(): клиент <" + userName + "> отключен.");
         }
     }
 
@@ -231,7 +231,7 @@ public class RemoteServer implements Server {
 
         Channel c = channelOfChannelFuture;
         if (channelOfChannelFuture != null && channelOfChannelFuture.isOpen()) {
-            channelOfChannelFuture.disconnect();    //TODO : кажется, так мы соединение не закроем.
+            channelOfChannelFuture.disconnect();
         }
         channelOfChannelFuture = null;
 

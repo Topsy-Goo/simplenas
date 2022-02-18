@@ -17,8 +17,7 @@ public class ContextMenuManager {
                         ContextMenu menu, TableView<TableFileInfo> tv)
     {
         if (menu != null && tv != null)
-            menu.setOnShowing(new EventHandler<WindowEvent>() {
-
+            menu.setOnShowing (new EventHandler<WindowEvent>() {
                 @Override public void handle (WindowEvent event) {
 
                     TableFileInfo tfi         = tv.getSelectionModel().getSelectedItem();

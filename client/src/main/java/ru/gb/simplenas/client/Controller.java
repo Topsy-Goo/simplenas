@@ -97,7 +97,7 @@ public class Controller implements Initializable {
         if (message == null) message = "";
 
         Alert a = new Alert(alerttype, message, ButtonType.CLOSE);
-        a.setTitle(CFactory.ALERT_TITLE);
+        a.setTitle (ALERT_TITLE);
         a.setHeaderText(header);
 
         String strFontSizeStyle = sformat(STYLE_FORMAT_SET_FONT_SIZE, fontSize);
@@ -116,7 +116,7 @@ public class Controller implements Initializable {
 
         Alert a = new Alert(alerttype, message, ButtonType.OK, ButtonType.CANCEL);
         a.setHeaderText(header);
-        a.setTitle(CFactory.ALERT_TITLE);
+        a.setTitle (ALERT_TITLE);
 
         String strFontSizeStyle = sformat(STYLE_FORMAT_SET_FONT_SIZE, fontSize);
         a.getDialogPane().setStyle(strFontSizeStyle);
@@ -175,7 +175,7 @@ public class Controller implements Initializable {
             }
             if (connect())   login(name, password);
             else
-            messageBox (CFactory.ALERTHEADER_CONNECTION, ERROR_UNABLE_CONNECT_TO_SERVER, WARNING);
+            messageBox (ALERTHEADER_CONNECTION, ERROR_UNABLE_CONNECT_TO_SERVER, WARNING);
         }
     }
 
@@ -228,7 +228,7 @@ public class Controller implements Initializable {
         readUserSpecificProperties(userName);
 
         if (!workUpAListRequestResult(netClient.list(strCurrentServerPath))) {
-            messageBox(ALERTHEADER_REMOUTE_STORAGE, String.format(PROMPT_FORMAT_UNABLE_LIST, userName), ERROR);
+            messageBox(ALERTHEADER_REMOUTE_STORAGE, sformat (PROMPT_FORMAT_UNABLE_LIST, userName), ERROR);
         }
     }
 
@@ -279,7 +279,7 @@ public class Controller implements Initializable {
         //               PROMPT_CONNECTION_GETTING_CLOSED,
         //               WARNING);  //< вызов не из потока javafx вызывает исключение
         //                      });
-        sbarSetDefaultText(null, CFactory.SBAR_TEXT_SERVER_NOCONNECTION);
+        sbarSetDefaultText(null, SBAR_TEXT_SERVER_NOCONNECTION);
     }
 
 //------------------------------------------ обработчики команд GUI ---------------------------------------------*/
@@ -293,7 +293,7 @@ public class Controller implements Initializable {
         if (primaryStage != null) {
 
             String s = sayNoToEmptyStrings (userName) ? userName : NO_USER_TITLE;
-            String newtitle = String.format ("%s - вы вошли как : %s", MAINWND_TITLE, s);
+            String newtitle = sformat ("%s - вы вошли как : %s", MAINWND_TITLE, s);
             primaryStage.setTitle(newtitle);
         }
     }
@@ -378,7 +378,7 @@ public class Controller implements Initializable {
         String errMsg = null;
 
         if (netClient == null) {
-            errMsg = CFactory.ERROR_NO_CONNECTION_TO_REMOTE_STORAGE;
+            errMsg = ERROR_NO_CONNECTION_TO_REMOTE_STORAGE;
         }
         else if (null == tfi) {
             errMsg = ERROR_UNABLE_TO_PERFORM;
@@ -398,7 +398,7 @@ public class Controller implements Initializable {
         Alert.AlertType alertType = ERROR;
 
         if (netClient == null) {
-            errMsg = CFactory.ERROR_NO_CONNECTION_TO_REMOTE_STORAGE;
+            errMsg = ERROR_NO_CONNECTION_TO_REMOTE_STORAGE;
             alertType = WARNING;
         }
         else if (null != (tfi = tvServerSide.getSelectionModel().getSelectedItem())) {
@@ -548,7 +548,7 @@ public class Controller implements Initializable {
             files = p.y;
 
             enableUsersInput(ENABLE);
-            s = String.format(SBAR_TEXTFORMAT_FOLDER_STATISTICS, strPrefix, folders, files);
+            s = sformat (SBAR_TEXTFORMAT_FOLDER_STATISTICS, strPrefix, folders, files);
             if (local) { sbarSetDefaultText(s, null); }
             else { sbarSetDefaultText(null, s); }
         }
@@ -560,7 +560,7 @@ public class Controller implements Initializable {
         boolean local = tv == tvClientSide;
         String strPrefix = local ? STR_PREFIX_LOCAL : STR_PREFIX_REMOTE;
 
-        String s = CFactory.SBAR_TEXT_FOLDER_READING_IN_PROGRESS;
+        String s = SBAR_TEXT_FOLDER_READING_IN_PROGRESS;
         if (local) { sbarSetDefaultText(s, null); }
         else { sbarSetDefaultText(null, s); }
         enableUsersInput(DISABLE);
@@ -570,7 +570,7 @@ public class Controller implements Initializable {
         files = point.y;
 
         enableUsersInput(ENABLE);
-        s = String.format(CFactory.SBAR_TEXTFORMAT_FOLDER_STATISTICS, strPrefix, folders, files);
+        s = sformat (SBAR_TEXTFORMAT_FOLDER_STATISTICS, strPrefix, folders, files);
         if (local) { sbarSetDefaultText(s, null); }
         else { sbarSetDefaultText(null, s); }
     }
@@ -580,7 +580,7 @@ public class Controller implements Initializable {
     void sbarSetDefaultText (String local, String server) {
         if (local != null) sbarLocalStatistics = local;
         if (server != null) sbarServerStatistics = server;
-        sbarTextDefault = String.format(CFactory.SBAR_TEXTFORMAT_STATISTICS, sbarLocalStatistics, sbarServerStatistics);
+        sbarTextDefault = sformat (SBAR_TEXTFORMAT_STATISTICS, sbarLocalStatistics, sbarServerStatistics);
         textStatusBar.setText(sbarTextDefault);
     }
 
@@ -675,7 +675,7 @@ nm.data   = список содержимого этой папки (если н
     private void addTvItemAsFolder (@NotNull String name, boolean local) {
         if (tableViewManager != null) {
             TableView<TableFileInfo> tv = local ? tvClientSide : tvServerSide;
-            CFactory.addItemAsFolder(name, tv);
+            addItemAsFolder(name, tv);
             collectStatistics(tv);
         }
     }
@@ -694,7 +694,7 @@ nm.data   = список содержимого этой папки (если н
         String name = NEW_FOLDER_NAME;
         if (!strsublist.isEmpty()) {
             for (int i = 1; strsublist.contains(name); i++) {
-                name = String.format("%s (%d)", NEW_FOLDER_NAME, i);
+                name = sformat ("%s (%d)", NEW_FOLDER_NAME, i);
             }
         }
         return name;
@@ -771,7 +771,7 @@ nm.data   = список содержимого этой папки (если н
 
     private boolean confirmFileDeletion (String strFilePath) {
 
-        String s = String.format(PROMPT_FORMAT_FILE_DELETION_CONFIRMATION, strFilePath);
+        String s = sformat (PROMPT_FORMAT_FILE_DELETION_CONFIRMATION, strFilePath);
         return ANSWER_OK == messageBoxConfirmation(ALERTHEADER_DELETION, s, CONFIRMATION);
     }
 

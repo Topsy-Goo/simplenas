@@ -8,10 +8,9 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.cell.TextFieldTableCell;
 import ru.gb.simplenas.client.Controller;
 import ru.gb.simplenas.client.services.NetClient;
-import ru.gb.simplenas.client.CFactory;
+import ru.gb.simplenas.client.structs.TableFileInfo;
 import ru.gb.simplenas.common.structs.FileInfo;
 import ru.gb.simplenas.common.structs.NasMsg;
-import ru.gb.simplenas.client.structs.TableFileInfo;
 
 import java.awt.*;
 import java.nio.file.Path;
@@ -23,6 +22,7 @@ import static javafx.scene.control.Alert.AlertType.WARNING;
 import static ru.gb.simplenas.client.CFactory.*;
 import static ru.gb.simplenas.common.CommonData.*;
 import static ru.gb.simplenas.common.Factory.sayNoToEmptyStrings;
+import static ru.gb.simplenas.common.Factory.sformat;
 import static ru.gb.simplenas.common.services.impl.NasFileManager.rename;
 import static ru.gb.simplenas.common.structs.OperationCodes.NM_OPCODE_OK;
 
@@ -45,10 +45,10 @@ public class TableViewManager
         columnServerFileName = controller.getColumnServerFileName();
 
     // Наделяем таблицы возможностью редактирования имён файлов и папок. (F2 тоже работает.)
-        columnClientFileName.setCellFactory(TextFieldTableCell.<TableFileInfo> forTableColumn());
-        columnServerFileName.setCellFactory (TextFieldTableCell.<TableFileInfo> forTableColumn());
-        columnClientFileName.setOnEditCommit(this::eventHandlerFolderRenameing);
-        columnServerFileName.setOnEditCommit(this::eventHandlerFolderRenameing);
+        columnClientFileName.setCellFactory (TextFieldTableCell.forTableColumn());
+        columnServerFileName.setCellFactory (TextFieldTableCell.forTableColumn());
+        columnClientFileName.setOnEditCommit (this::eventHandlerFolderRenameing);
+        columnServerFileName.setOnEditCommit (this::eventHandlerFolderRenameing);
     }
 
     public static Point populateTv (@NotNull TableView<TableFileInfo> tv, @NotNull List<FileInfo> infolist) {
@@ -112,7 +112,7 @@ public class TableViewManager
             tfi.setFileName(newName);
         else
             Controller.messageBox (ALERTHEADER_RENAMING,
-                                   String.format(PROMPT_FORMAT_RENAMING_ALREADY_EXISTS, newName),
+                                   sformat (PROMPT_FORMAT_RENAMING_ALREADY_EXISTS, newName),
                                    WARNING);
     }
 
@@ -146,7 +146,7 @@ public class TableViewManager
             Path pLocalCurrent = Paths.get (controller.getStrCurrentLocalPath()).toAbsolutePath().normalize();
             ok = null != rename (pLocalCurrent, old.getFileName(), newName);
         }
-        if (!ok) Controller.messageBox (CFactory.ALERTHEADER_LOCAL_STORAGE, ERROR_UNABLE_TO_PERFORM, ERROR);
+        if (!ok) Controller.messageBox (ALERTHEADER_LOCAL_STORAGE, ERROR_UNABLE_TO_PERFORM, ERROR);
         return ok;
     }
 }

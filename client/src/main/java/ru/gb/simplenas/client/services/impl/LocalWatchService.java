@@ -1,7 +1,5 @@
 package ru.gb.simplenas.client.services.impl;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import ru.gb.simplenas.client.services.ClientWatchService;
 import ru.gb.simplenas.common.NasCallback;
 

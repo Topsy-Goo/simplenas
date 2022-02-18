@@ -2,7 +2,10 @@ package ru.gb.simplenas.client.services.impl;
 
 import com.sun.istack.internal.NotNull;
 import io.netty.bootstrap.Bootstrap;
-import io.netty.channel.*;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
@@ -13,7 +16,6 @@ import javafx.application.Platform;
 import javafx.scene.control.Alert;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import ru.gb.simplenas.client.CFactory;
 import ru.gb.simplenas.client.services.ClientManipulator;
 import ru.gb.simplenas.client.services.NetClient;
 import ru.gb.simplenas.common.NasCallback;
@@ -25,6 +27,7 @@ import ru.gb.simplenas.common.structs.OperationCodes;
 
 import java.nio.file.Paths;
 
+import static ru.gb.simplenas.client.CFactory.ALERTHEADER_CONNECTION;
 import static ru.gb.simplenas.client.Controller.messageBox;
 import static ru.gb.simplenas.common.CommonData.*;
 import static ru.gb.simplenas.common.Factory.lnprint;
@@ -90,7 +93,8 @@ public class LocalNetClient implements NetClient {
         NasMsg nm = (NasMsg) objects[0];
         if (nm != null && nm.opCode() == NM_OPCODE_EXIT) {
             Platform.runLater(()->{
-                messageBox(CFactory.ALERTHEADER_CONNECTION, PROMPT_CONNECTION_GETTING_CLOSED, Alert.AlertType.WARNING);
+                messageBox (ALERTHEADER_CONNECTION, PROMPT_CONNECTION_GETTING_CLOSED,
+                            Alert.AlertType.WARNING);
             });
         }
     }
@@ -101,7 +105,7 @@ public class LocalNetClient implements NetClient {
 
         boolean isOnAir = schannel != null && schannel.isOpen();
 
-        if (isOnAir) messageBox(CFactory.ALERTHEADER_CONNECTION, "Уже установлено.", Alert.AlertType.INFORMATION);
+        if (isOnAir) messageBox(ALERTHEADER_CONNECTION, "Уже установлено.", Alert.AlertType.INFORMATION);
         else {
             synchronized (syncObj4ConnectionOnly) {
                 schannel = null;

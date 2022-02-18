@@ -71,8 +71,8 @@ public class LocalManipulator implements ClientManipulator {
             try {
                 Method m = mapManipulateMetods.get (opcode);
                 if (m == null)
-                    throw new UnsupportedOperationException (String.format(
-                        "Нет метода для кода операции: «%s».", opcode));
+                    throw new UnsupportedOperationException (
+                                sformat ("Нет метода для кода операции: «%s».", opcode));
                 m.invoke(this, nm);
             }
             catch (IllegalArgumentException | ReflectiveOperationException e) {
@@ -357,7 +357,7 @@ public class LocalManipulator implements ClientManipulator {
             }break;
             case NM_OPCODE_ERROR: {   //во время передачи произошла ошибка (nm.data содержит сообщение от сервера):
                 msg = (String) nm.data();
-                if (msg == null)    msg = String.format ("Не удалось отдать файл: <%s>.", dialogue.tc.path);
+                if (msg == null)    msg = sformat ("Не удалось отдать файл: <%s>.", dialogue.tc.path);
                 LOGGER.error (msg);
                 nm.setOpCode (NM_OPCODE_ERROR); //< (старый стиль) чтобы в контроллере увидели ошибку
                 transferCleanup (nm, msg);
@@ -469,19 +469,17 @@ public class LocalManipulator implements ClientManipulator {
         Method[] methods = LocalManipulator.class.getDeclaredMethods();
 
         for (Method m : methods) {
-            if (m.isAnnotationPresent(ManipulateMethod.class)) {
-                ManipulateMethod annotation = m.getAnnotation(ManipulateMethod.class);
+            if (m.isAnnotationPresent (ManipulateMethod.class)) {
+                ManipulateMethod annotation = m.getAnnotation (ManipulateMethod.class);
                 OperationCodes[] opcodes    = annotation.opcodes();
-                for (OperationCodes code : opcodes) {
-                    mapManipulateMetods.put(code, m);
-                }
+                for (OperationCodes code : opcodes)
+                    mapManipulateMetods.put (code, m);
             }
-            if (m.isAnnotationPresent(EndupMethod.class)) {
-                EndupMethod      annotation = m.getAnnotation(EndupMethod.class);
+            if (m.isAnnotationPresent (EndupMethod.class)) {
+                EndupMethod      annotation = m.getAnnotation (EndupMethod.class);
                 OperationCodes[] opcodes    = annotation.opcodes();
-                for (OperationCodes code : opcodes) {
-                    mapEndupMetods.put(code, m);
-                }
+                for (OperationCodes code : opcodes)
+                    mapEndupMetods.put (code, m);
             }
         }
     }
