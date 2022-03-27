@@ -144,16 +144,14 @@ public class NasDialogue {
 
     public boolean endupExtruding (NasMsg nm) {
         boolean ok = false;
-        if (fileExtruder != null) {
-            ok = fileExtruder.endupExtruding(nm);
-        }
+        if (fileExtruder != null)
+            ok = fileExtruder.endupExtruding (nm);
         return ok;
     }
 
     public void discardExtruding () {
-        if (fileExtruder != null) {
+        if (fileExtruder != null)
             fileExtruder.discard();
-        }
     }
 
     public void cleanupFileExtruder () {
@@ -164,11 +162,12 @@ public class NasDialogue {
     public void close () {
         //if (conversation != null) conversation.clear(); <-- само очистится. К тому же
         // в LocalNetClient.callbackOnMsgIncoming это может понадобиться (но пока не понадобилось).
-        if (fileExtruder != null) cleanupFileExtruder();
+        if (fileExtruder != null)
+            cleanupFileExtruder();
         try {
             if (inputFileChannel != null)
                 inputFileChannel.close();   inputFileChannel = null;
         }
-        catch (IOException e) {e.printStackTrace();}
+        catch (IOException e) { e.printStackTrace(); }
     }
 }

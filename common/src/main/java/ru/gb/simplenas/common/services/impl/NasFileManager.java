@@ -80,6 +80,7 @@ public final class NasFileManager {
         return result;
     }
 
+/** @return FileInfo, если переименование удалось, и NULL в противном случае. */
     public static FileInfo rename (@NotNull Path pParent, @NotNull String oldName,
                                    @NotNull String newName)
     {
@@ -91,11 +92,11 @@ public final class NasFileManager {
 
             if (pOlderSource != null && pNewerTarget != null && Files.exists(pOlderSource) && Files.notExists(pNewerTarget)) {
                 try {
-                    Files.move(pOlderSource, pNewerTarget);
-                    result = new FileInfo(pNewerTarget);
-                    LOGGER.trace("rename(): переименование из\n\t\t<" + pOlderSource.toString() + ">\n\t\tв <" + pNewerTarget.getFileName().toString() + ">");
+                    Files.move (pOlderSource, pNewerTarget);
+                    result = new FileInfo (pNewerTarget);
+                    LOGGER.trace ("rename(): переименование из\n\t\t<" + pOlderSource.toString() + ">\n\t\tв <" + pNewerTarget.getFileName().toString() + ">");
                 }
-                catch (IOException e) {e.printStackTrace();}
+                catch (IOException e) { e.printStackTrace(); }
             }
         }
         return result;
@@ -128,15 +129,16 @@ public final class NasFileManager {
         return result;
     }
 
-    public static int countDirectoryEntries (@NotNull Path pFolder) {
-
-        int result = -1;
+/** Определяем количество элементов ФС в указанной папке. */
+    public static long countDirectoryEntries (Path pFolder) {
+        long result = -1;
         if (pFolder != null && Files.isDirectory(pFolder) && Files.exists(pFolder)) {
-            int[] counter = {0}; //< нужна effectively final-переменная
+            //int[] counter = {0}; //< нужна effectively final-переменная
             try {
-                Files.newDirectoryStream(pFolder).forEach((p)->counter[0]++);
-                //Files.list(folder).forEach((p)->counter[0]++);    < это тоже работает
-                result = counter[0];
+                //Files.newDirectoryStream(pFolder).forEach((p)->counter[0]++); //    < это тоже работает
+                //Files.list(pFolder).forEach((p)->counter[0]++);    < это тоже работает
+                //result = counter[0];
+                result = Files.list(pFolder).count();
             }
             catch (IOException e) {e.printStackTrace();}
         }
@@ -179,7 +181,8 @@ public final class NasFileManager {
         return null;
     }
 
-    //Составляем список файлов папки strFolderName.
+/** Составляем список объектов ФС, расположенных в указанной папке. Список содержит только
+объекты первого уровня вложенности. */
     public static @NotNull List<FileInfo> listFolderContents (@NotNull String strFolderName)
     {
         return (sayNoToEmptyStrings(strFolderName))
@@ -189,6 +192,8 @@ public final class NasFileManager {
 
     public static @NotNull List<FileInfo> newFileInfoList () { return new ArrayList<>(); }
 
+/** Составляем список объектов ФС, расположенных в указанной папке. Список содержит только
+объекты первого уровня вложенности. */
     public static @NotNull List<FileInfo> listFolderContents (@NotNull Path pFolder)
     {
         List<FileInfo> infolist = newFileInfoList();
@@ -202,10 +207,9 @@ public final class NasFileManager {
         return infolist;
     }
 
-    //разрешаем юзеру использовать только буквы и цыфры при указании логина. (Предполагаем, что буквы и цифры разрешены
-// в именах папок на всех платформах.)
+/** разрешаем юзеру использовать только буквы и цыфры при указании логина. (Предполагаем,
+что буквы и цифры разрешены в именах папок на всех платформах.)  */
     public static boolean isNameValid (@NotNull String userName) {
-
         boolean boolOk = false;
         if (sayNoToEmptyStrings(userName)) {
             int len = userName.length();
@@ -253,8 +257,8 @@ public final class NasFileManager {
         return result;
     }
 
-    //Возвращает строку пути к родительской папке. Родительская папка должна существовать.
-    public static @NotNull String stringPath2StringAbsoluteParentPath (@NotNull String strPath)
+/** Возвращает строку пути к родительской папке. Родительская папка должна существовать.  */
+    public static String stringPath2StringAbsoluteParentPath (String strPath)
     {
         String parent = "";
         if (strPath != null) {
@@ -265,11 +269,12 @@ public final class NasFileManager {
         return parent;
     }
 
+/** Определяем, указывает строка параметра на действительно существующий объект ФС. */
     public static boolean isStringOfRealPath (@NotNull String string) {
         boolean boolYes = false;
         if (string != null) {
             try {
-                boolYes = Files.exists(Paths.get(string));
+                boolYes = Files.exists (Paths.get(string));
             }
             catch (InvalidPathException e) { e.printStackTrace(); }
         }
@@ -280,6 +285,23 @@ public final class NasFileManager {
         return Files.exists (path);
     }
 
+/*    public static boolean isFolderExists (@NotNull Path path) {
+
+    }*/
+
+/** Возвращаем Path-ссылку на папку, на которую указывает строка параметра.
+@param strFolder строка относительного или абсолютного пути к папке.
+@return Path, если строка указывает на существующую папку, или NULL в противном случае. */
+    public static Path stringToExistingFolder (String strFolder) {
+        Path path = Paths.get (strFolder).toAbsolutePath().normalize();
+        return (Files.exists (path) && Files.isDirectory (path))
+                ? path
+                : null;
+    }
+
+/** Определяем, доступен ли для чтения объект файловой системы — файл или папка, на который
+указывает параметр. Некоторые файлы и папки, доступ к которым закрыт ОСью, вызывают неправильное
+поведение приложения, если не проводить такую проверку. */
     public static boolean isReadable (@NotNull Path path) {
         return Files.isReadable (path);
     }

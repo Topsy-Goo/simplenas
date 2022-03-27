@@ -21,35 +21,38 @@ import java.util.*;
 
 import static ru.gb.simplenas.common.CommonData.DEBUG;
 import static ru.gb.simplenas.common.Factory.lnprint;
+import static ru.gb.simplenas.common.Factory.sayNoToEmptyStrings;
 import static ru.gb.simplenas.server.SFactory.getProperyManager;
 import static ru.gb.simplenas.server.SFactory.getServerFileManager;
 
 public class RemoteServer implements Server {
 
-    private final static Map<String, RemoteManipulator> CHANNELS = new HashMap<>();
-    private final static Logger LOGGER   = LogManager.getLogger (RemoteServer.class.getName());
-    public  final static String CMD_EXIT = "exit";
+    private static final Map<String, RemoteManipulator> CHANNELS = new HashMap<>();
+    private static final Logger LOGGER   = LogManager.getLogger (RemoteServer.class.getName());
+    public  static final String CMD_EXIT = "exit";
 
     private static       RemoteServer    instance;
     private static final Object          MONITOR = new Object();
     private static       Authentificator authentificator;
 
-    private final ServerFileManager fileNamager;
-    private final int               publicPort;
-    private       boolean           serverGettingOff;
-    private       Channel           channelOfChannelFuture;
+    private        final ServerFileManager fileManager;
+    private        final int               publicPort;
+    private              boolean           serverGettingOff;
+    private              Channel           channelOfChannelFuture;
 
 
     private RemoteServer () {
 
         ServerPropertyManager serverPropertyManager = getProperyManager();
         publicPort = serverPropertyManager.getPublicPort();
-        fileNamager = getServerFileManager(serverPropertyManager.getCloudName(),
+        fileManager = getServerFileManager(serverPropertyManager.getCloudName(),
                                            serverPropertyManager.getWelcomeFolders(), //< папки, которые должны быть в папке у нового пользователя.
                                            serverPropertyManager.getWelcomeFiles());  //< файлы, которые должны быть в папке у нового пользователя.
         authentificator = new JdbcAuthentificationProvider();
-        new Thread (this::runConsoleReader).start();
-        LOGGER.debug("создан RemoteServer");
+        Thread tc = new Thread (()->runConsoleReader (Thread.currentThread()), "Server console thread");
+        tc.setDaemon (true);
+        tc.start();
+        LOGGER.debug ("создан RemoteServer");
     }
 
     public static Server getInstance () {
@@ -100,7 +103,7 @@ public class RemoteServer implements Server {
                 // метод называется addLast().
                 // SocketChannel — содержит информацию о подключившемся клиенте (адрес, потоки чтения и записи).
 
-                .childHandler(new ChannelInitializer<SocketChannel>() {   //< когда к нам кто-то подключиться, …
+                .childHandler (new ChannelInitializer<SocketChannel>() {   //< когда к нам кто-то подключиться, …
 
                     @Override protected void initChannel (SocketChannel socketChannel) { //< … мы его инициализируем в этом методе
 
@@ -117,8 +120,8 @@ public class RemoteServer implements Server {
                                 //A decoder which deserializes the received ByteBufs into Java objects.
                                 //new ObjectDecoder(ClassResolvers.cacheDisabled (null)),
                                 //new ObjectDecoder(MAX_OBJECT_SIZE, ClassResolvers.cacheDisabled (null)), //< A decoder which deserializes the received ByteBufs into Java objects.
-                                new ObjectDecoder(Integer.MAX_VALUE, ClassResolvers.weakCachingConcurrentResolver(null)), //< то же самое, но конкурентно и с небольшим кэшированием
-                                new NasMsgInboundHandler(new RemoteManipulator(fileNamager, socketChannel))
+                                new ObjectDecoder (Integer.MAX_VALUE, ClassResolvers.weakCachingConcurrentResolver(null)), //< то же самое, но конкурентно и с небольшим кэшированием
+                                new NasMsgInboundHandler (new RemoteManipulator (fileManager, socketChannel))
                                 //new TestInboundHandler (new RemoteManipulator (sC))
                                                         );
                         LOGGER.trace("initChannel() end");
@@ -129,11 +132,11 @@ public class RemoteServer implements Server {
             ;
 
             // ChannelFuture.sync() запускает исполнение.
-            ChannelFuture cfuture = sbts.bind(publicPort).sync();
-
-            LOGGER.debug("run(): ChannelFuture " + cfuture.toString());
-            lnprint("\n\t\t*** Ready to getting clients (" + publicPort + "). ***\n");
+            ChannelFuture cfuture = sbts.bind (publicPort).sync();
             channelOfChannelFuture = cfuture.channel();
+
+            LOGGER.debug ("run(): ChannelFuture " + cfuture.toString());
+            lnprint ("\n\t\t*** Ready to getting clients (" + publicPort + "). ***\n");
 
             // ChannelFuture позволит отслеживать работу сервера (точнее работу sb). Из всех состояний сервера нас здесь интересует только факт его остановки, поэтому мы следующей строкой указываем свои намерения — ждать, когда сервер остановится:
             //      channel() — это геттер
@@ -142,7 +145,7 @@ public class RemoteServer implements Server {
             // (К тому же это, кажется, предотвращает мгновенное закрытие канала. По крайней мере это так для клиента, который создаёт канал не в ответ на входящее соединение, а для установки соединения.)
 
             cfuture.channel().closeFuture().sync();
-            LOGGER.trace("run(): ChannelFuture.channel closed");
+            LOGGER.trace ("run(): ChannelFuture.channel closed");
 
             // Это как-бы подвесит (заблокирует) наш поток до остановки сервера. Если бы мы хотели выполнять какие-то действия параллельно с работой сервера, то их нужно было бы вставить между вызовами
             // sb.bind(port).sync()
@@ -154,7 +157,7 @@ public class RemoteServer implements Server {
             // Future — позволяет зарегистрировать слушателя, который будет уведомлен о выполнении операции.
             // ChannelFuture — может блокировать выполнение потока до окончания выполнения операции.
         }
-        catch (Exception e) {e.printStackTrace();}
+        catch (Exception e) { e.printStackTrace(); }
         finally {
             // В конце работы сервера освобождаем ресурсы и потоки, которыми пользовались циклы событий (иначе программа не завершиться):
             groupParent.shutdownGracefully();
@@ -164,25 +167,25 @@ public class RemoteServer implements Server {
         }
     }
 
-//Run-метод потока consoleReader.
-    private void runConsoleReader () {
-
-        LOGGER.trace("runConsoleReader(): start");
-        Scanner scanner = new Scanner(System.in);
+//Run-метод потока «Server console thread».
+    private void runConsoleReader (Thread father) {
+        LOGGER.debug ("runConsoleReader(): start");
         String  msg;
-
-        while (!serverGettingOff) if (scanner.hasNext()) {
-            msg = scanner.nextLine().trim();
-            if (!msg.isEmpty()) if (msg.equalsIgnoreCase(CMD_EXIT)) //< теперь сервер можно закрыть руками.
+        try (Scanner scanner = new Scanner(System.in)) {
+            while (!father.isInterrupted())
             {
-                serverGettingOff = true;
-                LOGGER.info("получена команда CMD_EXIT");
-                onCmdServerExit();
+                if (scanner.hasNext() && sayNoToEmptyStrings (msg = scanner.nextLine().trim())) {
+                    if (msg.equalsIgnoreCase (CMD_EXIT)) //< сервер можно закрыть иp консоли.
+                    {
+                        serverGettingOff = true;
+                        LOGGER.info ("runConsoleReader(): получена команда CMD_EXIT");
+                        onCmdServerExit();
+                    }
+                    else LOGGER.error ("runConsoleReader(): unsupported command detected: " + msg);
+                }
             }
-            else LOGGER.error("runConsoleReader(): unsupported command detected: " + msg);
         }
-        scanner.close();
-        LOGGER.trace("runConsoleReader(): end");
+        LOGGER.debug ("runConsoleReader(): end");
     }
 //---------------------------------------------------------------------------------------------------------------*/
 
@@ -202,22 +205,11 @@ public class RemoteServer implements Server {
 
     @Override public void clientRemove (RemoteManipulator manipulator, String userName) {
 
-        if (DEBUG)
-            lnprint("RemoteServer.clientsListRemove(): call.");
+        LOGGER.debug ("RemoteServer.clientsListRemove(): call");
         //CHANNELS.remove (userName);
         if (userName != null && CHANNELS.get(userName) == manipulator) {
             CHANNELS.remove (userName);
-            if (DEBUG)
-                lnprint ("RemoteServer.clientsListRemove(): клиент <" + userName + "> отключен.");
-        }
-    }
-
-    private void closeAllClientConnections () {
-        Set<Map.Entry<String, RemoteManipulator>> entries = CHANNELS.entrySet();
-
-        for (Map.Entry<String, RemoteManipulator> e : entries) {
-            RemoteManipulator manipulator = e.getValue();
-            manipulator.startExitRequest();
+            LOGGER.debug ("RemoteServer.clientsListRemove(): клиент <" + userName + "> отключен");
         }
     }
 
@@ -229,9 +221,10 @@ public class RemoteServer implements Server {
         closeAllClientConnections();
         CHANNELS.clear(); //< чтобы не возиться с итераторами, удаляем всё разом, а не по одному элементу.
 
-        Channel c = channelOfChannelFuture;
+        //Channel c = channelOfChannelFuture;
         if (channelOfChannelFuture != null && channelOfChannelFuture.isOpen()) {
-            channelOfChannelFuture.disconnect();
+            channelOfChannelFuture.disconnect(); //< кажется, позволяет восстановить соединение
+            channelOfChannelFuture.close(); //< закрывает соединение без возможности его восстановить
         }
         channelOfChannelFuture = null;
 
@@ -240,6 +233,15 @@ public class RemoteServer implements Server {
             authentificator = null;
         }
         LOGGER.trace("onCmdServerExit(): end");
+    }
+
+    private void closeAllClientConnections () {
+        Set<Map.Entry<String, RemoteManipulator>> entries = CHANNELS.entrySet();
+
+        for (Map.Entry<String, RemoteManipulator> e : entries) {
+            RemoteManipulator manipulator = e.getValue();
+            manipulator.startExitRequest();
+        }
     }
 }
 /*  Когда канал регистрируется, он привязывается к определенному циклу событий на все время своего существования.

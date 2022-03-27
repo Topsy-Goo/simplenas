@@ -1,5 +1,6 @@
 package ru.gb.simplenas.client;
 
+import javafx.application.Platform;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -32,14 +33,11 @@ import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.*;
 import java.util.List;
-import java.util.Optional;
-import java.util.ResourceBundle;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static javafx.scene.control.Alert.AlertType.*;
 import static ru.gb.simplenas.client.CFactory.*;
 import static ru.gb.simplenas.common.CommonData.*;
@@ -86,13 +84,13 @@ public class Controller implements Initializable {
     private TableViewManager      tableViewManager;
     private ClientPropertyManager propMan;
     private ClientWatchService    clientWatcher;
-    private Lock                  lockSuspendWatching;
+    //private Lock                  lockSuspendWatching;
 
 //------------------------------- инициализация и завершение ----------------------------------------------------*/
 
 /** Стандартное окно сообщения с кнопкой Ок.  */
-    public static void messageBox (String header, String message, Alert.AlertType alerttype) {
-
+    public static void messageBox (String header, String message, Alert.AlertType alerttype)
+    {
         if (header == null) header = "";
         if (message == null) message = "";
 
@@ -102,14 +100,13 @@ public class Controller implements Initializable {
 
         String strFontSizeStyle = sformat(STYLE_FORMAT_SET_FONT_SIZE, fontSize);
         a.getDialogPane().setStyle(strFontSizeStyle);
-
         a.showAndWait();
     }
 //---------------------------------------------------------------------------------------------------------------*/
 
 /** Стандартное окно сообщения с кнопками Да и Нет. */
-    public static boolean messageBoxConfirmation (String header, String message, Alert.AlertType alerttype) {
-
+    public static boolean messageBoxConfirmation (String header, String message, Alert.AlertType alerttype)
+    {
         boolean boolOk = ANSWER_CANCEL;
         if (header == null) header = "";
         if (message == null) message = "";
@@ -122,31 +119,34 @@ public class Controller implements Initializable {
         a.getDialogPane().setStyle(strFontSizeStyle);
 
         Optional<ButtonType> option = a.showAndWait();
-        if (option.isPresent() && option.get() == ButtonType.OK) {
+        if (option.isPresent() && option.get() == ButtonType.OK)
             boolOk = ANSWER_OK;
-        }
+
         return boolOk;
     }
 
-    public static boolean itemNameStartsWithString (TableFileInfo t, String prefix) {
-
+    public static boolean itemNameStartsWithString (TableFileInfo t, String prefix)
+    {
         String name = t.getFileName().toLowerCase(), prfx = prefix.toLowerCase();
         return name.startsWith(prfx);
     }
 
-    @Override public void initialize (URL location, ResourceBundle resources) {
-        LOGGER.debug("initialize() starts");
-
+    @Override public void initialize (URL location, ResourceBundle resources)
+    {
+        LOGGER.debug ("initialize() starts");
         propMan = getProperyManager();
         strCurrentLocalPath = propMan.getDefaultLastLocalPathString();
-        setSceneFontSize(rootbox, propMan.getDefaultFontSize());
+        setSceneFontSize (rootbox, propMan.getDefaultFontSize());
+        //TODO : Можно сделать окно настроек и сохранять настройки в реестре (см.java.util.prefs.*).
 
-        lockSuspendWatching = new ReentrantLock();
-        clientWatcher = new LocalWatchService (ooo->callbackOnCurrentFolderEvents(), lockSuspendWatching);
+        //lockSuspendWatching = new ReentrantLock();
+        clientWatcher = getWatchServiceInstance();
+        clientWatcher.setCallBack (this::callbackOnCurrentFolderEvents/*, lockSuspendWatching*/);
 
-        sbarSetDefaultText(STR_EMPTY, SBAR_TEXT_SERVER_NOCONNECTION);
+        sbarSetDefaultText (STR_EMPTY, SBAR_TEXT_SERVER_NOCONNECTION);
 
-        tableViewManager = new TableViewManager(this);
+        tableViewManager = new TableViewManager (this, this::callbackUpdateView);
+
         textfieldCurrentPath_Client.setText (strCurrentLocalPath);
         //textfieldCurrentPath_Server.setPromptText (TEXTFIELD_SERVER_PROMPTTEXT_DOCONNECT);
         populateTableView (listFolderContents (strCurrentLocalPath), LOCAL);
@@ -158,50 +158,49 @@ public class Controller implements Initializable {
         setContextMenuEventHandler_OnShoing (menuServerTableActions, tvServerSide);
 
         extraInitialisationIsDone = false;
-        enableUsersInput(ENABLE);
-        LOGGER.debug("C.initialize() finished");
+        enableUsersInput (ENABLE);
+        LOGGER.debug ("C.initialize() finished");
     }
 
-    void onCmdConnectAndLogin (String name, String password) {
-
+    void onCmdConnectAndLogin (String name, String password)
+    {
         if (sayNoToEmptyStrings (name, password)) {
             //инициализация, которую нельзя было сделать в initialize()
             if (!extraInitialisationIsDone) {
 
             /*  Листенер на кнопку закрытия окна приложения можно повесить здесь, или в MainGUI.start().
-            В это раз мы сделали это в MainGUI. */
+                В это раз мы сделали это в MainGUI. */
                 //rootbox.getScene().getWindow().setOnCloseRequest ((event)->closeSession());
                 extraInitialisationIsDone = true;
             }
-            if (connect())   login(name, password);
+            if (connect())
+                login (name, password);
             else
-            messageBox (ALERTHEADER_CONNECTION, ERROR_UNABLE_CONNECT_TO_SERVER, WARNING);
+                messageBox (ALERTHEADER_CONNECTION, ERROR_UNABLE_CONNECT_TO_SERVER, WARNING);
         }
     }
 
-    private boolean connect () {
-
+    private boolean connect ()
+    {
         boolean result = false;
         if (propMan != null) {
-
             netClient = newNetClient (ooo->callbackOnNetClientDisconnection(),
                                       propMan.getRemotePort(),
                                       propMan.getHostString());
             result = netClient.connect();
-            if (!result) {
+            if (!result)
                 netClient = null;
-            }
         }
         return result;
     }
 
-    private void login (String name, String password) {
-
-        LOGGER.debug("login() start");
+    private void login (String name, String password)
+    {
+        //LOGGER.debug("login() start");
         NasMsg nm = null;
 
-        if (netClient == null || (null == (nm = netClient.login(name, password)))) {
-            messageBox(ALERTHEADER_AUTHENTIFICATION, ERROR_UNABLE_TO_PERFORM, ERROR);
+        if (netClient == null || (null == (nm = netClient.login (name, password)))) {
+            messageBox (ALERTHEADER_AUTHENTIFICATION, ERROR_UNABLE_TO_PERFORM, ERROR);
         }
         else if (nm.opCode() == NM_OPCODE_OK) {
             userName = name;
@@ -210,30 +209,30 @@ public class Controller implements Initializable {
         else if (nm.opCode() == NM_OPCODE_ERROR) {
             String strErr = nm.msg();
 
-            if (!sayNoToEmptyStrings(strErr)) {
+            if (!sayNoToEmptyStrings (strErr)) {
                 strErr = ERROR_UNABLE_TO_PERFORM;
             }
-            messageBox(ALERTHEADER_AUTHENTIFICATION, strErr, WARNING);
+            messageBox (ALERTHEADER_AUTHENTIFICATION, strErr, WARNING);
         }
-        LOGGER.debug("login() end");
+        //LOGGER.debug ("login() end");
     }
 
-    private void updateControlsOnSuccessfulLogin () {
+    private void updateControlsOnSuccessfulLogin ()
+    {
         updateMainWndTitleWithUserName();
         swapControlsOnConnect(CONNECTED);
         sbarSetDefaultText(null, SBAR_TEXT_SERVER_ONAIR);
 
-        messageBox(ALERTHEADER_AUTHENTIFICATION, sformat(STRFORMAT_YOUARE_LOGGEDIN, userName), INFORMATION);
+        messageBox( ALERTHEADER_AUTHENTIFICATION, sformat (STRFORMAT_YOUARE_LOGGEDIN, userName), INFORMATION);
+        readUserSpecificProperties (userName);
 
-        readUserSpecificProperties(userName);
-
-        if (!workUpAListRequestResult(netClient.list(strCurrentServerPath))) {
+        if (!workUpAListRequestResult(netClient.list(strCurrentServerPath)))
             messageBox(ALERTHEADER_REMOUTE_STORAGE, sformat (PROMPT_FORMAT_UNABLE_LIST, userName), ERROR);
-        }
     }
 
 /** Наш обработчик события primaryStage.setOnCloseRequest.   */
-    void closeSession () {
+    void closeSession ()
+    {
         storeProperties();  //< это нужно сделать до того, как userName станет == null
 
         if (netClient != null)  //это приведёт к разрыву соединения с сервером (к закрытию канала) и к вызову onNetClientDisconnection()
@@ -241,12 +240,10 @@ public class Controller implements Initializable {
 
         if (clientWatcher != null)
             clientWatcher.close();
-
-        if (clientWatcher != null)
-            clientWatcher.close();
     }
 
-    private void storeProperties () {
+    private void storeProperties ()
+    {
         if (propMan != null) {
             if (!sayNoToEmptyStrings(userName)) {
                 propMan.setLastLocalPathString(strCurrentLocalPath);
@@ -263,15 +260,17 @@ public class Controller implements Initializable {
         }
     }
 
-    void onMainWndShowing (Stage primaryStage) //< не надо делать этот метод private!
+/** Обработчик события «Явление окна приложения очам юзера». */
+    void onMainWndShowing (Stage primary) //< не надо делать этот метод private!
     {
-        LOGGER.debug("void onMainWndShowing (Stage primaryStage)");
-        this.primaryStage = primaryStage;
-        clientWatcher.startWatchingOnFolder(strCurrentLocalPath);
+        //LOGGER.debug ("void onMainWndShowing (Stage primaryStage)");
+        primaryStage = primary;
+        clientWatcher.startWatchingOnFolder (strCurrentLocalPath);
     }
 
 /** callback. Вызывается из netClient при закрытии соединения с сервером. Может вызываться дважды для закрытия одной и той же сессии. */
-    private void callbackOnNetClientDisconnection () {
+    private void callbackOnNetClientDisconnection ()
+    {
         netClient = null;
         userName = null;
         //Platform.runLater(()->{
@@ -284,51 +283,84 @@ public class Controller implements Initializable {
 
 //------------------------------------------ обработчики команд GUI ---------------------------------------------*/
 
-/** колбэк для службы наблюдения за текущей папкой    */
-    private void callbackOnCurrentFolderEvents () {
-        applyStringAsNewLocalPath(strCurrentLocalPath);
+/** Колбэк для службы наблюдения за текущей папкой. Метод вызывается из ClientWatchService при обнаружении
+изменений в текущей локальной папке.
+@param objects список имён элементов текущей локальной папки, которые были добавлены/удалены стронним или
+нашем приложением.  */
+    //@SuppressWarnings("unchecked")
+    private void callbackOnCurrentFolderEvents (Object... ooo)
+    {
+        if (ooo != null && ooo.length > 0 && ooo[0] instanceof LocalWatchService.NasEvent)
+        {
+            //вместо того, чтобы добавлять/удалять новые строчки в локальную панель, мы просто
+            // заново её заполняем как будто мы в неё только что перешли, но сперва убедимся,
+            // что в списке есть изменения, которые произошли именно в текущей папке.
+            for (Object o : ooo) {
+                LocalWatchService.NasEvent e = (LocalWatchService.NasEvent) o;
+                if (e.path.equals (strCurrentLocalPath)) {
+                    Platform.runLater (()->applyStringAsNewLocalPath (strCurrentLocalPath));
+                    break;
+                }
+            }
+        }
     }
 
-    private void updateMainWndTitleWithUserName () {
-        if (primaryStage != null) {
+/** Обновляем содержиое TableView, на который указывает параметр.
+@param ooo значения типа boolean. true указывает на локальный TableView, false — на удалённый. */
+    private void callbackUpdateView (Object... ooo)
+    {
+        boolean local = (boolean) ooo[0];
+        TableView<TableFileInfo> tv = local ? tvClientSide : tvServerSide;
 
+        if (tv.equals (tvClientSide))
+            applyStringAsNewLocalPath (strCurrentLocalPath);
+        else
+            inlineReadRemoteFolder (strCurrentServerPath);
+    }
+
+    private void updateMainWndTitleWithUserName ()
+    {
+        if (primaryStage != null) {
             String s = sayNoToEmptyStrings (userName) ? userName : NO_USER_TITLE;
             String newtitle = sformat ("%s - вы вошли как : %s", MAINWND_TITLE, s);
             primaryStage.setTitle(newtitle);
         }
     }
 
-    private boolean showAuthentificationDialogWindow () {
+    private boolean showAuthentificationDialogWindow ()
+    {
         try {
             if (dlgLoginController == null || dlgLoginStage == null) {
                 // Загружаем fxml-файл и создаём новую сцену для всплывающего диалогового окна.
                 FXMLLoader loader = new FXMLLoader();
-                loader.setLocation(getClass().getResource("/dlglogin.fxml"));
+                loader.setLocation (getClass().getResource ("/dlglogin.fxml"));
                 VBox page = loader.load();
                 setSceneFontSize(page, propMan.getDefaultFontSize());
-                Scene scene = new Scene(page);
+                Scene scene = new Scene (page);
 
                 // Создаём диалоговое окно Stage.
                 dlgLoginStage = new Stage();
-                dlgLoginStage.setTitle(MAINWND_TITLE + " - Авторизация пользователя");
-                dlgLoginStage.initModality(Modality.WINDOW_MODAL);
-                dlgLoginStage.initOwner(this.primaryStage);
-                dlgLoginStage.setScene(scene);
+                dlgLoginStage.setTitle (MAINWND_TITLE + " - Авторизация пользователя");
+                dlgLoginStage.initModality (Modality.WINDOW_MODAL);
+                dlgLoginStage.initOwner (this.primaryStage);
+                dlgLoginStage.setScene (scene);
 
                 // Передаём адресата в контроллер.
                 dlgLoginController = loader.getController();
-                dlgLoginController.setDialogStage(dlgLoginStage);
+                dlgLoginController.setDialogStage (dlgLoginStage);
             }
             // Отображаем диалоговое окно и ждём, пока пользователь его не закроет
             dlgLoginStage.showAndWait();
             return dlgLoginController.isButtnLoginPressed();
         }
-        catch (IOException e) {e.printStackTrace();}
+        catch (IOException e) { e.printStackTrace(); }
         return false;
     }
 
-    @FXML public void onactionStartConnect (ActionEvent actionEvent) {
-        if (showAuthentificationDialogWindow() && dlgLoginController != null) {
+    @FXML public void onactionStartConnect (ActionEvent actionEvent)
+    {
+        if (showAuthentificationDialogWindow() && dlgLoginController != null)
+        {
             String login = dlgLoginController.getLogin();
             String password = dlgLoginController.getPassword();
             LOGGER.debug(sformat("onMainWndShowing() юзер ввел пароль (%s) и логин (%s)", login, password));
@@ -338,7 +370,8 @@ public class Controller implements Initializable {
     }
 
 /** Создание папки на сервере в текущей папке.    */
-    @FXML public void onactionMenuServer_CreateFolder (ActionEvent actionEvent) {
+    @FXML public void onactionMenuServer_CreateFolder (ActionEvent actionEvent)
+    {
         String name = generateDefaultFolderName(tvServerSide);
         String errMsg = null;
         NasMsg nasMsg = netClient.create(name);
@@ -350,30 +383,37 @@ public class Controller implements Initializable {
             errMsg = nasMsg.msg();
         }
         else if (nasMsg.opCode() == NM_OPCODE_OK) {
-            addTvItemAsFolder(name, REMOTE);
+            addTvItemAsFolder (name, REMOTE);
         }
-        if (errMsg != null) messageBox(ALERTHEADER_FOLDER_CREATION, errMsg, ERROR);
+        if (errMsg != null)
+            messageBox (ALERTHEADER_FOLDER_CREATION, errMsg, ERROR);
     }
 
 /** Создание локальной папки в текущей папке. */
-    @FXML public void onactionMenuClient_CreateFolder (ActionEvent actionEvent) {
-        String name = generateDefaultFolderName(tvClientSide);
-        Path pSubfolder = createSubfolder (Paths.get(strCurrentLocalPath), name);
+    @FXML public void onactionMenuClient_CreateFolder (ActionEvent actionEvent)
+    {
+        String name = generateDefaultFolderName (tvClientSide);
+        Path pSubfolder = createSubfolder (Paths.get (strCurrentLocalPath), name);
 
-        if (null == pSubfolder) messageBox(ALERTHEADER_FOLDER_CREATION, ERROR_UNABLE_TO_PERFORM, ERROR);
+        if (null == pSubfolder)
+            messageBox (ALERTHEADER_FOLDER_CREATION, ERROR_UNABLE_TO_PERFORM, ERROR);
     }
 
 /** в текущей клиентской папке удаляем выбранный элемент (файл или папку).    */
-    @FXML public void onactionMenuClient_Delete (ActionEvent actionEvent) {
+    @FXML public void onactionMenuClient_Delete (ActionEvent actionEvent)
+    {
         TableFileInfo tfi = tvClientSide.getSelectionModel().getSelectedItem();
         //String errMsg = null;
 
-        if (tfi != null) { deleteLocalEntryByTfi(tfi); }
-        else { messageBox(ALERTHEADER_DELETION, ERROR_UNABLE_TO_PERFORM, ERROR); }
+        if (tfi != null)
+            deleteLocalEntryByTfi (tfi);
+        else
+            messageBox(ALERTHEADER_DELETION, ERROR_UNABLE_TO_PERFORM, ERROR);
     }
 
 /** в текущей серверной папке удаляем выбранный элемент (файл или папку). */
-    @FXML public void onactionMenuServer_Delete (ActionEvent actionEvent) {
+    @FXML public void onactionMenuServer_Delete (ActionEvent actionEvent)
+    {
         TableFileInfo tfi = tvServerSide.getSelectionModel().getSelectedItem();
         String errMsg = null;
 
@@ -387,12 +427,14 @@ public class Controller implements Initializable {
             deleteTvItem(tvServerSide, tfi);
             collectStatistics(tvServerSide);
         }
-        if (errMsg != null) messageBox(ALERTHEADER_DELETION, errMsg, WARNING);
+        if (errMsg != null)
+            messageBox(ALERTHEADER_DELETION, errMsg, WARNING);
 
     }
 
 /** Загрузка одного выбранного элемента-файла с сервера в текущую локальную папку */
-    @FXML public void onactionMenu_Download (ActionEvent actionEvent) {
+    @FXML public void onactionMenu_Download (ActionEvent actionEvent)
+    {
         TableFileInfo tfi;
         String errMsg = null;
         Alert.AlertType alertType = ERROR;
@@ -401,19 +443,22 @@ public class Controller implements Initializable {
             errMsg = ERROR_NO_CONNECTION_TO_REMOTE_STORAGE;
             alertType = WARNING;
         }
-        else if (null != (tfi = tvServerSide.getSelectionModel().getSelectedItem())) {
+        else if (null != (tfi = tvServerSide.getSelectionModel().getSelectedItem()))
+        {
             //загрузка папок (даже пустых) не реализована
             if (tfi.getFolder()) {
                 errMsg = PROMPT_FOLDERS_EXCHANGE_NOT_SUPPORTED;
                 alertType = INFORMATION;
             }
-            else { errMsg = downloadFileByTfi(tfi); }
+            else errMsg = downloadFileByTfi (tfi);
         }
-        if (errMsg != null) messageBox(ALERTHEADER_LOCAL2LOCAL, errMsg, alertType);
+        if (errMsg != null)
+            messageBox(ALERTHEADER_LOCAL2LOCAL, errMsg, alertType);
     }
 
 /** Выгрузка одного выбранного элемента-файла из локальной папки на сервер в текущую папку    */
-    @FXML public void onactionMenuClient_Upload (ActionEvent actionEvent) {
+    @FXML public void onactionMenuClient_Upload (ActionEvent actionEvent)
+    {
         TableFileInfo tfi;
         String errMsg = null;
         Alert.AlertType alertType = ERROR;
@@ -436,61 +481,66 @@ public class Controller implements Initializable {
 
 /** В поле ввода textfieldCurrentPath_Client нажат ENTER. */
     @FXML public void onactionTextField_Client_ApplyAsPath (ActionEvent actionEvent) {
-        changeLocalFolder(textfieldCurrentPath_Client.getText());
+        changeLocalFolder (textfieldCurrentPath_Client.getText());
     }
 
 /** В поле ввода textfieldCurrentPath_Server нажат ENTER. */
-    @FXML public void onactionTextField_Server_ApplyAsPath (ActionEvent actionEvent) {
+    @FXML public void onactionTextField_Server_ApplyAsPath (ActionEvent actionEvent)
+    {
         String text = textfieldCurrentPath_Server.getText().trim();
 
         if (netClient == null) {   //перед подключением поле пути для сервера используется как поле ввода для имени пользователя
             //onCmdConnectAndLogin(text);
         }
-        else {   //если подключение уже установлено, то текст явялется папкой на сервере, которую нужно выбрать
-            NasMsg nm = netClient.goTo(text);
-            if (!workUpAListRequestResult(nm)) {
-                messageBox(ALERTHEADER_UNABLE_APPLY_AS_PATH, text, ERROR);
-            }
-        }
+        else  //если подключение уже установлено, то текст явялется папкой на сервере, которую нужно выбрать
+            inlineReadRemoteFolder (text);
+    }
+
+    private void inlineReadRemoteFolder (String str)
+    {
+        NasMsg nm = netClient.goTo (str);
+        if (!workUpAListRequestResult(nm))
+            messageBox (ALERTHEADER_UNABLE_APPLY_AS_PATH, str, ERROR);
     }
 
 /** Переходим в родительскую папку, если таковая существует.  */
-    @FXML public void onactionButton_Client_LevelUp (ActionEvent actionEvent) {
+    @FXML public void onactionButton_Client_LevelUp (ActionEvent actionEvent)
+    {
         // !!! Игнорируем содержимое поля ввода textfieldCurrentPath_Client)
         String strParent = stringPath2StringAbsoluteParentPath (strCurrentLocalPath);
-
+        //boolean locked = false;
         if (strParent != null) {
             if (strParent.isEmpty()) {
-                messageBox(ALERTHEADER_LOCAL_STORAGE, sformat(PROMPT_FORMAT_ROOT_FOLDER, strCurrentLocalPath), INFORMATION);
+                messageBox (ALERTHEADER_LOCAL_STORAGE, sformat (PROMPT_FORMAT_ROOT_FOLDER, strCurrentLocalPath), INFORMATION);
             }
             else {
-                try {
-                    if (lockSuspendWatching.tryLock (2000, MILLISECONDS)) {
-
-                        populateTableView (listFolderContents (strParent), LOCAL);
-                        strCurrentLocalPath = strParent;
-
-                        textfieldCurrentPath_Client.setText(strCurrentLocalPath);
-                        clientWatcher.startWatchingOnFolder(strCurrentLocalPath);
-
-                        lockSuspendWatching.unlock();
-                    }
-                }
-                catch (InterruptedException e) {e.printStackTrace();}
+                //try {
+                //    if (locked = lockSuspendWatching.tryLock (2, SECONDS)) {
+                //        populateTableView (listFolderContents (), LOCAL);
+                //        strCurrentLocalPath = strParent;
+                //        textfieldCurrentPath_Client.setText (strCurrentLocalPath);
+                        changeLocalFolder (strParent);
+                        //clientWatcher.startWatchingOnFolder (strCurrentLocalPath);
+                    //}
+                //}
+                //catch (InterruptedException e) { e.printStackTrace(); }
+                //finally {
+                //    if (locked) lockSuspendWatching.unlock();
+                //}
             }
         }
     }
 
 /** Переходим в родительскую папку, если таковая существует.  */
-    @FXML public void onactionButton_Server_LevelUp (ActionEvent actionEvent) {
+    @FXML public void onactionButton_Server_LevelUp (ActionEvent actionEvent)
+    {
         if (netClient != null) {
             String strParent = getParentFromRelative(userName, strCurrentServerPath);
             if (!sayNoToEmptyStrings(strParent)) strParent = userName;
 
             NasMsg nm = netClient.goTo(strParent);
-            if (nm == null || !workUpAListRequestResult(nm)) {
+            if (nm == null || !workUpAListRequestResult(nm))
                 messageBox(ALERTHEADER_UNABLE_APPLY_AS_PATH, strParent, ERROR);
-            }
         }
     }
 
@@ -498,24 +548,25 @@ public class Controller implements Initializable {
     @FXML public void onactionMenuClient_OpenFolder (ActionEvent actionEvent) {
         openItemFolderOnClientSide();
     }
-//-------------------------- гетеры и сетеры --------------------------------------------------------------------*/
 
 /** Если в списке/таблице выбрана папка, заходим в неё.   */
     @FXML public void onactionMenuServer_OpenFolder (ActionEvent actionEvent) {
-        openFolderOnServerSide();
+        openItemFolderOnServerSide();
     }
 
 /** двойной щелчок ЛКМ по пункту-папке открывает соттв. ему папку */
     @FXML public void tvOnMouseClickedClient (MouseEvent mouseEvent) {
         //TableView<TableFileInfo> tv = (TableView<TableFileInfo>) mouseEvent.getSource();
-        if (mouseEvent.getClickCount() == 2) {
+        if (mouseEvent.getClickCount() == 2)
             openItemFolderOnClientSide();
-        }
     }
 
     @FXML public void tvOnMouseClickedServer (MouseEvent mouseEvent) {
-        if (mouseEvent.getClickCount() == 2) openFolderOnServerSide();
+        if (mouseEvent.getClickCount() == 2)
+            openItemFolderOnServerSide();
     }
+
+//-------------------------- гетеры и сетеры --------------------------------------------------------------------*/
 
     public TableView<TableFileInfo> getTvClient () { return tvClientSide; }
 
@@ -532,37 +583,45 @@ public class Controller implements Initializable {
     public TableColumn<TableFileInfo, String> getColumnServerFileName () { return columnServerFileName; }
 
 /** Заполняем таблицу элементами списка infolist. */
-    void populateTableView (@NotNull List<FileInfo> infolist, boolean local) {
+    void populateTableView (List<FileInfo> infolist, boolean local)
+    {
         if (infolist != null) {
             long folders = 0L, files = 0L;
             TableView<TableFileInfo> tv = local ? tvClientSide : tvServerSide;
             String strPrefix = local ? STR_PREFIX_LOCAL : STR_PREFIX_REMOTE;
 
             String s = SBAR_TEXT_FOLDER_READING_IN_PROGRESS;
-            if (local) { sbarSetDefaultText(s, null); }
-            else { sbarSetDefaultText(null, s); }
-            enableUsersInput(DISABLE);
+            if (local)
+                sbarSetDefaultText (s, null);
+            else
+                sbarSetDefaultText (null, s);
+            enableUsersInput (DISABLE);
 
             Point p = populateTv(tv, infolist);
             folders = p.x;
             files = p.y;
 
-            enableUsersInput(ENABLE);
+            enableUsersInput (ENABLE);
             s = sformat (SBAR_TEXTFORMAT_FOLDER_STATISTICS, strPrefix, folders, files);
-            if (local) { sbarSetDefaultText(s, null); }
-            else { sbarSetDefaultText(null, s); }
+            if (local)
+                sbarSetDefaultText(s, null);
+            else
+                sbarSetDefaultText(null, s);
         }
     }
 
 /** Подсчитываем количества папок и файлов в указанной таблице и помещаем в строку состояния текст с полученной информацией.  */
-    void collectStatistics (TableView<TableFileInfo> tv) {
+    void collectStatistics (TableView<TableFileInfo> tv)
+    {
         long folders = 0L, files = 0L;
         boolean local = tv == tvClientSide;
         String strPrefix = local ? STR_PREFIX_LOCAL : STR_PREFIX_REMOTE;
 
         String s = SBAR_TEXT_FOLDER_READING_IN_PROGRESS;
-        if (local) { sbarSetDefaultText(s, null); }
-        else { sbarSetDefaultText(null, s); }
+        if (local)
+            sbarSetDefaultText(s, null);
+        else
+            sbarSetDefaultText(null, s);
         enableUsersInput(DISABLE);
 
         Point point = statisticsTv(tv);
@@ -571,15 +630,19 @@ public class Controller implements Initializable {
 
         enableUsersInput(ENABLE);
         s = sformat (SBAR_TEXTFORMAT_FOLDER_STATISTICS, strPrefix, folders, files);
-        if (local) { sbarSetDefaultText(s, null); }
-        else { sbarSetDefaultText(null, s); }
+        if (local)
+            sbarSetDefaultText(s, null);
+        else
+            sbarSetDefaultText(null, s);
     }
 
 /** Формируем текст, который будет по умолчанию отображаться в строке состояния. Левая часть отображает состояние клиента,
  правая — сервера. В качестве любого из параметров можно передать null, если соответствующую подстроку изменять не нужно. */
     void sbarSetDefaultText (String local, String server) {
-        if (local != null) sbarLocalStatistics = local;
-        if (server != null) sbarServerStatistics = server;
+        if (local != null)
+            sbarLocalStatistics = local;
+        if (server != null)
+            sbarServerStatistics = server;
         sbarTextDefault = sformat (SBAR_TEXTFORMAT_STATISTICS, sbarLocalStatistics, sbarServerStatistics);
         textStatusBar.setText(sbarTextDefault);
     }
@@ -587,7 +650,8 @@ public class Controller implements Initializable {
 //------------------- Вспомогательные методы. Фактически, — поименованные куски кода. ---------------------------*/
 
 /** Запрещаем или разрешаем использование элементов управления. (Используется во время выполнения длительных операций.)   */
-    void enableUsersInput (boolean enable) {
+    void enableUsersInput (boolean enable)
+    {
         textfieldCurrentPath_Client.setDisable(!enable);
         textfieldCurrentPath_Server.setDisable(!enable);
         buttonDownload.setDisable(!enable && netClient != null);
@@ -602,7 +666,9 @@ public class Controller implements Initializable {
 nm.msg    = относительный путь в папке юзера на сервере, или текст сообщения об ошибке.
 nm.data   = список содержимого этой папки (если нет ошибки).
  @return true если nm.opCode() == OK. С остальным пусть разбирается вызывающая функция.    */
-    @SuppressWarnings ("unchecked") private boolean workUpAListRequestResult (NasMsg nm) {
+    //@SuppressWarnings ("unchecked")
+    private boolean workUpAListRequestResult (NasMsg nm)
+    {
         boolean ok = false;
         if (nm != null && nm.opCode() == NM_OPCODE_OK) {
             ok = true;
@@ -612,13 +678,14 @@ nm.data   = список содержимого этой папки (если н
                 strCurrentServerPath = nm.msg();
                 textfieldCurrentPath_Server.setText(nm.msg());
             }
-            else { lnprint("Не удалось вывести список содержимого папки."); }
+            else lnprint("Не удалось вывести список содержимого папки.");
         }
         return ok;
     }
 
 /** считая указанную строку путём к каталогу, пытаемся отобразить содержимое этого каталога в «клиентской» панели.    */
-    private boolean applyStringAsNewLocalPath (String strPath) {
+    private boolean applyStringAsNewLocalPath (String strPath)
+    {
 /*
     callbackOnCurrentFolderEvents()
         onactionTextField_Client_ApplyAsPath()  //-
@@ -628,54 +695,48 @@ nm.data   = список содержимого этой папки (если н
     changeLocalFolder()
 */
         boolean ok = false;
-        if (!sayNoToEmptyStrings(strPath)) {
-            strPath = System.getProperty(STR_DEF_FOLDER);
-        }
-        if (isStringOfRealPath(strPath)) {
+        if (!sayNoToEmptyStrings (strPath))
+            strPath = System.getProperty (STR_DEF_FOLDER);  //< чтобы не бросаться исключениями, сменим папку на умолчальную
+
+        if (isStringOfRealPath (strPath)) {
             strCurrentLocalPath = strPath;
             List<FileInfo> infolist = listFolderContents (strCurrentLocalPath);
-            populateTableView(infolist, LOCAL);
+            populateTableView (infolist, LOCAL);
             ok = true;
         }
-        else { messageBox(PROMPT_DIR_ENTRY_DOESNOT_EXISTS, strPath, WARNING); }
+        else messageBox (PROMPT_DIR_ENTRY_DOESNOT_EXISTS, strPath, WARNING);
         return ok;
     }
 
-/** открывает локальную папку, которая соответствует выбранному пункту в таблице  */
-    void openItemFolderOnClientSide () {
+/** Открывает локальную папку, которая соответствует выбранному пункту в таблице — делаем эту папку
+    текущей локальной папкой.  */
+    void openItemFolderOnClientSide ()
+    {
         TableFileInfo tfi = tvClientSide.getSelectionModel().getSelectedItem();
-        if (tfi != null && tfi.getFolder()) {
-            try {
-                if (lockSuspendWatching.tryLock (2000, MILLISECONDS)) {
-
-                    String strPath = Paths.get(strCurrentLocalPath, tfi.getFileName()).toString();
-                    changeLocalFolder(strPath);
-                    lockSuspendWatching.unlock();
-                }
-            }
-            catch (InterruptedException e) {e.printStackTrace();}
-        }
+        if (tfi != null && tfi.getFolder())
+            changeLocalFolder (Paths.get (strCurrentLocalPath, tfi.getFileName()).toString());
     }
 
-/** открывает удалённую папку, которая соответствует выбранному пункту в таблице  */
-    void openFolderOnServerSide () {
+/** Открывает удалённую папку, которая соответствует выбранному пункту в таблице — делаем эту папку
+    текущей удалённой папкой. */
+    void openItemFolderOnServerSide ()
+    {
         TableFileInfo tfi = tvServerSide.getSelectionModel().getSelectedItem();
-
-        if (tfi != null && tfi.getFolder() && netClient != null) {
-
+        if (tfi != null && tfi.getFolder() && netClient != null)
+        {
             String strFolderName = tfi.getFileName();
-            NasMsg nm = netClient.goTo(strCurrentServerPath, strFolderName);
+            NasMsg nm = netClient.goTo (strCurrentServerPath, strFolderName);
 
-            if (!workUpAListRequestResult(nm)) {
+            if (!workUpAListRequestResult (nm))
                 messageBox (ALERTHEADER_UNABLE_APPLY_AS_PATH, strFolderName, ERROR);
-            }
         }
     }
 
+/** Добавляем в TableView пункт-папку. */
     private void addTvItemAsFolder (@NotNull String name, boolean local) {
         if (tableViewManager != null) {
             TableView<TableFileInfo> tv = local ? tvClientSide : tvServerSide;
-            addItemAsFolder(name, tv);
+            addItemAsFolder (name, tv);
             collectStatistics(tv);
         }
     }
@@ -700,35 +761,36 @@ nm.data   = список содержимого этой папки (если н
         return name;
     }
 
-    private boolean confirmEntryDeletion (String folderName, int entries) {
+    private boolean confirmEntryDeletion (String folderName, long entries) {
         boolean canDelete = false;
-        if (entries > 0) {
-            String s = sformat(PROMPT_FORMAT_FOLDER_DELETION_CONFIRMATION, folderName);
+        if (entries > 0L) {
+            String s = sformat (PROMPT_FORMAT_FOLDER_DELETION_CONFIRMATION, folderName);
             canDelete = messageBoxConfirmation (ALERTHEADER_DELETION, s, CONFIRMATION);
         }
-        else { canDelete = entries == 0; }
+        else { canDelete = entries == 0L; }
         return canDelete;
     }
 
 /** удаляем элемент текущего локального каталога, на который указывает елемент таблицы tfi.   */
-    private boolean deleteLocalEntryByTfi (@NotNull TableFileInfo tfi) {
+    private boolean deleteLocalEntryByTfi (@NotNull TableFileInfo tfi)
+    {
         FileInfo fi = tfi.toFileInfo();
-        Path paim = Paths.get(strCurrentLocalPath, fi.getFileName());
+        Path paim = Paths.get (strCurrentLocalPath, fi.getFileName());
 
         boolean ok = false;
         boolean error = false;
         boolean dir = fi.isDirectory();
-        int entries = -1;
+        long entries = -1L;
 
         if (dir) {
-            entries = countDirectoryEntries(paim);
-            error = entries < 0;
-            ok = !error && (entries == 0 || confirmEntryDeletion(paim.toString(), entries));
+            entries = countDirectoryEntries (paim);
+            error = entries < 0L;
+            ok = !error && (entries == 0L || confirmEntryDeletion (paim.toString(), entries));
         }
-        else { ok = confirmFileDeletion(paim.toString()); }
+        else { ok = confirmFileDeletion (paim.toString()); }
 
         if (ok) {
-            ok = deleteFileOrDirectory(paim);
+            ok = deleteFileOrDirectory (paim);
             //try
             //{
             //    if (lockOnWatching.tryLock(1000, MILLISECONDS))
@@ -739,24 +801,25 @@ nm.data   = список содержимого этой папки (если н
             //catch (InterruptedException e){e.printStackTrace();}
             error = !ok;
         }
-        if (error) messageBox(ALERTHEADER_DELETION, ERROR_UNABLE_TO_PERFORM, ERROR);
+        if (error) messageBox (ALERTHEADER_DELETION, ERROR_UNABLE_TO_PERFORM, ERROR);
         return ok;
     }
 
 /** удаляем элемент текущего удалённого каталога, на который указывает елемент таблицы tfi.   */
-    private boolean deleteRemoteEntryByIfi (@NotNull TableFileInfo tfi) {
+    private boolean deleteRemoteEntryByIfi (@NotNull TableFileInfo tfi)
+    {
         FileInfo fi = tfi.toFileInfo();
         String paim = Paths.get(strCurrentServerPath, fi.getFileName()).toString();
 
         boolean ok = false;
         boolean error = false;
         boolean dir = fi.isDirectory();
-        int entries = -1;
+        long entries = -1L;
 
         if (dir) {
-            entries = netClient.countFolderEntries(strCurrentServerPath, fi);
-            error = entries < 0;
-            ok = !error && (entries == 0 || confirmEntryDeletion(paim, entries));
+            entries = netClient.countFolderEntries (strCurrentServerPath, fi);
+            error = entries < 0L;
+            ok = !error && (entries == 0L || confirmEntryDeletion(paim, entries));
         }
         else { ok = confirmFileDeletion(paim); }
 
@@ -769,45 +832,43 @@ nm.data   = список содержимого этой папки (если н
         return ok;
     }
 
-    private boolean confirmFileDeletion (String strFilePath) {
-
+    private boolean confirmFileDeletion (String strFilePath)
+    {
         String s = sformat (PROMPT_FORMAT_FILE_DELETION_CONFIRMATION, strFilePath);
         return ANSWER_OK == messageBoxConfirmation(ALERTHEADER_DELETION, s, CONFIRMATION);
     }
 
-/** загружаем файл с сервера в текущую локальную папку; если файл уже существует, запрашиваем подтверждение пользователя. */
-    private String downloadFileByTfi (TableFileInfo tfi) {
-        String strErr = ERROR_UNABLE_TO_PERFORM;
-        try {
-            //Ненадолго отключим WatchService, чтобы она не реагировала на временную папку,
-            // которая создаётся при загрузке.
-            if (lockSuspendWatching.tryLock (2000, MILLISECONDS))
-            {
-                String strTarget = Paths.get (strCurrentLocalPath, tfi.getFileName()).toString();
-
-                if (isStringOfRealPath (strTarget) && !isItSafeToDownloadFile (strTarget))
-                    strErr = null;
-                else {
-                    NasMsg nm = netClient.download (strCurrentLocalPath, strCurrentServerPath, tfi.toFileInfo());
-                    if (nm != null) {
-                        if (nm.opCode() == NM_OPCODE_OK) {
-                            applyStringAsNewLocalPath(strCurrentLocalPath);
-                            strErr = null;
-                        }
-                        else if (nm.opCode() == NM_OPCODE_ERROR && nm.msg() != null)
-                            strErr = nm.msg();
+/** загружаем файл с сервера в текущую локальную папку; если файл уже существует, запрашиваем
+подтверждение пользователя. */
+    private String downloadFileByTfi (TableFileInfo tfi)
+    {
+        String strTarget = Paths.get (strCurrentLocalPath, tfi.getFileName()).toString();
+        String strErr = null;
+        if (!isStringOfRealPath (strTarget) || isItSafeToDownloadFile (strTarget))
+        {
+    /* При скачивании файла в локальную папку создаётся временный каталог, потом из него
+       переносится файл, потом временный каталог удаляется… Служба наблюдения не должна
+       всё это видеть… */
+            strErr = new UnwatchableExecutor<String>().execute (()->{
+                String result = ERROR_UNABLE_TO_PERFORM;
+                NasMsg nm = netClient.download (strCurrentLocalPath, strCurrentServerPath, tfi.toFileInfo());
+                if (nm != null) {
+                    if (nm.opCode() == NM_OPCODE_OK) {
+                        applyStringAsNewLocalPath (strCurrentLocalPath);
+                        result = null;
                     }
+                    else if (nm.opCode() == NM_OPCODE_ERROR  &&  nm.msg() != null)
+                        result = nm.msg();
                 }
-                lockSuspendWatching.unlock();
-            }
+                return result;
+            });
         }
-        catch (InterruptedException e) {e.printStackTrace();}
         return strErr;
     }
 
 /** проверяем, существует ли файл и, если существует, запрашиваем у юзера подтверждение на перезапись   */
-    private boolean isItSafeToDownloadFile (String strTarget) {
-
+    private boolean isItSafeToDownloadFile (String strTarget)
+    {
         String s = sformat (PROMPT_FORMAT_REPLACE_CONFIRMATION, strTarget);
         return ANSWER_OK == messageBoxConfirmation (ALERTHEADER_DOWNLOADING, s,
                                                     Alert.AlertType.CONFIRMATION);
@@ -846,8 +907,8 @@ nm.data   = список содержимого этой папки (если н
     }
 
 /** проверяем, существует ли файл и, если существует, запрашиваем у юзера подтверждение на перезапись   */
-    private boolean isItSafeToUploadFile (String strTargetName) {
-
+    private boolean isItSafeToUploadFile (String strTargetName)
+    {
         String strPath = Paths.get (strCurrentServerPath, strTargetName).toString();
         String s = sformat (PROMPT_FORMAT_REPLACE_CONFIRMATION, strPath);
 
@@ -890,19 +951,35 @@ nm.data   = список содержимого этой папки (если н
 /**    Изменяем текущую локальную папку в соотв-вии с параметром strNew. (Синхронизация используется для того, чтобы
  служба слежения за каталогом не обрабатывала изменения в прежнем каталоге, если таковые случатся во время
  работы этого метода.)    */
-    private void changeLocalFolder (String strNew) {
-        if (sayNoToEmptyStrings(strNew)) {
-            try {
-                if (lockSuspendWatching.tryLock(2000, MILLISECONDS)) {
+    private void changeLocalFolder (String strNew)
+    {
+        /* Вроде бы не нужно всё так усложнять при простом переключении на новую папку, но во время
+           считывания содержимого новой папки какие-то события могут произойти в прежней папке, что
+           заставит службу наблюдения затеять обновление TableView для прежней папки… Проще немного
+           перестраховаться. */
+        new UnwatchableExecutor<Void>().execute (()->{
+            if (applyStringAsNewLocalPath (strNew))
+                textfieldCurrentPath_Client.setText (strCurrentLocalPath);
+            return null;
+        });
+    }
 
-                    if (applyStringAsNewLocalPath(strNew)) {
-                        textfieldCurrentPath_Client.setText(strCurrentLocalPath);
-                        clientWatcher.startWatchingOnFolder(strCurrentLocalPath);
-                    }
-                    lockSuspendWatching.unlock();
-                }
-            }
-            catch (InterruptedException e) {e.printStackTrace();}
+/** Класс предназначен для операций, для выполнения которых нужно приостановливать службу наблюдения
+    за текущим каталогом.<p>
+    В конструкторе приостанавливаем службу, в абстрактном методе выполняем какие-то действия, а
+    в close() снова запускаем службу наблюдения за текущим каталогом.<p>
+    <b>Причина использования именно такого подхода.</b><p>
+    Во время выполнения некоторых действий текущий локальный каталог или его содержимое могут
+    измениться. Порою эти изменения носят т.с. служебный характер, а служба наблюдения, регистрируя
+    их, мешает работе приложения, которому и без этого хватает геморроя в лице JavaFX…<p>
+    Использоваие замков решает проблему, но выглядит как-то аляповато. Пробуем сделать красиво… */
+    private class UnwatchableExecutor<T>
+    {
+        public T execute (Supplier<T> supplier) {
+            clientWatcher.suspendWatching();
+            T t = supplier.get();
+            clientWatcher.resumeWatching (strCurrentLocalPath);
+            return t;
         }
     }
 }

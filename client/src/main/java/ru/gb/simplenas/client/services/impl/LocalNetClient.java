@@ -54,11 +54,13 @@ public class LocalNetClient implements NetClient {
     private NasDialogue  closedDialogue;
 
 
-    public LocalNetClient (NasCallback cbDisconnection, int port, String hostName) {
-
+    public LocalNetClient (NasCallback cbDisconnection, int p, String hName) {
         callbackOnDisconnection = cbDisconnection;
-        this.port = port;
-        this.hostName = hostName;
+        port = p;
+        hostName = hName;
+        manipulator = new LocalManipulator (this::callbackOnChannelActive,
+                                            this::callbackOnMsgIncoming,
+                                            this::callbackInfo);
         LOGGER.debug("создан LocalNetClient");
     }
 //----------------------- колбэки для связи с манипулятором ------------------------------------
@@ -67,7 +69,8 @@ public class LocalNetClient implements NetClient {
 
 /** Обработка окончания установления соединения : теперь мы можем воспользоваться сохранённой переменной
  типа SocketChannel и продолжить авторизацию в методе LocalNetClient.login(). */
-    void callbackOnChannelActive (Object... objects) {
+    void callbackOnChannelActive (Object... objects)
+    {
         synchronized (syncObj) {
             syncObj.notifyAll();
         }
@@ -76,33 +79,35 @@ public class LocalNetClient implements NetClient {
 /** Вызывается из манипулятора. Сейчас юзер и поток javafx ждут окончания операции, которую они нам поручили, и
  результат этой операции они получат в nmSyncResult.
  */
-    void callbackOnMsgIncoming (Object... objects) {
-
+    void callbackOnMsgIncoming (Object... objects)
+    {
         synchronized (syncObj) {
             if (objects != null) {
                 int count = objects.length;
                 if (count > 0) nmSyncResult = (NasMsg) objects[0];
                 if (count > 1) closedDialogue = (NasDialogue) objects[1];
-                syncObj.notify();//All
+                syncObj.notifyAll();
             }
         }
     }
 
 /** Вызывается из манипулятора. Служит для информирования юзером о событиях.  */
-    void callbackInfo (Object... objects) {
-        NasMsg nm = (NasMsg) objects[0];
-        if (nm != null && nm.opCode() == NM_OPCODE_EXIT) {
-            Platform.runLater(()->{
-                messageBox (ALERTHEADER_CONNECTION, PROMPT_CONNECTION_GETTING_CLOSED,
-                            Alert.AlertType.WARNING);
-            });
+    void callbackInfo (Object... objects)
+    {
+        if (objects != null)
+        {
+            String header        = (objects.length > 0) ? (String) objects[0] : "Ошибка!";
+            String text          = (objects.length > 1) ? (String) objects[1] : ERROR_UNABLE_TO_PERFORM;
+            Alert.AlertType type = (objects.length > 2) ? (Alert.AlertType) objects[2] : Alert.AlertType.NONE;
+
+            Platform.runLater(()->messageBox (header, text, type));
         }
     }
 //------------------------------- подключение, отключение, … ---------------------------------------
 
 // Запускаем поток, который соединяется с сервером.
-    @Override public boolean connect () {
-
+    @Override public boolean connect ()
+    {
         boolean isOnAir = schannel != null && schannel.isOpen();
 
         if (isOnAir) messageBox(ALERTHEADER_CONNECTION, "Уже установлено.", Alert.AlertType.INFORMATION);
@@ -122,31 +127,30 @@ public class LocalNetClient implements NetClient {
         return isOnAir;
     }
 
-//run-метод потока, в котором будет работать LocalNetClient.
     @Override public void run () {
-
-        NasCallback callbackChannelActive = this::callbackOnChannelActive;
-        NasCallback callbackMsgIncoming   = this::callbackOnMsgIncoming;
-        NasCallback callbackInfo          = this::callbackInfo;
-
         EventLoopGroup groupWorker = new NioEventLoopGroup();
         try {
             Bootstrap b = new Bootstrap();
-            b.group(groupWorker).channel(NioSocketChannel.class)
+            b.group (groupWorker)
+             .channel (NioSocketChannel.class)
              //.option (ChannelOption.SO_KEEPALIVE, true)
-             .handler(new ChannelInitializer<SocketChannel>() {
-                 @Override protected void initChannel (SocketChannel socketChannel) throws Exception {
-                     schannel = socketChannel;
-                     manipulator = new LocalManipulator(callbackChannelActive, callbackMsgIncoming, callbackInfo, socketChannel);
-                     socketChannel.pipeline().addLast(      //new StringDecoder(), new StringEncoder(),
-                                                            //An encoder which serializes a Java object into a ByteBuf.
-                                                            new ObjectEncoder(),
-                                                            //A decoder which deserializes the received ByteBufs into Java objects.
-                                                            //new ObjectDecoder (ClassResolvers.cacheDisabled (null)),
-                                                            //new ObjectDecoder (MAX_OBJECT_SIZE, ClassResolvers.cacheDisabled (null)),
-                                                            new ObjectDecoder(Integer.MAX_VALUE, ClassResolvers.weakCachingConcurrentResolver(null)), new NasMsgInboundHandler(manipulator)
-                                                            //new TestInboundHandler (manipulator)
-                                                     );
+             .handler (new ChannelInitializer<SocketChannel>()
+             {
+                 @Override protected void initChannel (SocketChannel sc) {
+                     schannel = sc;
+                     manipulator.setSocketChannel (sc);
+                     sc.pipeline()
+                       .addLast (//new StringDecoder(), new StringEncoder(),
+                                 //An encoder which serializes a Java object into a ByteBuf.
+                                 new ObjectEncoder(),
+                                 //A decoder which deserializes the received ByteBufs into Java objects.
+                                 //new ObjectDecoder (ClassResolvers.cacheDisabled (null)),
+                                 //new ObjectDecoder (MAX_OBJECT_SIZE, ClassResolvers.cacheDisabled (null)),
+                                 new ObjectDecoder (Integer.MAX_VALUE,
+                                                    ClassResolvers.weakCachingConcurrentResolver(null)),
+                                                    new NasMsgInboundHandler (manipulator)
+                                                    //new TestInboundHandler (manipulator)
+                                                   );
                  }
              });
             // !!! Важное замечание: если подключиться к серверу в потоке JavaFX, то
@@ -180,55 +184,54 @@ public class LocalNetClient implements NetClient {
 
 /** Метод может вызываться из Controller.closeSession() и из блока catch в run().
 (закрытие socketChannel приведёт к выполнению блока finally в run().)     */
-    @Override public void disconnect () {
-
+    @Override public void disconnect ()
+    {
         //делаем что-то в контроллере
-        if (connected) callbackOnDisconnection.callback();
+        if (connected)
+            callbackOnDisconnection.callback();
+
+        manipulator.setSocketChannel (null);
 
         //закрываем канал
         if (schannel != null && schannel.isOpen()) {
             sendExitMessage();
             schannel.disconnect();
         }
-        if (channelOfChannelFuture != null && channelOfChannelFuture.isOpen()) {
-            //закрытие желательно, иначе закрытие канала происходит заметно дольше.
-            ChannelFuture cf = channelOfChannelFuture.closeFuture();
-        }
+        //закрытие фьючерса желательно, иначе закрытие канала (инициированное пользователем)
+        // происходит заметно дольше.
+        if (channelOfChannelFuture != null && channelOfChannelFuture.isOpen())
+            channelOfChannelFuture.closeFuture();
 
         lnprint("\n\t\t*** Disconnected. ***\n");
-
         connected = false;
         schannel = null;
         channelOfChannelFuture = null;
         threadNetWork = null;
-        manipulator = null;
         userName = null;
     }
 //------------------------------- команды для запросов к серверу ------------------------------------------------*/
 
-    @Override public NasMsg login (@NotNull String username, @NotNull String password) {
-
+    @Override public NasMsg login (@NotNull String username, @NotNull String password)
+    {
         NasMsg result = null;
         if (sayNoToEmptyStrings(username)) {
 
             synchronized (syncObj) {
-
-                NasMsg nm = new NasMsg(NM_OPCODE_LOGIN, username, OUTBOUND);
+                NasMsg nm = new NasMsg (NM_OPCODE_LOGIN, username, OUTBOUND);
                 nm.setdata(password);
                 nmSyncResult = null;
 
-                if (manipulator.startSimpleRequest(nm)) {
+                if (manipulator.startSimpleRequest (nm)) {
                     try {
                         while (nmSyncResult == null) syncObj.wait();
                         result = nmSyncResult;
                         nmSyncResult = null;
                     }
-                    catch (InterruptedException e) {e.printStackTrace();}
+                    catch (InterruptedException e) { e.printStackTrace(); }
                 }
             }//sync
-
             if (result == null) {
-                result = new NasMsg(NM_OPCODE_ERROR, ERROR_UNABLE_TO_PERFORM, INBOUND);
+                result = new NasMsg (NM_OPCODE_ERROR, ERROR_UNABLE_TO_PERFORM, INBOUND);
             }
             else if (result.opCode() == OperationCodes.NM_OPCODE_OK) {
                 this.userName = result.msg();
@@ -237,13 +240,13 @@ public class LocalNetClient implements NetClient {
         return result;
     }
 
-    @Override public @NotNull NasMsg list (@NotNull String folder, String... subfolders) {
-
+    @Override public @NotNull NasMsg list (@NotNull String folder, String... subfolders)
+    {
         NasMsg result = null;
         if (sayNoToEmptyStrings(folder)) {
 
-            result = new NasMsg(NM_OPCODE_ERROR, ERROR_UNABLE_TO_PERFORM, OUTBOUND);
-            NasMsg nm = new NasMsg(NM_OPCODE_LIST, Paths.get(folder, subfolders).toString(), OUTBOUND);
+            result = new NasMsg (NM_OPCODE_ERROR, ERROR_UNABLE_TO_PERFORM, OUTBOUND);
+            NasMsg nm = new NasMsg (NM_OPCODE_LIST, Paths.get(folder, subfolders).toString(), OUTBOUND);
 
             synchronized (syncObj) {
                 nmSyncResult = null;
@@ -260,13 +263,13 @@ public class LocalNetClient implements NetClient {
         return result;
     }
 
-    @Override public @NotNull NasMsg create (@NotNull String newfoldername) {
-
+    @Override public @NotNull NasMsg create (@NotNull String newfoldername)
+    {
         NasMsg result = null;
         if (sayNoToEmptyStrings(newfoldername)) {
 
-            result = new NasMsg(NM_OPCODE_ERROR, ERROR_UNABLE_TO_PERFORM, OUTBOUND);
-            NasMsg nm = new NasMsg(OperationCodes.NM_OPCODE_CREATE, newfoldername, OUTBOUND);
+            result = new NasMsg (NM_OPCODE_ERROR, ERROR_UNABLE_TO_PERFORM, OUTBOUND);
+            NasMsg nm = new NasMsg (OperationCodes.NM_OPCODE_CREATE, newfoldername, OUTBOUND);
 
             synchronized (syncObj) {
                 nmSyncResult = null;
@@ -283,13 +286,13 @@ public class LocalNetClient implements NetClient {
         return result;
     }
 
-    @Override public @NotNull NasMsg rename (@NotNull FileInfo old, @NotNull String newName) {
-
+    @Override public @NotNull NasMsg rename (@NotNull FileInfo old, @NotNull String newName)
+    {
         NasMsg result = null;
         if (sayNoToEmptyStrings(newName) && old != null) {
 
-            result = new NasMsg(NM_OPCODE_ERROR, ERROR_UNABLE_TO_PERFORM, OUTBOUND);
-            NasMsg nm = new NasMsg(OperationCodes.NM_OPCODE_RENAME, newName, OUTBOUND);
+            result = new NasMsg (NM_OPCODE_ERROR, ERROR_UNABLE_TO_PERFORM, OUTBOUND);
+            NasMsg nm = new NasMsg (OperationCodes.NM_OPCODE_RENAME, newName, OUTBOUND);
             nm.setfileInfo(old);
 
             synchronized (syncObj) {
@@ -359,12 +362,12 @@ public class LocalNetClient implements NetClient {
         return result;
     }
 
-    @Override public FileInfo fileInfo (@NotNull String folder, @NotNull String fileName) {
-
+    @Override public FileInfo fileInfo (@NotNull String folder, @NotNull String fileName)
+    {
         FileInfo result = null;
         if (sayNoToEmptyStrings(folder, fileName)) {
 
-            NasMsg nm = new NasMsg(NM_OPCODE_FILEINFO, folder, OUTBOUND);
+            NasMsg nm = new NasMsg (NM_OPCODE_FILEINFO, folder, OUTBOUND);
             nm.setfileInfo(new FileInfo(fileName, NOT_FOLDER, EXISTS));
 
             synchronized (syncObj) {
@@ -383,17 +386,16 @@ public class LocalNetClient implements NetClient {
     }
 
 //посчёт элементов указанного удалённого каталога. -1 означает ошибку.
-    @Override public int countFolderEntries (String strParent, final FileInfo fi) {
-
-        int result = -1;
+    @Override public long countFolderEntries (String strParent, final FileInfo fi)
+    {
+        long result = -1;
         if (sayNoToEmptyStrings(strParent)) {
-
-            NasMsg nm = new NasMsg(OperationCodes.NM_OPCODE_COUNTITEMS, strParent, OUTBOUND);
+            NasMsg nm = new NasMsg (OperationCodes.NM_OPCODE_COUNTITEMS, strParent, OUTBOUND);
             nm.setfileInfo(fi);
 
             synchronized (syncObj) {
                 nmSyncResult = null;
-                if (manipulator.startSimpleRequest(nm)) {
+                if (manipulator.startSimpleRequest (nm)) {
                     try {
                         while (nmSyncResult == null) syncObj.wait();
                         nm = nmSyncResult;
@@ -402,49 +404,47 @@ public class LocalNetClient implements NetClient {
                     catch (InterruptedException e) {e.printStackTrace();}
                 }
             }//sync
-            if (nm.opCode() != NM_OPCODE_ERROR) {
-                result = (int) nm.fileInfo().getFilesize();
-            }
+            if (nm.opCode() != NM_OPCODE_ERROR)
+                result = nm.fileInfo().getFilesize(); //< результат передаётся в поле FileInfo.filesize.
         }
         return result;
     }
 
-    @Override public @NotNull NasMsg delete (String strParent, final FileInfo fi) {
-
+    @Override public @NotNull NasMsg delete (String strParent, final FileInfo fi)
+    {
         NasMsg result = null;
         if (sayNoToEmptyStrings(strParent)) {
+            result = new NasMsg (NM_OPCODE_ERROR, ERROR_UNABLE_TO_PERFORM, OUTBOUND);
 
-            result = new NasMsg(NM_OPCODE_ERROR, ERROR_UNABLE_TO_PERFORM, OUTBOUND);
-            NasMsg nm = new NasMsg(OperationCodes.NM_OPCODE_DELETE, strParent, OUTBOUND);
+            NasMsg nm = new NasMsg (OperationCodes.NM_OPCODE_DELETE, strParent, OUTBOUND);
             nm.setfileInfo(fi);
 
             synchronized (syncObj) {
                 nmSyncResult = null;
-                if (manipulator.startSimpleRequest(nm)) {
+                if (manipulator.startSimpleRequest (nm)) {
                     try {
                         while (nmSyncResult == null) syncObj.wait();
                         result = nmSyncResult;
                         nmSyncResult = null;
                     }
-                    catch (InterruptedException e) {e.printStackTrace();}
+                    catch (InterruptedException e) { e.printStackTrace(); }
                 }
             }//sync
         }
         return result;
     }
 
-    @Override public @NotNull NasMsg goTo (@NotNull String folder, String... subfolders) {
-
-        if (folder != null) {
+    @Override public @NotNull NasMsg goTo (@NotNull String folder, String... subfolders)
+    {
+        if (folder != null)
             return list(folder, subfolders);
-        }
-        return new NasMsg(NM_OPCODE_ERROR, ERROR_UNABLE_TO_PERFORM, OUTBOUND);
+        return new NasMsg (NM_OPCODE_ERROR, ERROR_UNABLE_TO_PERFORM, OUTBOUND);
     }
 
 /** Отправляем серверу сообщене EXIT  */
-    void sendExitMessage () {
-        if (schannel != null && schannel.isOpen()) {
+    void sendExitMessage ()
+    {
+        if (schannel != null && schannel.isOpen())
             manipulator.startExitRequest();
-        }
     }
 }

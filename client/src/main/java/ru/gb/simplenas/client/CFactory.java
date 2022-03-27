@@ -4,6 +4,7 @@ import org.jetbrains.annotations.NotNull;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.TableView;
 import ru.gb.simplenas.client.services.ClientPropertyManager;
+import ru.gb.simplenas.client.services.ClientWatchService;
 import ru.gb.simplenas.client.services.NetClient;
 import ru.gb.simplenas.client.services.impl.*;
 import ru.gb.simplenas.common.NasCallback;
@@ -67,7 +68,7 @@ public class CFactory {
         PROMPT_FORMAT_REPLACE_CONFIRMATION = "Файл уже существует в выбранной папке. Хотите его перезаписать?\n\n%s\n",
         PROMPT_FORMAT_FOLDER_DELETION_CONFIRMATION = "Удаляемая папка НЕ пуста. Всё равно удалить её?\n\n%s\n",
         PROMPT_FORMAT_FILE_DELETION_CONFIRMATION = "Подтвердите удаление файла:\n\n%s\n",
-        PROMPT_FORMAT_RENAMING_ALREADY_EXISTS = "Переименование отклонено, — папка или файл с таким имененм уже существуют:\n\n%s\n",
+        //PROMPT_FORMAT_RENAMING_ALREADY_EXISTS = "Переименование отклонено, — папка или файл с таким имененм уже существуют:\n\n%s\n",
         PROMPT_FORMAT_UPLOADERROR_SRCFILE_ACCESS = " т.к. не удалось получить доступ к фалу:\n%s%s%s\n",
         PROMPT_FOLDERS_EXCHANGE_NOT_SUPPORTED = "Пересылка папок не поддерживается.",
         PROMPT_FILE_IS_NOT_ACCESSIBLE = "Доступ к файлу закрыт.",
@@ -89,6 +90,9 @@ public class CFactory {
     static NetClient newNetClient (NasCallback cbDisconnection, int port, String hostName) {
         return new LocalNetClient(cbDisconnection, port, hostName);
     }
+
+    static ClientWatchService getWatchServiceInstance () { return LocalWatchService.getInstance(); }
+
 //-------------------------- методы для работы с контекстным меню -----------------------------------------------*/
 
     public static void setContextMenuEventHandler_OnShoing (ContextMenu menu, TableView<TableFileInfo> tv) {

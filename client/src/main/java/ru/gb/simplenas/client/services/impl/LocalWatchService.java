@@ -5,127 +5,253 @@ import ru.gb.simplenas.common.NasCallback;
 
 import java.io.IOException;
 import java.nio.file.*;
-import java.util.concurrent.locks.Lock;
+import java.util.ArrayList;
+import java.util.List;
 
 import static java.nio.file.StandardWatchEventKinds.*;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static ru.gb.simplenas.common.CommonData.DEBUG;
 import static ru.gb.simplenas.common.Factory.*;
+import static ru.gb.simplenas.common.services.impl.NasFileManager.*;
 
 public class LocalWatchService implements ClientWatchService {
 
-    private WatchService localWatcher;
-    private WatchKey     localWatchingKey;
-    private NasCallback  callbackOnCurrentFolderEvents = this::callbackDummy;
+    private static final Object            MON_INST  = new Object();
+    private        final Object            MON_WATCH = new Object();
+    private static       LocalWatchService instance;
+    private              WatchService      localWatcher;
+    private              WatchKey          localWatchingKey;
+    private              NasCallback       callbackOnCurrentFolderEvents = this::callbackDummy;
 
-    private static  LocalWatchService instance;
-    private Lock lockSuspendWatching; /*< При загрузке маленьких файлов с сервера временная папка
- существует очень короткое время. Служба наблюдения успевает на неё среагировать, а некоторые
- методы не успевают, из-за чего они бросаются исключениями. Теперь такие файлы не будут
- обрабатываться службой наблюдения.
-     Кроме того всегда есть вероятность, что служба слежения начнёт обрабатывать изменения
- в каталоге во время какой-то операции в контроллере.*/
+    Thread threadWatcher;
+    static int level;
 
-    public LocalWatchService (NasCallback cb, Lock lock) {
+    public LocalWatchService ()
+    {
+lnprint (tt[++level] +"LocalWatchService() start");
+        try {
+            localWatcher = FileSystems.getDefault().newWatchService();
+            lnprint ("Создана служба наблюдения за каталогами.");
 
-        if (instance == null) {
-            try {
-                localWatcher = FileSystems.getDefault().newWatchService();
-                lnprint ("Создана служба наблюдения за каталогами.");
-                lockSuspendWatching = lock;
-
-                Thread t = new Thread(()->threadDoWatching (localWatcher));
-                t.setDaemon(true);
-                t.start();
-                instance = this;
-            }
-            catch (IOException e) {e.printStackTrace();}
+            threadWatcher = new Thread(()->threadDoWatching (localWatcher), "Local watcher");
+            threadWatcher.setDaemon (true);
+            threadWatcher.start();
         }
-        callbackOnCurrentFolderEvents = cb;
+        catch (IOException e) {e.printStackTrace();}
+lnprint (tt[level--] +"LocalWatchService() end");
+    }
+
+    public static LocalWatchService getInstance ()
+    {
+lnprint (tt[++level] +"getInstance() start");
+        if (instance == null) {
+            synchronized (MON_INST) {
+                if (instance == null)
+                    instance = new LocalWatchService();
+            }
+        }
+lnprint (tt[level--] +"getInstance() end");
+        return instance;
     }
 
     void callbackDummy (Object... objects) {}
+
+    @Override public boolean setCallBack (NasCallback cb)
+    {
+lnprint (tt[++level] +"setCallBack() start");
+        boolean ok = cb != null;
+        if (ok)
+            callbackOnCurrentFolderEvents = cb;
+printf ("\n"+ tt[level--] +"setCallBack() end (%b)", ok);
+        return ok;
+    }
 //----------------------------------------------------------------------------------------
 
-    @Override public void startWatchingOnFolder (String strFolder) {
-        changeWatchingKey(strFolder);
+    @Override public void startWatchingOnFolder (String strFolder)
+    {
+lnprint (tt[++level] +"startWatchingOnFolder() start");
+        stopWatching();
+        startWatching (strFolder);
+lnprint (tt[level--] +"startWatchingOnFolder() end");
     }
 
-    private void threadDoWatching (WatchService service) {
+    private void threadDoWatching (WatchService service)
+    {
+lnprint (tt[++level] +"threadDoWatching() start");
+        String threadName = Thread.currentThread().getName();
+        printf ("\n www www www Поток [%s] службы наблюдения начал работу.", threadName);
+        List<NasEvent> watchEvents = new ArrayList<>();
 
-        lnprint ("Поток службы наблюдения начал работу.");
-        WatchKey key;
         while (service != null) {
             try {
-                key = service.poll (250, MILLISECONDS);
-                if (key != null) {
-                    for (WatchEvent<?> event : key.pollEvents()) {
-
-                        WatchEvent.Kind<?> kind = event.kind();
-                        if (kind == OVERFLOW) {
-
-                            lnprint ("Произошло событие [OVERFLOW].\t•\tПропущено.");
-                            continue;
-                        }
-                        WatchEvent<Path> wev = (WatchEvent<Path>) event;
-                        printf ("\nсобытие [%s] папка <%s> файл <%s>", wev.kind(), key.watchable(), wev.context());
-
-                        if (lockSuspendWatching.tryLock()) {
-
-                            callbackOnCurrentFolderEvents.callback(key.watchable().toString());
-                            lockSuspendWatching.unlock();
-                            lnprint ("\t•\tОбработано.");
-                        }
-                        else lnprint ("\t•\tЗаперто.");
+                WatchKey key = service.poll (250, MILLISECONDS); //< извлекает СЛЕДУЮЩИЙ ключ
+                if (key == null)
+                    Thread.yield(); //< ?????????? пока нет уверенности, что это нужно делать
+                else {
+            //Забираем список необработанных событий и тутже возвращаем ключ к наблюдению за его папкой:
+                    List<WatchEvent<?>> eventList = key.pollEvents();
+                    Path path = (Path) key.watchable();
+                    if (!key.reset()) {
+            //Если ключ оказался отменён (canceled), то его события нас не интересуют, как и те, что,
+            // возможно, остались в нашем watchEvents, — все они относятся к папке, которая уже не
+            // является текущей. Просто удаляем устаревшие данные:
+                        eventList = null;
+                        watchEvents.clear();
                     }
-                    key.reset();
+                    else {
+                        for (WatchEvent<?> event : eventList)
+                        {
+                            //WatchEvent.Kind<?> kind = ;
+
+            //Если мы что-то пропустили, не беда, — в очереди всегда найдётся событие, обрабатывая
+            // которое мы обновим TableView для текущей папки, и все изменения проявятся:
+                            if (event.kind().equals (OVERFLOW)) {
+                                errprintf ("\nсобытие OVERFLOW получено при наблюдении за <%s>.\n", path);
+                                continue;
+                            }
+
+            //Составление списка событий (в текущей реализации контроллера из всего списка выбирается
+            // только первое событие, относящееся к текущей папке, и на основании факта существования
+            // такого события обновляется TableView. Но здесь мы перестраховываемся и собираем все
+            // события):
+                            if (event.context() instanceof Path) {
+                                NasEvent e = new NasEvent (event.kind().name(),
+                                                           key.watchable().toString(),
+                                                           event.context().toString());
+                                watchEvents.add (e);
+                                if (DEBUG) printf ("\nсобытие [%s] папка <%s> файл <%s>",
+                                                   e.event, e.path, e.name);
+                            }
+                        }
+            //Отдаём содержимое списка контроллеру на обработку и очищаем список. Синхронизация в этом
+            // месте гарантирует, что в колбэке мы будем работать с актуальным имененм текущей папки.
+                        if (!watchEvents.isEmpty())
+                            synchronized (MON_WATCH) {
+                                callbackOnCurrentFolderEvents.callback (watchEvents.toArray());
+                                watchEvents.clear();
+                            }//synchronized
+                    }
                 }
             }
-            catch (InterruptedException | ClosedWatchServiceException e) {  service = null; }
-            /* Перехват ClosedWatchServiceException помогает завершить работу сервиса без исключений. */
-        }
-        lnprint ("Поток службы наблюдения завершил работу.");
+            catch (InterruptedException e) { e.printStackTrace(); } //< для poll()
+            catch (ClosedWatchServiceException e) {  service = null; } //< Перехват ClosedWatchServiceException помогает завершить работу сервиса без исключений.
+        }//while
+        printf ("\n www www www Поток [%s] службы наблюдения завершил работу.", threadName);
+lnprint (tt[level--] +"threadDoWatching() end");
     }
 
-    private void changeWatchingKey (String strFolder) {
-
+    private void startWatching (String strFolder)
+    {
+printf ("\n"+ tt[++level] +"startWatching (%s) start", strFolder);
         if (sayNoToEmptyStrings (strFolder) && localWatcher != null)
-        if (localWatchingKey != null) {
-
-            localWatchingKey.cancel();  //< Это можно делать многократно;
-            localWatchingKey = null;    //  после отмены ключ делается недействтельным навсегда, но может
-        }                               //  дообработать события, которые он уже ждёт или обрабатывает.
-
-        Path p = Paths.get(strFolder).toAbsolutePath().normalize();
-        if (Files.exists(p) && Files.isDirectory(p)) {
-
-            try {   //(Если за указанной папкой уже ведётся наблюдение при помощи ключа К, то у ключа К
-                // меняется набор событий на указанный, и возвращается ключ К. Иначе возвращается
-                // новый ключ. Все зарегистрированные ранее события остаются в очереди.)
-                localWatchingKey = p.register (localWatcher, ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY);
-                printf ("\nСоздан ключ для наблюдения за папкой <%s>.", p);
-            }
-            catch (IOException e) {e.printStackTrace();}
+        {
+            Path p = stringToExistingFolder (strFolder);
+            if (p != null)
+                // Если за время ожидания папка p куда-то денется, register() бросит исключение.
+                synchronized (MON_WATCH) {
+                    try {
+                        localWatchingKey = p.register (localWatcher, ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY);
+                    }
+                    catch (Exception e) { e.printStackTrace(); }
+                }
         }
-        else printf ("\nПапка не существует <%s>.", strFolder);
+lnprint (tt[level--] +"startWatching() end");
     }
 
-    @Override public void close () {
+    private void stopWatching ()
+    {
+lnprint (tt[++level] +"stopWatching() start");
+        synchronized (MON_WATCH) {
+            if (localWatchingKey != null) {
+                localWatchingKey.cancel();  //< Это можно делать многократно;
+                if (DEBUG)
+                    printf ("\nПрекращено наблюдение за папкой <%s>.", localWatchingKey.watchable());
+                localWatchingKey = null;  /* после «отмены» ключ делается недействтельным навсегда, но может
+                получить список событий, произошедших с момента последнего извлечения до момента «отмены». */
+            }
+        }
+lnprint (tt[level--] +"stopWatching() end");
+    }
+
+    @Override public void close ()
+    {
+lnprint (tt[++level] +"close() start");
         stopWatching();
-        //Если поток этого сервиса заблокирован, то он немедленно получает ClosedWatchServiceException;
-        // все ключи этого сервиса делаются недействительными. Сервис нельзя использовать повторно, но
-        // можно многократно закрывать.
         try {
             localWatcher.close();
+            //Если поток этого сервиса заблокирован, то он немедленно получает ClosedWatchServiceException;
+            // все ключи этого сервиса делаются недействительными. Сервис нельзя использовать повторно, но
+            // можно многократно закрывать.
         }
         catch (IOException e) {e.printStackTrace();}
+lnprint (tt[level--] +"close() end");
     }
 
-    private void stopWatching () {
+    public static class NasEvent {
+        public final String event;
+        public final String path;
+        public final String name;
 
-        if (localWatchingKey != null) {
-            printf ("\nПрекращено наблюдение за папкой <%s>.", localWatchingKey.watchable());
-            localWatchingKey.cancel();
-            localWatchingKey = null;
+        public NasEvent (String e, String p, String n) {
+            event = e;
+            path = p;
+            name = n;
         }
     }
+
+    @Override public synchronized void suspendWatching () {
+lnprint (tt[++level] +"suspendWatching() start");
+        stopWatching();
+lnprint (tt[level--] +"suspendWatching() end");
+    }
+
+    @Override public synchronized void resumeWatching (String strFolder) {
+lnprint (tt[++level] +"resumeWatching() start");
+        startWatching (strFolder);
+lnprint (tt[level--] +"resumeWatching() end");
+    }
+
+    static String[] tt = {
+        "",
+        "\t",
+        "\t\t",
+        "\t\t\t",
+        "\t\t\t\t",
+        "\t\t\t\t\t",
+        "\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t\t\t\t"};
 }
+/* Как работает служба наблюдения:
+
+    - для наблюдения за папкой службе наблюдения (СН) нужен спец.ключ (некий объект,
+      привязвываемй к этой папке в момент его создания);
+
+    - ключ создаётся и привязывается к СН при пом. Path.register(имя_папки, параметры). Созданный т.о.
+      ключ сразу начинает использоваться в СН;
+
+    - нельзя создать несколько ключей для наблюдения
+      за одной папкой, — такая попытка только приведёт к изменению параметров существующего
+      ключа, если в register(…) параметры отличаются от прежних, и зарегистрированные ранее
+      необработанные события остаются в очереди;
+
+    - чтобы узнать, произошли ли изменения в папке, связанной с ключом, нужно вызвать метод
+      WatchService.poll(). Этот метод извлекает ключ из процесса наблюдения. При пом.
+      pollEvents() можно получить список необработанный событий, произошедших в папке с
+      момента последнего извлечения ключа. Чтобы вернуть ключ к наблюдению за папкой, нужно
+      вызвать его метод reset();
+
+    - ключ может быть действительным и НЕдействительным. Сделать ключ недействительным
+      (раз и навсегда) можно вызвав его метод cancel(). Недействительный ключ (НК)
+      остаётся в очереди (если на момент вызова cancel() он не был извлечён из очереди),
+      события, зарегистрированные для него, ждут обработки, но новые события для ключа
+      не регистрируются. Недействительный ключ может быть извлечён и для него может
+      быть получен список необработанных событий при пом pollEvents(). НК нельзя вернуть
+      к наблюдению.
+
+*/

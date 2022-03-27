@@ -12,8 +12,8 @@ public class NasMsgInboundHandler extends SimpleChannelInboundHandler<NasMsg>// 
     private static final Logger LOGGER = LogManager.getLogger(NasMsgInboundHandler.class.getName());
     private final Manipulator manipulator;
 
-    public NasMsgInboundHandler (Manipulator manipulator) {
-        this.manipulator = manipulator;
+    public NasMsgInboundHandler (Manipulator m) {
+        this.manipulator = m;
     }
 
     //«SimpleChannelInboundHandler автоматически освобождает ресурсы…»
@@ -45,7 +45,6 @@ public class NasMsgInboundHandler extends SimpleChannelInboundHandler<NasMsg>// 
 
     //здесь мы узнаём об исключениях, которые взникли в процессе обработки посылки.
     @Override public void exceptionCaught (ChannelHandlerContext ctx, Throwable cause) throws Exception {
-
         //super.exceptionCaught(ctx,cause);
         cause.printStackTrace();
         manipulator.onExceptionCaught(ctx, cause);

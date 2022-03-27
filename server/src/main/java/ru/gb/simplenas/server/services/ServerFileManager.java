@@ -24,9 +24,9 @@ public interface ServerFileManager {
 
     FileInfo safeRename (Path pParent, String oldName, String newName, String userName);
 
-    int safeCountDirectoryEntries (Path pFolder, String userNAme);
+    long safeCountDirectoryEntries (Path pFolder, String userName);
 
-    boolean safeDeleteFileOrDirectory (Path path, String userNAme);
+    boolean safeDeleteFileOrDirectory (Path path, String userName);
 
     Path getCloud();
 }

@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static ru.gb.simplenas.common.Factory.sayNoToEmptyStrings;
+import static ru.gb.simplenas.common.services.impl.NasFileManager.countDirectoryEntries;
 
 /**  Отличительной чертой этих методов и причиной выделения их в отдельный класс является то, что все они
     выполняют свои задачи, убедившись, что работают внутри дискового пространства пользователя (ДПП).<p>
@@ -191,11 +192,11 @@ public class RemoteFileManager implements ServerFileManager {
     }
 
 /** возвращает количество элементов в указанном каталоге, если каталог принадлежит ДПП.   */
-    @Override public int safeCountDirectoryEntries (@NotNull Path pFolder, @NotNull String userName)
+    @Override public long safeCountDirectoryEntries (@NotNull Path pFolder, @NotNull String userName)
     {
         Path tmp = getSafeAbsolutePathBy(pFolder, userName);
         if (tmp != null)
-            return NasFileManager.countDirectoryEntries(tmp);
+            return countDirectoryEntries(tmp);
         return -1;
     }
 

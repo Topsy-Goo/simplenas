@@ -32,6 +32,7 @@ public class CommonData {
         USE_DEFAULT_MSG  = null,
         ERROR_UNABLE_TO_PERFORM          = "Не удалось выполнить операцию!",
         PROMPT_CONNECTION_GETTING_CLOSED = "Сервер разорвал соединение.",
+        PROMPT_INCORRECT_OPERATION_TERMINATION = "Некорректное завершение операции.",
         FOLDER_MARK = "DIR"
         ;
 

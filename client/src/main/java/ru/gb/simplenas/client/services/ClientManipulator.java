@@ -1,5 +1,6 @@
 package ru.gb.simplenas.client.services;
 
+import io.netty.channel.socket.SocketChannel;
 import ru.gb.simplenas.common.services.Manipulator;
 import ru.gb.simplenas.common.structs.NasMsg;
 
@@ -14,4 +15,5 @@ public interface ClientManipulator extends Manipulator {
 
     boolean startSimpleRequest (NasMsg nm);
 
+    void setSocketChannel (SocketChannel sc);
 }

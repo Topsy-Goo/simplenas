@@ -207,6 +207,7 @@ public class RemoteManipulator implements Manipulator {
                 else errorMessage = "Не удалось сохранить полученный файл.";
             }break;
             case NM_OPCODE_EXIT:  {    //нужно разорвать соединение, не закончив передавать файл:
+                dialogue.discardExtruding();
                 manipulateExitRequest (nm);
             }break;
             case NM_OPCODE_ERROR: { //клиент сообщил об ошибке
@@ -419,17 +420,17 @@ public class RemoteManipulator implements Manipulator {
     @ManipulateMethod (opcodes = NM_OPCODE_COUNTITEMS)
     private void manipulateCountEntriesRequest (NasMsg nm) {
 
-        int result = -1;
+        long result = -1;
         if (nm.fileInfo() != null && sayNoToEmptyStrings(nm.msg(), nm.fileInfo().getFileName())) {
 
             Path p     = Paths.get(nm.msg(), nm.fileInfo().getFileName());
-            Path valid = sfm.absolutePathToUserSpace(userName, p, nm.fileInfo().isDirectory());
+            Path valid = sfm.absolutePathToUserSpace (userName, p, nm.fileInfo().isDirectory());
 
             if (valid != null) {
-                result = sfm.safeCountDirectoryEntries(valid, userName);
+                result = sfm.safeCountDirectoryEntries (valid, userName);
             }
             if (result >= 0) {
-                nm.fileInfo().setFilesize(result);
+                nm.fileInfo().setFilesize (result);
                 informClientWithOperationCode(nm, NM_OPCODE_OK);
             }
         }
@@ -596,36 +597,39 @@ public class RemoteManipulator implements Manipulator {
     }
 //----------------------------------- EXIT ----------------------------------------------------------------------*/
 
-/** Этот метод вызывается для каждого подключенного клиента, когда сервер готовиться завершить
-    работу.  */
+/** Этот метод вызывается на той стороне, на которой инициируется закрытие соединения.  */
     @Override public void startExitRequest () {
-        LOGGER.info("Сервер разрывает соединение с клиентом: "+ userName);
-        if (socketChannel != null) {
-            discardCurrentOperation();
-            socketChannel.writeAndFlush (new NasMsg (NM_OPCODE_EXIT, PROMPT_CONNECTION_GETTING_CLOSED, OUTBOUND));
-            discardUser();
-            LOGGER.info("Отправлено сообщение " + NM_OPCODE_EXIT);
-            socketChannel.disconnect();
-        }
+        inlineDoExit ("Сервер разрывает соединение с клиентом: "+ userName, true);
     }
 
-/** От клиента пришло сообщене о том, что он собирается разорвать соединение. Выполняет:<br>
-    discardCurrentOperation();<br>
-    discardUser();<br>
-    socketChannel.disconnect();<br>
-*/
+/** От клиента пришло сообщене о том, что он собирается разорвать соединение.   */
     @ManipulateMethod (opcodes = NM_OPCODE_EXIT)
     private void manipulateExitRequest (NasMsg nm) {
-        lnprint ("Клиент разрывает соединение.\n");
+        inlineDoExit ("Клиент разрывает соединение.\n", false);
+    }
+
+/** Выполняет:<br>
+    discardCurrentOperation();<br>
+    discardUser();<br>
+    socketChannel.disconnect();<br>socketChannel.close(). */
+    void inlineDoExit (String str, boolean notifyUser) {
+        lnprint (str);
         if (socketChannel != null) {
             discardCurrentOperation();
+            if (notifyUser) {
+                NasMsg nm = new NasMsg (NM_OPCODE_EXIT, PROMPT_CONNECTION_GETTING_CLOSED, OUTBOUND);
+                socketChannel.writeAndFlush (nm);
+                LOGGER.debug ("Отправлено сообщение "+ NM_OPCODE_EXIT);
+            }
             discardUser();
             socketChannel.disconnect();
+            socketChannel.close();
         }
     }
 
     private void discardUser () {
-        if (userName != null) clientRemove(this, userName);
+        if (userName != null)
+            clientRemove (this, userName);
         userName = null;
     }
 
@@ -636,10 +640,7 @@ public class RemoteManipulator implements Manipulator {
             OperationCodes theme = dialogue.getTheme();
             switch (theme) {
                 case NM_OPCODE_LOAD2SERVER:
-                    replyWithErrorMessage (new NasMsg (theme, null, OUTBOUND), NM_OPCODE_EXIT.name());
-                    dialogue.discardExtruding();
-                    break;
-
+                    //dialogue.discardExtruding();
                 case NM_OPCODE_LOAD2LOCAL:
                     replyWithErrorMessage (new NasMsg (theme, null, OUTBOUND), NM_OPCODE_EXIT.name());
                     break;

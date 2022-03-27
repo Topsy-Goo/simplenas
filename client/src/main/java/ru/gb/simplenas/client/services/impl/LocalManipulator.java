@@ -2,8 +2,10 @@ package ru.gb.simplenas.client.services.impl;
 
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.socket.SocketChannel;
+import javafx.scene.control.Alert;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
 import ru.gb.simplenas.client.services.ClientManipulator;
 import ru.gb.simplenas.common.NasCallback;
 import ru.gb.simplenas.common.annotations.EndupMethod;
@@ -22,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
+import static java.lang.String.format;
 import static ru.gb.simplenas.client.CFactory.PROMPT_FORMAT_UPLOADERROR_SRCFILE_ACCESS;
 import static ru.gb.simplenas.common.CommonData.*;
 import static ru.gb.simplenas.common.Factory.*;
@@ -39,29 +42,32 @@ public class LocalManipulator implements ClientManipulator {
     private static final String ERROR_OLD_DIALOGUE_STILL_RUNNING =
         "Не могу начать новый диалог, — предыдущий ещё не закрыт.";
     private final static Logger LOGGER = LogManager.getLogger(LocalManipulator.class.getName());
-    private final SocketChannel schannel;
+    private       SocketChannel schannel;
     private       Map<OperationCodes, Method> mapManipulateMetods, mapEndupMetods;
 
-    private NasCallback   callbackChannelActive = this::callbackDummy;  //< для последовательного процесса подключения
-    private NasCallback   callbackMsgIncoming   = this::callbackDummy;  //< для доставки результатов запросов
-    //private NasCallback   callbackInfo          = this::callbackDummy;  //< для сообщений, которых никто не ждёт
-    private NasDialogue   dialogue;
+    private NasCallback callbackOnChannelActive = this::callbackDummy;  //< для последовательного процесса подключения
+    private NasCallback callbackOnMsgIncoming   = this::callbackDummy;  //< для доставки результатов запросов
+    private NasCallback callbackInfo            = this::callbackDummy;
+    private NasDialogue dialogue;
 
 
-    public LocalManipulator (NasCallback callbackChannelActive,
-                             NasCallback callbackMsgIncoming,
-                             NasCallback callbackInfo, SocketChannel sC)
+    public LocalManipulator (NasCallback callbackOnChannelActive,
+                             NasCallback callbackOnMsgIncoming,
+                             NasCallback callbackInfo)
     {
-        this.callbackChannelActive = callbackChannelActive;
-        this.callbackMsgIncoming = callbackMsgIncoming;
-        //this.callbackInfo = callbackInfo;
-        this.schannel = sC;
+        this.callbackOnChannelActive = callbackOnChannelActive;
+        this.callbackOnMsgIncoming = callbackOnMsgIncoming;
+        this.callbackInfo = callbackInfo;
         buildMethodsMaps();
         LOGGER.debug("создан LocalManipulator");
     }
 //-----------------------------------------------------------------------------------------
 
     void callbackDummy (Object... objects) {}
+
+    @Override public void setSocketChannel (SocketChannel sc) {
+        schannel = sc;
+    }
 
     @Override public void handle (ChannelHandlerContext ctx, NasMsg nm) //throws IOException
     {
@@ -73,39 +79,39 @@ public class LocalManipulator implements ClientManipulator {
                 if (m == null)
                     throw new UnsupportedOperationException (
                                 sformat ("Нет метода для кода операции: «%s».", opcode));
-                m.invoke(this, nm);
+                m.invoke (this, nm);
             }
-            catch (IllegalArgumentException | ReflectiveOperationException e) {
-                e.printStackTrace();
-            }
+            catch (IllegalArgumentException | ReflectiveOperationException e) { e.printStackTrace(); }
         }
     }
 
 //---------------------------------- обработчики простых сообщений ----------------------------------------------*/
+//TODO: Кажется, у нас нет обработчика для NM_OPCODE_OK и NM_OPCODE_ERROR.
 /** Обрабатываем сообщения, которые являются заключительными (терминальными): OK, ERROR.  */
     @ManipulateMethod (opcodes = {NM_OPCODE_OK, NM_OPCODE_ERROR})
-    private void manipulateEndups (NasMsg nm) {
+    private void manipulateEndups (NasMsg nm)
+    {
         if (dialogue != null) {
             try {
                 Method m = mapEndupMetods.get (dialogue.getTheme());
                 m.invoke (this, nm);
             }
-            catch (IllegalArgumentException | ReflectiveOperationException e) {e.printStackTrace();}
+            catch (IllegalArgumentException | ReflectiveOperationException e) { e.printStackTrace(); }
         }
-        else if (DEBUG) throw new RuntimeException();
-             else provideErrorMessage (nm, "Некорректное завершение операции.");
+        else provideErrorMessage (nm.opCode().getHeader(), PROMPT_INCORRECT_OPERATION_TERMINATION, Alert.AlertType.ERROR);
     }
 
 /** Метод для отправки простых запросов: требующих «односложного» ответа сервера и не требующих
  пересылки других данных кроме самого сообщения.    */
-    @Override public boolean startSimpleRequest (NasMsg nm) {               //OUT
+    @Override public boolean startSimpleRequest (NasMsg nm)
+    {
         boolean result = false;
         if (!isManipulatorBusy (nm))
-        if (nm != null && schannel != null) {
-            dialogue = NasDialogueForSimpleRequest (nm);
-            schannel.writeAndFlush(nm);
-            result = true;
-        }
+            if (nm != null && schannel != null) {
+                dialogue = NasDialogueForSimpleRequest (nm);
+                schannel.writeAndFlush(nm);
+                result = true;
+            }
         return result;
     }
 
@@ -118,19 +124,20 @@ public class LocalManipulator implements ClientManipulator {
     необходимость. */
     @EndupMethod (opcodes = {NM_OPCODE_CREATE,     NM_OPCODE_RENAME, NM_OPCODE_FILEINFO,
                              NM_OPCODE_COUNTITEMS, NM_OPCODE_DELETE, NM_OPCODE_LOGIN})
-    private void endupSimpleRequest (NasMsg nm) {                //IN
+    private void endupSimpleRequest (NasMsg nm)
+    {
         if (dialogue != null) {
-            lnprint("M:пришло сообщение: " + nm.opCode() + "; тема: " + dialogue.getTheme());
+            if (DEBUG) lnprint ("M:пришло сообщение: " + nm.opCode() + "; тема: " + dialogue.getTheme());
             //dialogue.add(nm);
-            stopTalking(nm);
+            stopTalking(/*nm*/);
+            callbackOnMsgIncoming.callback (nm);
         }
-        else if (DEBUG) throw new RuntimeException();
-             else provideErrorMessage (nm, "Некорректное завершение операции.");
+        else provideErrorMessage (nm.opCode().getHeader(), PROMPT_INCORRECT_OPERATION_TERMINATION, Alert.AlertType.ERROR);
     }
-
 //---------------------------------- LIST ------------------------------------------------------*/
 
-    @Override public boolean startListRequest (NasMsg nm) {          //OUT
+    @Override public boolean startListRequest (NasMsg nm)
+    {
         boolean done = false;
         if (!isManipulatorBusy (nm))
         if (nm != null && schannel != null) {
@@ -142,35 +149,39 @@ public class LocalManipulator implements ClientManipulator {
         return done;
     }
 
-    @ManipulateMethod (opcodes = NM_OPCODE_LIST)                      //IN, IN, ..., IN
-    private void manipulateListQueue (NasMsg nm) {
-        print("l");
+    static final String errList = "Ошибка при выполнении операции NM_OPCODE_LIST";
+
+    @ManipulateMethod (opcodes = NM_OPCODE_LIST)
+    private void manipulateListQueue (NasMsg nm)
+    {
+        if (DEBUG) print("l");
         List<FileInfo> list;
-        if (dialogue != null  &&  (list = dialogue.infolist()) != null) {
+        if (dialogue != null  &&  (list = dialogue.infolist()) != null)
             list.add (nm.fileInfo());
-        }
         else {
-            provideErrorMessage (nm, sformat("\nОшибка при выполнении операции %s.\n",
-                                 NM_OPCODE_LIST));
+            provideErrorMessage (nm.opCode().getHeader(), errList, Alert.AlertType.ERROR);
             sendempty (nm);
-            stopTalking (nm);
+            stopTalking (/*nm*/);
         }
     }
 
 /** обработка завершения передачи списка содержимого удалённой папки     */
     @EndupMethod (opcodes = NM_OPCODE_LIST)
-    private void endupListRequest (NasMsg nm) {                      //IN
+    private void endupListRequest (NasMsg nm)
+    {
+        String err = errList;
         if (dialogue != null) {
             List<FileInfo> list = dialogue.infolist();
-            if (list == null) {
-                provideErrorMessage (nm, sformat("\nОшибка при выполнении операции %s.\n", NM_OPCODE_LIST));
+            if (list != null)
+                err = null;
+            else
                 list = newInfolist();
-            }
             nm.setdata (list); //< список, который кропотливо составлял manipulateInboundList().
-            stopTalking(nm);
+            stopTalking(/*nm*/);
         }
-        else if (DEBUG) throw new RuntimeException();
-             else provideErrorMessage (nm, "Некорректное завершение операции NM_OPCODE_LIST.");
+        if (err != null)
+            provideErrorMessage (NM_OPCODE_LIST.getHeader(), err, Alert.AlertType.ERROR);
+        callbackOnMsgIncoming.callback (nm);
     }
 
 //---------------------------------- LOAD2LOCAL ------------------------------------------------*/
@@ -182,12 +193,13 @@ public class LocalManipulator implements ClientManipulator {
     На этом этапе <b>NasMsg.msg</b> содержит полное название папки на стороне сервера, из которой
     нужно передать файл. Остальная информация о файле — в NasMsg.FileInfo.
 */
-    @SuppressWarnings("All")
+    //@SuppressWarnings("All")
     @Override public boolean startLoad2LocalRequest (String toLocalFolder, NasMsg nm)
     {
         boolean result = false;
         String  errMsg = ERROR_UNABLE_TO_PERFORM;
 
+        if (!isManipulatorBusy (nm))
         if (dialogue != null) {
             errMsg += sformat(" %s, т.к. выполняется операция %s", nm.opCode(), dialogue.getTheme());
         }
@@ -207,7 +219,7 @@ public class LocalManipulator implements ClientManipulator {
             }
         }
         if (!result)
-            provideErrorMessage (nm, errMsg);
+            provideErrorMessage (NM_OPCODE_LOAD2LOCAL.getHeader(), errMsg, Alert.AlertType.ERROR);
         return result;
     }
 
@@ -219,16 +231,15 @@ public class LocalManipulator implements ClientManipulator {
     • NasMsg.fileInfo.filesize — содержит размер передаваемой части файла, если уточняющий код == NM_OPCODE_DATA.
 */
     @ManipulateMethod (opcodes = NM_OPCODE_LOAD2LOCAL)
-    private void manipulateLoad2LocalQueue (NasMsg nm) throws IOException {
-
+    private void manipulateLoad2LocalQueue (NasMsg nm) throws IOException
+    {
         String msg = null;
         OperationCodes opcode = OperationCodes.valueOf (nm.msg());
 
-        if (dialogue == null) {
-            if (DEBUG) throw new RuntimeException();
-            else provideErrorMessage (nm, ERROR_UNABLE_TO_PERFORM);
-        }
-        else switch (opcode)
+        if (dialogue == null)
+            provideErrorMessage (NM_OPCODE_LOAD2LOCAL.getHeader(), ERROR_UNABLE_TO_PERFORM, Alert.AlertType.ERROR);
+        else
+        switch (opcode)
         {
             case NM_OPCODE_READY: {
                 sendempty (nm);
@@ -255,13 +266,13 @@ public class LocalManipulator implements ClientManipulator {
             case NM_OPCODE_ERROR: {    //во время передачи произошла ошибка (nm.data содержит сообщение от сервера):
                 msg = (String) nm.data();
                 if (msg == null)    msg = sformat ("Не удалось принять файл: <%s>.", dialogue.tc.path);
-                LOGGER.error (msg);
                 nm.setOpCode (NM_OPCODE_ERROR); //< (старый стиль) чтобы в контроллере увидели ошибку
                 transferCleanup (nm, msg);
             } break;
             case NM_OPCODE_EXIT:  {
                 //нужно разорвать соединение, не дожидаясь окончания передачи файла (мы не
                 //знаем, откуда сообщение пришло, поэтому дублируем его на сервер):
+                dialogue.discardExtruding();
                 sendempty (nm);
                 transferCleanup (nm, "Передача файла прервана.");
             } break;
@@ -288,16 +299,18 @@ public class LocalManipulator implements ClientManipulator {
         boolean result = false;
         String errMsg = ERROR_UNABLE_TO_PERFORM;
 
-        if (dialogue != null) {
+        if (!isManipulatorBusy (nm))
+        if (dialogue != null)
             errMsg += sformat (" %s, т.к. выполняется операция %s", nm.opCode(), dialogue.getTheme());
-        }
-        else if (nm != null && nm.fileInfo() != null && schannel != null) {
-
+        else
+        if (nm != null && nm.fileInfo() != null && schannel != null)
+        {
             Path path = Paths.get (fromLocalFolder, nm.fileInfo().getFileName())
                              .toAbsolutePath()
                              .normalize();
 
-            if ((dialogue = NasDialogueForUploading (nm, path)) != null) {
+            if ((dialogue = NasDialogueForUploading (nm, path)) != null)
+            {
                 nm.setdata(null);  //< чтобы сервер правильно обработал сообщение
                 schannel.writeAndFlush (nm);
                 lnprint("M:отправлено сообщение: " + nm.opCode() + "\n");
@@ -308,7 +321,7 @@ public class LocalManipulator implements ClientManipulator {
                                   fromLocalFolder, FILE_SEPARATOR, nm.fileInfo().getFileName());
         }
         if (!result)
-            provideErrorMessage (nm, errMsg);
+            provideErrorMessage (NM_OPCODE_LOAD2SERVER.getHeader(), errMsg, Alert.AlertType.ERROR);
         return result;
     }
 
@@ -321,16 +334,15 @@ public class LocalManipulator implements ClientManipulator {
     • NasMsg.fileInfo.filesize — содержит размер передаваемой части файла, если уточняющий код == NM_OPCODE_DATA.
 */
     @ManipulateMethod (opcodes = NM_OPCODE_LOAD2SERVER)
-    private void manipulateLoad2ServerQueue (NasMsg nm) throws IOException {
-
+    private void manipulateLoad2ServerQueue (NasMsg nm) throws IOException
+    {
         String msg = null;
         OperationCodes opcode = OperationCodes.valueOf (nm.msg());
 
-        if (dialogue == null) {
-            if (DEBUG) throw new RuntimeException();
-            else provideErrorMessage (nm, ERROR_UNABLE_TO_PERFORM);
-        }
-        else switch (opcode)
+        if (dialogue == null)
+            provideErrorMessage (NM_OPCODE_LOAD2SERVER.getHeader(), ERROR_UNABLE_TO_PERFORM, Alert.AlertType.ERROR);
+        else
+        switch (opcode)
         {
             case NM_OPCODE_READY: {    // отдача первой/единственной части файла:
                 printf ("\nОтдаём файл <%s>\n", dialogue.tc.path);
@@ -379,23 +391,26 @@ public class LocalManipulator implements ClientManipulator {
 //--------------------------------- EXIT ------------------------------------------------------
 /** NetClient прислал задачу отправить серверу сообщение EXIT. Завершаем текущую операцию и
     отсылаем EXIT серверу. */
-    @Override public void startExitRequest () {
-
+    @Override public void startExitRequest ()
+    {
         discardCurrentOperation ();  //< скорее всего это не понадобиться, т.к. GUI блокируется на время операции
         if (schannel != null) {
-            NasMsg nm = new NasMsg(NM_OPCODE_EXIT, OUTBOUND);
-            schannel.writeAndFlush(nm);
-            lnprint("M:Отправлено сообщение " + OperationCodes.NM_OPCODE_EXIT);
+            NasMsg nm = new NasMsg (NM_OPCODE_EXIT, OUTBOUND);
+            schannel.writeAndFlush (nm);
+            lnprint ("M:Отправлено сообщение " + NM_OPCODE_EXIT);
         }
     }
 
-    //прерываем текущую операцию. некоторым операциям может потребоваться особый способ прерывания.
-    private void discardCurrentOperation () {
+/** прерываем текущую операцию. некоторым операциям может потребоваться особый способ прерывания. */
+    private void discardCurrentOperation ()
+    {
         if (dialogue != null)
         try {
             OperationCodes theme = dialogue.getTheme();
+            /* Для случаев NM_OPCODE_LOAD2LOCAL и NM_OPCODE_LOAD2SERVER симулируем приход
+               EXIT-сообщения от сервера во время передачи файла.
+            */
             if (theme == NM_OPCODE_LOAD2LOCAL) {
-                dialogue.discardExtruding();
                 NasMsg nm = new NasMsg (theme, NM_OPCODE_EXIT.name(), OUTBOUND);
                 manipulateLoad2LocalQueue (nm);
             }
@@ -403,30 +418,36 @@ public class LocalManipulator implements ClientManipulator {
                 NasMsg nm = new NasMsg (theme, NM_OPCODE_EXIT.name(), OUTBOUND);
                 manipulateLoad2ServerQueue (nm);
             }
-            //else {}
         }
         catch (IOException e) { e.printStackTrace(); }
     }
 
-//сервер прислал EXIT. Прерываем текущую задачу и сообщаем юзеру об обрыве связи.
-    @ManipulateMethod (opcodes = NM_OPCODE_EXIT)
-    private void manipulateExitRequest (NasMsg nm) //throws IOException
-    {
-        lnprint("M:Получено сообщение " + OperationCodes.NM_OPCODE_EXIT);
-        discardCurrentOperation();
-    /*  если от сервера EXIT пришёл во время выполнения запроса юзера, то opCode = ERROR заставит
+/** сервер прислал EXIT. Прерываем текущую задачу и сообщаем юзеру об обрыве связи.<p>
+    Если от сервера EXIT пришёл во время выполнения запроса юзера, то opCode = ERROR заставит
     вызывающий метод стандартно обработать не(до)получение данных, а сообщение в nm.msg о разрыве
-    соединения всё объяснит юзеру. */
-        nm.setOpCode (NM_OPCODE_ERROR);
-        stopTalking(nm);
+    соединения всё объяснит юзеру.<p>
+    Если сообщение EXIT пришло, когда не выполнялись какие-либо операции с сервером, то сообщаем
+    юзеру о разрыве соединения.    */
+    @ManipulateMethod (opcodes = NM_OPCODE_EXIT)
+    private void manipulateExitRequest (@NotNull NasMsg nm)
+    {
+        lnprint ("M:Получено сообщение " + NM_OPCODE_EXIT);
+        if (dialogue != null)
+            discardCurrentOperation(); //< Если в настощий момент происходит операция передачи файла, то
+            // это вызов полностью обработает завершение самой передачи и всей операции.
+        else {
+            //если мы здесь, то передачи файла не было, и это просто EXIT, который прислал сервер.
+            // (Это единственное сообщение, которое сервер может прислать сам, без запроса с нашей
+            // стороны. Разумеется, dialogue в этом случае всегда null.)
+            provideErrorMessage (nm.opCode().getHeader(), nm.msg(), Alert.AlertType.WARNING);
+        }
     }
 
 //---------------------------------- общение с InboundHandler'ом ---------------------------
 
     @Override public void onChannelActive (ChannelHandlerContext ctx) {
-
         lnprint("onChannelActive(): открыто соединение: cts: " + ctx.channel());
-        callbackChannelActive.callback();   //< этого колбэка ждёт NetClient.login(), чтобы продолжить работу.
+        callbackOnChannelActive.callback();   //< этого колбэка ждёт NetClient.login(), чтобы продолжить работу.
     }
 
     @Override public void onChannelInactive (ChannelHandlerContext ctx) {
@@ -440,30 +461,27 @@ public class LocalManipulator implements ClientManipulator {
 //---------------------------------- другие полезные методы --------------------------
 
 /** Закрываем диалог и отправляем его копию в callbackMsgIncoming. */
-    private void stopTalking (NasMsg nm) {
-        NasDialogue dlg = dialogue;
-        if (dialogue != null) {
+    private void stopTalking (/*NasMsg nm*/)
+    {
+        if (dialogue != null)
             dialogue.close();
-            dialogue = null;
-        }
-        else if (DEBUG) throw new RuntimeException();
-             else provideErrorMessage (nm, "Некорректное завершение операции.");
-        callbackMsgIncoming.callback (nm, dlg);
+        dialogue = null;
     }
 
 /** Шлём серверу сообщение об ошибке. */
-    public void replyWithErrorMessage () {
+    public void replyWithErrorMessage ()
+    {
         if (dialogue != null && schannel != null) {
             NasMsg nm = new NasMsg (NM_OPCODE_ERROR, STR_EMPTY, OUTBOUND);
             //dialogue.add(nm);
             schannel.writeAndFlush(nm);
-            lnprint("M:отправлено сообщение: " + nm.opCode() + "; тема: " + dialogue.getTheme());
+            lnprint ("M:отправлено сообщение: " + nm.opCode() + "; тема: " + dialogue.getTheme());
         }
     }
 
 /** Составление списков методов, чтобы использовать эти спики вместо switch-case'ов.  */
-    private void buildMethodsMaps () {
-
+    private void buildMethodsMaps ()
+    {
         mapManipulateMetods = new HashMap<>();
         mapEndupMetods = new HashMap<>();
         Method[] methods = LocalManipulator.class.getDeclaredMethods();
@@ -498,7 +516,8 @@ public class LocalManipulator implements ClientManipulator {
 /** Этот метод делает то же, что и метод {@code LocalManipulator.send()}, но предназначен
     для передачи в качестве параметра. */
     @SuppressWarnings("All")
-    private Function<NasMsg, Void> funcSendNasMsg () {
+    private Function<NasMsg, Void> funcSendNasMsg ()
+    {
         return new Function<NasMsg, Void>() {
             @Override public Void apply (NasMsg nasMsg) {
                 senddata(nasMsg);
@@ -507,32 +526,39 @@ public class LocalManipulator implements ClientManipulator {
         };
     }
 
-/** делает {@code dialogue.add(nm)}<br>
-    и помещает message в {@code NasMsg.msg} (для вызывающей ф-ции)<br>
-    и вызывает {@code stopTalking(nm)} */
-    private void transferCleanup (NasMsg nm, String message) {
+/** • делает {@code dialogue.add(nm)}<p>
+    • и помещает message в {@code NasMsg.msg} (для вызывающей ф-ции)<p>
+    • и вызывает {@code stopTalking()}<p>
+    • и вызывает callbackOnMsgIncoming.callback(). */
+    private void transferCleanup (NasMsg nm, String message)
+    {
         if (message != null)
             nm.setmsg (message);   //< это сообщение для вызывающей ф-ции
-        stopTalking (nm);
+        stopTalking (/*nm*/);
+        callbackOnMsgIncoming.callback (nm);
     }
 
 /** Проверяем, не занят ли клиент обработкой к-л. запроса и, если занят, составляем для юзера
  сообщение и помещаем его в <b>nm.msg</b>. */
-    @SuppressWarnings("All")
-    private boolean isManipulatorBusy (NasMsg nm) {
-        boolean busy = dialogue != null;
+    //@SuppressWarnings("All")
+    private boolean isManipulatorBusy (NasMsg nm)
+    {
+        boolean busy = schannel == null || dialogue != null;
         if (busy)
-            provideErrorMessage (nm, sformat ("Клиент занят операцией: %s.", dialogue.getTheme()));
+            provideErrorMessage (nm.opCode().getHeader(),
+                                 sformat ("Клиент занят операцией: %s.", dialogue.getTheme()),
+                                 Alert.AlertType.WARNING);
         return busy;
     }
 
 /** Выводим сообщение об ошибке в {@code NasMsg.msg} или в консоль. Плюс
 устанавливаем {@code NasMsg.opCode} в NM_OPCODE_ERROR. */
-    private static void provideErrorMessage (NasMsg nm, String errMsg) {
-        if (nm != null) {
-            nm.setOpCode (NM_OPCODE_ERROR);
-            nm.setmsg (errMsg);
-        }
-        else errprint (errMsg);
+    private void provideErrorMessage (String header, String text, Alert.AlertType type)
+    {
+        if (sayNoToEmptyStrings (header, text) && type != null)
+            callbackInfo.callback (header, text, type);
+        else
+            errprint (format ("Некорректные праметры переданы в provideErrorMessage («%s», «%s», «%s»).",
+                               header, text, type));
     }
 }

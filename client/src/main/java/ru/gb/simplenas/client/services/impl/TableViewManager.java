@@ -1,6 +1,7 @@
 package ru.gb.simplenas.client.services.impl;
 
 import com.sun.istack.internal.NotNull;
+import javafx.application.Platform;
 import javafx.collections.ObservableList;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TablePosition;
@@ -9,6 +10,7 @@ import javafx.scene.control.cell.TextFieldTableCell;
 import ru.gb.simplenas.client.Controller;
 import ru.gb.simplenas.client.services.NetClient;
 import ru.gb.simplenas.client.structs.TableFileInfo;
+import ru.gb.simplenas.common.NasCallback;
 import ru.gb.simplenas.common.structs.FileInfo;
 import ru.gb.simplenas.common.structs.NasMsg;
 
@@ -21,8 +23,7 @@ import static javafx.scene.control.Alert.AlertType.ERROR;
 import static javafx.scene.control.Alert.AlertType.WARNING;
 import static ru.gb.simplenas.client.CFactory.*;
 import static ru.gb.simplenas.common.CommonData.*;
-import static ru.gb.simplenas.common.Factory.sayNoToEmptyStrings;
-import static ru.gb.simplenas.common.Factory.sformat;
+import static ru.gb.simplenas.common.Factory.*;
 import static ru.gb.simplenas.common.services.impl.NasFileManager.rename;
 import static ru.gb.simplenas.common.structs.OperationCodes.NM_OPCODE_OK;
 
@@ -34,9 +35,10 @@ public class TableViewManager
     private final TableColumn<TableFileInfo, String> columnClientFileName;
     private final TableColumn<TableFileInfo, String> columnServerFileName;
     //private static final Logger LOGGER = LogManager.getLogger(TableViewManager.class.getName());
+    private       NasCallback callbackOnCancelRenaming = this::callbackDummy;
 
 
-    public TableViewManager (Controller controller)  {
+    public TableViewManager (Controller controller, NasCallback cb2)  {
         this.controller = controller;
         clientTv = controller.getTvClient();
         serverTv = controller.getTvServer();
@@ -49,6 +51,8 @@ public class TableViewManager
         columnServerFileName.setCellFactory (TextFieldTableCell.forTableColumn());
         columnClientFileName.setOnEditCommit (this::eventHandlerFolderRenameing);
         columnServerFileName.setOnEditCommit (this::eventHandlerFolderRenameing);
+
+        callbackOnCancelRenaming = cb2;
     }
 
     public static Point populateTv (@NotNull TableView<TableFileInfo> tv, @NotNull List<FileInfo> infolist) {
@@ -105,48 +109,50 @@ public class TableViewManager
         TableFileInfo tfi     = event.getRowValue();
         String        newName = event.getNewValue();
         String        old     = event.getOldValue();
-
-        boolean ok = local ? doRenameLocalFolder(tablePosition.getRow(), tfi.toFileInfo(), newName)
-                           : doRenameRemoteFolder(tablePosition.getRow(), tfi.toFileInfo(), newName);
-        if (ok)
-            tfi.setFileName(newName);
-        else
-            Controller.messageBox (ALERTHEADER_RENAMING,
-                                   sformat (PROMPT_FORMAT_RENAMING_ALREADY_EXISTS, newName),
-                                   WARNING);
+//lnprint("-------------------- "+ Thread.currentThread().getName());
+        String errMsg = local ? doRenameLocalFolder (tablePosition.getRow(), tfi.toFileInfo(), newName)
+                              : doRenameRemoteFolder (tablePosition.getRow(), tfi.toFileInfo(), newName);
+        if (errMsg == null)
+            tfi.setFileName (newName);
+        else {
+            Controller.messageBox (ALERTHEADER_RENAMING, errMsg, WARNING);
+            tfi.setFileName (old); //< не работает, сцуко! А вот если вместо old задать строку "…", то работает,
+                                   //  но перестаёт создавать папки. Я манал такие API !…
+                                   //  Пока только колбэк на перезаливку списка смог решить проблему.
+            callbackOnCancelRenaming.callback (local);
+        }
     }
 
 //пробуем переименовать удалённую папку или файл.
-    boolean doRenameRemoteFolder (int position, FileInfo old, String newName) {
-
-        boolean   ok        = false;
+    String doRenameRemoteFolder (int position, FileInfo old, String newName) {
         NetClient netClient = controller.getNetClient();
         String    errMsg    = ERROR_UNABLE_TO_PERFORM;
 
         if (netClient != null && position >= 0 && old != null && sayNoToEmptyStrings(newName)) {
             NasMsg nm = netClient.rename(old, newName);
 
-            if (nm != null) if (nm.opCode() == NM_OPCODE_OK) {
-                ok = true;
+            if (nm != null)
+            if (nm.opCode() == NM_OPCODE_OK) {
+                errMsg = null;
             }
             else if (nm.msg() != null) {
                 errMsg = nm.msg();
             }
         }
-        if (!ok) Controller.messageBox(ALERTHEADER_RENAMING, errMsg, ERROR);
-        return ok;
+        return errMsg;
     }
 
 //пробуем переименовать локальные папку или файл
-    boolean doRenameLocalFolder (int position, FileInfo old, String newName) {
-
-        boolean ok = false;
+    String doRenameLocalFolder (int position, FileInfo old, String newName) {
+        String errMsg = ERROR_UNABLE_TO_PERFORM;
         if (position >= 0 && old != null && sayNoToEmptyStrings (newName)) {
 
             Path pLocalCurrent = Paths.get (controller.getStrCurrentLocalPath()).toAbsolutePath().normalize();
-            ok = null != rename (pLocalCurrent, old.getFileName(), newName);
+            if (null != rename (pLocalCurrent, old.getFileName(), newName))
+                errMsg = null;
         }
-        if (!ok) Controller.messageBox (ALERTHEADER_LOCAL_STORAGE, ERROR_UNABLE_TO_PERFORM, ERROR);
-        return ok;
+        return errMsg;
     }
+
+    void callbackDummy (Object... objects) {}
 }

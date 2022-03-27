@@ -19,6 +19,7 @@ import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static java.nio.file.StandardOpenOption.WRITE;
 import static ru.gb.simplenas.common.CommonData.WF_;
 import static ru.gb.simplenas.common.Factory.print;
+import static ru.gb.simplenas.common.Factory.printf;
 
 public class InboundFileExtruder implements FileExtruder {
 
@@ -37,7 +38,7 @@ public class InboundFileExtruder implements FileExtruder {
 
 //подготовка к скачиванию файла
     private boolean initialize (Path path) {
-        boolean result = false;
+        boolean ok = false;
         if (path != null) {
             pTargetFile = path;
             try {
@@ -46,17 +47,18 @@ public class InboundFileExtruder implements FileExtruder {
 
                 pFileInTmpFolder = pTmpDir.resolve (pTargetFile.getFileName());
                 outputFileChannel = FileChannel.open (pFileInTmpFolder, CREATE_NEW, WRITE);
-                result = true;
+                ok = true;
                 LOGGER.debug("initializing successfully done");
             }
             catch (IOException e) {e.printStackTrace();}
             finally {
-                if (!result)
+                if (!ok) {
+                    extrudingError = true;
                     cleanup();
-                extrudingError = !result;
+                }
             }
         }
-        return result;
+        return ok;
     }
 
     @Override public void writeDataBytes2File (byte[] data, int size) throws IOException
@@ -76,7 +78,8 @@ public class InboundFileExtruder implements FileExtruder {
     }
 
 /** переносим файл из временной папки в папку назначения.  */
-    @Override public boolean endupExtruding (NasMsg nm) {
+    @Override public boolean endupExtruding (NasMsg nm)
+    {
         boolean ok = false;
         try {
             if (!extrudingError) {
@@ -87,7 +90,7 @@ public class InboundFileExtruder implements FileExtruder {
                                 null,
                                 FileTime.from (nm.fileInfo().getCreated(), CommonData.FILETIME_UNITS));
                 ok = true;
-                LOGGER.info("перемещение файла в папку завершено");
+                printf ("\nзавершено перемещение файла <%s> в папку <%s>\n", pTargetFile.getFileName(), pTargetDir);
             }
         }
         catch (IOException e) {
@@ -118,7 +121,7 @@ public class InboundFileExtruder implements FileExtruder {
             pFileInTmpFolder = null;
             pTargetFile = null;
             outputFileChannel = null;
-            LOGGER.debug("cleanup end");
+            LOGGER.debug ("cleanup end");
         }
     }
 }
