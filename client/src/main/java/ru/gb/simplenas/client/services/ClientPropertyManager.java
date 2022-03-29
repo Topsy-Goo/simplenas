@@ -25,7 +25,7 @@ public interface ClientPropertyManager {
 
     int getDefaultFontSize ();
 
-    void setLastLocalPathString (String strLocalPath);
+    void setLastLocalPath (String strLocalPath);
 
     void close ();
 }

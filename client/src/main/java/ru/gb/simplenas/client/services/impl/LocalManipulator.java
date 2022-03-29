@@ -37,10 +37,8 @@ import static ru.gb.simplenas.common.structs.OperationCodes.*;
 
  Там же есть описание добавления обработчиков для новых типов сообщений.
  */
-public class LocalManipulator implements ClientManipulator {
-
-    private static final String ERROR_OLD_DIALOGUE_STILL_RUNNING =
-        "Не могу начать новый диалог, — предыдущий ещё не закрыт.";
+public class LocalManipulator implements ClientManipulator
+{
     private final static Logger LOGGER = LogManager.getLogger(LocalManipulator.class.getName());
     private       SocketChannel schannel;
     private       Map<OperationCodes, Method> mapManipulateMetods, mapEndupMetods;

@@ -38,7 +38,8 @@ public class TableViewManager
     private       NasCallback callbackOnCancelRenaming = this::callbackDummy;
 
 
-    public TableViewManager (Controller controller, NasCallback cb2)  {
+    public TableViewManager (Controller controller, NasCallback cb2)
+    {
         this.controller = controller;
         clientTv = controller.getTvClient();
         serverTv = controller.getTvServer();
@@ -55,9 +56,11 @@ public class TableViewManager
         callbackOnCancelRenaming = cb2;
     }
 
-    public static Point populateTv (@NotNull TableView<TableFileInfo> tv, @NotNull List<FileInfo> infolist) {
+    public static Point populateTv (@NotNull TableView<TableFileInfo> tv, @NotNull List<FileInfo> infolist)
+    {
         Point point = new Point(0, 0);
-        if (tv != null) {
+        if (tv != null && infolist != null)
+        {
             ObservableList<TableFileInfo> lines = tv.getItems();
             lines.clear();
             if (infolist.size() > 0) {
@@ -72,7 +75,15 @@ public class TableViewManager
         return point;
     }
 
-    public static Point statisticsTv (@NotNull TableView<TableFileInfo> tv) {
+    public static void clear (TableView<TableFileInfo> tv) {
+        if (tv != null) {
+            ObservableList<TableFileInfo> lines = tv.getItems();
+            lines.clear();
+        }
+    }
+
+    public static Point statisticsTv (@NotNull TableView<TableFileInfo> tv)
+    {
         Point point = new Point(0, 0);
         if (tv != null) {
             ObservableList<TableFileInfo> data = tv.getItems();
@@ -84,36 +95,43 @@ public class TableViewManager
         return point;
     }
 
-    public static TableFileInfo addItemAsFolder (@NotNull String name, @NotNull TableView<TableFileInfo> tv) {
+    public static TableFileInfo addItemAsFolder (@NotNull String name, @NotNull TableView<TableFileInfo> tv)
+    {
         ObservableList<TableFileInfo> list = tv.getItems();
 
-        int           position = list.size();
-        TableFileInfo t        = new TableFileInfo(new FileInfo(name, FOLDER, EXISTS));
+        int position = list.size();
+        TableFileInfo t = new TableFileInfo (new FileInfo (name, FOLDER, EXISTS));
         list.add(position, t);
-
-        tv.getSelectionModel().select(t/*position, columnServerFileName*/);
+        tv.sort();
+        tv.getSelectionModel().select (t);
         return t;
     }
 
-    public static void deleteTvItem (TableView<TableFileInfo> tv, TableFileInfo t) {
-        ObservableList<TableFileInfo> list = tv.getItems();
-        list.remove(t);
+    public static void deleteTvItem (TableView<TableFileInfo> tv, TableFileInfo t)
+    {
+        if (tv != null) {
+            ObservableList<TableFileInfo> list = tv.getItems();
+            list.remove(t);
+        }
     }
 
 //Обработчик для редактирования «Имени файла». (Источник озарения: https://betacode.net/11079/javafx-tableview )
-    void eventHandlerFolderRenameing (TableColumn.CellEditEvent<TableFileInfo, String> event) {
-
+    void eventHandlerFolderRenameing (TableColumn.CellEditEvent<TableFileInfo, String> event)
+    {
         //This event handler will be fired when the user successfully commits their editing.
         TablePosition<TableFileInfo, String> tablePosition = event.getTablePosition();
-        boolean       local   = event.getTableView() == clientTv;
+        TableView<TableFileInfo> tv = event.getTableView();
+        boolean       local   = tv.equals (clientTv);
         TableFileInfo tfi     = event.getRowValue();
         String        newName = event.getNewValue();
         String        old     = event.getOldValue();
 //lnprint("-------------------- "+ Thread.currentThread().getName());
         String errMsg = local ? doRenameLocalFolder (tablePosition.getRow(), tfi.toFileInfo(), newName)
                               : doRenameRemoteFolder (tablePosition.getRow(), tfi.toFileInfo(), newName);
-        if (errMsg == null)
+        if (errMsg == null) {
             tfi.setFileName (newName);
+            tv.sort();
+        }
         else {
             Controller.messageBox (ALERTHEADER_RENAMING, errMsg, WARNING);
             tfi.setFileName (old); //< не работает, сцуко! А вот если вместо old задать строку "…", то работает,
@@ -124,7 +142,8 @@ public class TableViewManager
     }
 
 //пробуем переименовать удалённую папку или файл.
-    String doRenameRemoteFolder (int position, FileInfo old, String newName) {
+    String doRenameRemoteFolder (int position, FileInfo old, String newName)
+    {
         NetClient netClient = controller.getNetClient();
         String    errMsg    = ERROR_UNABLE_TO_PERFORM;
 
@@ -143,10 +162,11 @@ public class TableViewManager
     }
 
 //пробуем переименовать локальные папку или файл
-    String doRenameLocalFolder (int position, FileInfo old, String newName) {
+    String doRenameLocalFolder (int position, FileInfo old, String newName)
+    {
         String errMsg = ERROR_UNABLE_TO_PERFORM;
-        if (position >= 0 && old != null && sayNoToEmptyStrings (newName)) {
-
+        if (position >= 0 && old != null && sayNoToEmptyStrings (newName))
+        {
             Path pLocalCurrent = Paths.get (controller.getStrCurrentLocalPath()).toAbsolutePath().normalize();
             if (null != rename (pLocalCurrent, old.getFileName(), newName))
                 errMsg = null;

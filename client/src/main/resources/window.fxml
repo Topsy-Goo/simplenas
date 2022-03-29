@@ -111,11 +111,11 @@
 				<ContextMenu fx:id="menuClientTableActions">
 					<items>
 						<!-- userData показывает для каких объектов каталога предназначен пункт. -->
-						<MenuItem mnemonicParsing="false" onAction="#onactionMenuClient_OpenFolder" text="Открыть папку" userData="dir" />
-						<MenuItem mnemonicParsing="false" onAction="#onactionMenuClient_Upload" text="Отправить файл на сервер" userData="file" />
-						<MenuItem mnemonicParsing="false" onAction="#onactionMenuClient_CreateFolder" text="Создать папку" />
+						<MenuItem mnemonicParsing="false" onAction="#onactionMenuClient_OpenFolder" text="Открыть папку" userData="opendir" />
+						<MenuItem mnemonicParsing="false" onAction="#onactionMenuClient_Upload" text="Отправить файл на сервер" userData="sendfile" />
+						<MenuItem mnemonicParsing="false" onAction="#onactionMenuClient_CreateFolder" text="Создать папку" userData="newdir" />
 						<SeparatorMenuItem />
-						<MenuItem mnemonicParsing="false" onAction="#onactionMenuClient_Delete" text="Удалить" userData="any" />
+						<MenuItem mnemonicParsing="false" onAction="#onactionMenuClient_Delete" text="Удалить" userData="del" />
 					</items>
 				</ContextMenu>
 			</contextMenu>
@@ -165,13 +165,15 @@
 			<contextMenu>
 				<ContextMenu fx:id="menuServerTableActions">
 					<items>
-						<MenuItem mnemonicParsing="false" onAction="#onactionMenuServer_OpenFolder" text="Открыть папку" userData="dir" />
-						<MenuItem mnemonicParsing="false" onAction="#onactionMenu_Download" text="Отправить файл клиенту" userData="file" />
-						<MenuItem mnemonicParsing="false" onAction="#onactionMenuServer_CreateFolder" text="Создать папку" />
+						<MenuItem mnemonicParsing="false" onAction="#onactionMenuServer_OpenFolder" text="Открыть папку" userData="opendir" />
+						<MenuItem mnemonicParsing="false" onAction="#onactionMenu_Download" text="Отправить файл клиенту" userData="sendfile" />
+						<MenuItem mnemonicParsing="false" onAction="#onactionMenuServer_CreateFolder" text="Создать папку" userData="newdir" />
 						<SeparatorMenuItem />
-						<MenuItem mnemonicParsing="false" onAction="#onactionMenuServer_Delete" text="Удалить" userData="any" />
+						<MenuItem mnemonicParsing="false" onAction="#onactionMenuServer_Delete" text="Удалить" userData="del" />
 <!--					<MenuItem text="Вырезать"	visible="false"	onAction="#onactionMenuServer_CutFolder" mnemonicParsing="false"/>-->
 <!--					<MenuItem text="Вставить"	visible="false"	onAction="#onactionMenuServer_PasteFolder" mnemonicParsing="false"/>-->
+						<SeparatorMenuItem />
+						<MenuItem mnemonicParsing="false" onAction="#onactionMenuServer_Connection" text="Отключиться" userData="conn" />
 					</items>
 				</ContextMenu>
 			</contextMenu>

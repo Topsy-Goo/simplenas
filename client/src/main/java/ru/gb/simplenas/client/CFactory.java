@@ -95,13 +95,18 @@ public class CFactory {
 
 //-------------------------- методы для работы с контекстным меню -----------------------------------------------*/
 
-    public static void setContextMenuEventHandler_OnShoing (ContextMenu menu, TableView<TableFileInfo> tv) {
-        ContextMenuManager.setContextMenuEventHandler_OnShoing(menu, tv);
-    }
+/*    public static void setContextMenuEventHandler_OnShoing (ContextMenu menu, TableView<TableFileInfo> tv)
+    {
+        ContextMenuManager.setContextMenuEventHandler_OnShoing (menu, tv);
+    }*/
 //-------------------------- методы для работы с TableView ------------------------------------------------------*/
 
     public static Point populateTv (@NotNull TableView<TableFileInfo> tv, @NotNull List<FileInfo> infolist) {
-        return TableViewManager.populateTv(tv, infolist);
+        return TableViewManager.populateTv (tv, infolist);
+    }
+
+    public static void clearTv (@NotNull TableView<TableFileInfo> tv) {
+        TableViewManager.clear (tv);
     }
 
     public static Point statisticsTv (@NotNull TableView<TableFileInfo> tv) {

@@ -21,6 +21,7 @@ import org.jetbrains.annotations.NotNull;
 import ru.gb.simplenas.client.services.ClientPropertyManager;
 import ru.gb.simplenas.client.services.ClientWatchService;
 import ru.gb.simplenas.client.services.NetClient;
+import ru.gb.simplenas.client.services.impl.ContextMenuManager;
 import ru.gb.simplenas.client.services.impl.LocalWatchService;
 import ru.gb.simplenas.client.services.impl.TableViewManager;
 import ru.gb.simplenas.client.structs.TableFileInfo;
@@ -79,209 +80,143 @@ public class Controller implements Initializable {
     private Stage     primaryStage;
     private Stage     dlgLoginStage;
     private NetClient netClient;
-    private boolean   extraInitialisationIsDone = false;
     private DlgLoginController    dlgLoginController;
     private TableViewManager      tableViewManager;
     private ClientPropertyManager propMan;
     private ClientWatchService    clientWatcher;
     //private Lock                  lockSuspendWatching;
+    private ContextMenuManager    contextMenuManager;
 
 //------------------------------- инициализация и завершение ----------------------------------------------------*/
-
-/** Стандартное окно сообщения с кнопкой Ок.  */
-    public static void messageBox (String header, String message, Alert.AlertType alerttype)
-    {
-        if (header == null) header = "";
-        if (message == null) message = "";
-
-        Alert a = new Alert(alerttype, message, ButtonType.CLOSE);
-        a.setTitle (ALERT_TITLE);
-        a.setHeaderText(header);
-
-        String strFontSizeStyle = sformat(STYLE_FORMAT_SET_FONT_SIZE, fontSize);
-        a.getDialogPane().setStyle(strFontSizeStyle);
-        a.showAndWait();
-    }
-//---------------------------------------------------------------------------------------------------------------*/
-
-/** Стандартное окно сообщения с кнопками Да и Нет. */
-    public static boolean messageBoxConfirmation (String header, String message, Alert.AlertType alerttype)
-    {
-        boolean boolOk = ANSWER_CANCEL;
-        if (header == null) header = "";
-        if (message == null) message = "";
-
-        Alert a = new Alert(alerttype, message, ButtonType.OK, ButtonType.CANCEL);
-        a.setHeaderText(header);
-        a.setTitle (ALERT_TITLE);
-
-        String strFontSizeStyle = sformat(STYLE_FORMAT_SET_FONT_SIZE, fontSize);
-        a.getDialogPane().setStyle(strFontSizeStyle);
-
-        Optional<ButtonType> option = a.showAndWait();
-        if (option.isPresent() && option.get() == ButtonType.OK)
-            boolOk = ANSWER_OK;
-
-        return boolOk;
-    }
-
-    public static boolean itemNameStartsWithString (TableFileInfo t, String prefix)
-    {
-        String name = t.getFileName().toLowerCase(), prfx = prefix.toLowerCase();
-        return name.startsWith(prfx);
-    }
 
     @Override public void initialize (URL location, ResourceBundle resources)
     {
         LOGGER.debug ("initialize() starts");
+    //считывание настроек:
         propMan = getProperyManager();
+        netClient = newNetClient (ooo->callbackOnNetClientDisconnection(),
+                                  propMan.getRemotePort(),
+                                  propMan.getHostString());
         strCurrentLocalPath = propMan.getDefaultLastLocalPathString();
         setSceneFontSize (rootbox, propMan.getDefaultFontSize());
-        //TODO : Можно сделать окно настроек и сохранять настройки в реестре (см.java.util.prefs.*).
 
-        //lockSuspendWatching = new ReentrantLock();
-        clientWatcher = getWatchServiceInstance();
-        clientWatcher.setCallBack (this::callbackOnCurrentFolderEvents/*, lockSuspendWatching*/);
-
-        sbarSetDefaultText (STR_EMPTY, SBAR_TEXT_SERVER_NOCONNECTION);
-
+    //TableView specific:
         tableViewManager = new TableViewManager (this, this::callbackUpdateView);
+        contextMenuManager = new ContextMenuManager (this);
+        contextMenuManager.setEventHandler_OnShoing (menuClientTableActions, tvClientSide);
+        contextMenuManager.setEventHandler_OnShoing (menuServerTableActions, tvServerSide);
 
+    //то, что можно сделать в последнюю очередь:
         textfieldCurrentPath_Client.setText (strCurrentLocalPath);
-        //textfieldCurrentPath_Server.setPromptText (TEXTFIELD_SERVER_PROMPTTEXT_DOCONNECT);
-        populateTableView (listFolderContents (strCurrentLocalPath), LOCAL);
-
-        tvClientSide.sort();
-        tvServerSide.sort();
-
-        setContextMenuEventHandler_OnShoing (menuClientTableActions, tvClientSide);
-        setContextMenuEventHandler_OnShoing (menuServerTableActions, tvServerSide);
-
-        extraInitialisationIsDone = false;
-        enableUsersInput (ENABLE);
+        applyStringAsNewLocalPath (strCurrentLocalPath);
+        sbarSetText (null, SBAR_TEXT_SERVER_NOCONNECTION);
         LOGGER.debug ("C.initialize() finished");
     }
 
-    void onCmdConnectAndLogin (String name, String password)
+/** Обработчик события «Явление окна приложения очам юзера». Вызывается единажды при старте приложения. */
+    void onMainWndShowing (Stage primary) //< не надо делать этот метод private!
     {
-        if (sayNoToEmptyStrings (name, password)) {
-            //инициализация, которую нельзя было сделать в initialize()
-            if (!extraInitialisationIsDone) {
+        primaryStage = primary;
+        enableUsersInput (ENABLE);
+        clientWatcher = getWatchServiceInstance();
+        clientWatcher.setCallBack (this::callbackOnCurrentFolderEvents);
+        clientWatcher.startWatchingOnFolder (strCurrentLocalPath);
+    }
 
-            /*  Листенер на кнопку закрытия окна приложения можно повесить здесь, или в MainGUI.start().
-                В это раз мы сделали это в MainGUI. */
-                //rootbox.getScene().getWindow().setOnCloseRequest ((event)->closeSession());
-                extraInitialisationIsDone = true;
-            }
-            if (connect())
-                login (name, password);
+/** Только подключения и авторизация. */
+    private void connectAndLogin ()
+    {
+        if (netClient == null || !netClient.connect())
+            messageBox (ALERTHEADER_CONNECTION, ERROR_UNABLE_CONNECT_TO_SERVER, WARNING);
+        else {
+            String login = dlgLoginController.getLogin();
+            String password = dlgLoginController.getPassword();
+            dlgLoginController.txtfldPassword.clear();
+            dlgLoginController.txtfldLogin.clear();
+
+            NasMsg nm = netClient.login (login, password);
+            if (nm == null)
+                messageBox (ALERTHEADER_AUTHENTIFICATION, ERROR_UNABLE_TO_PERFORM, ERROR);
             else
-                messageBox (ALERTHEADER_CONNECTION, ERROR_UNABLE_CONNECT_TO_SERVER, WARNING);
-        }
-    }
-
-    private boolean connect ()
-    {
-        boolean result = false;
-        if (propMan != null) {
-            netClient = newNetClient (ooo->callbackOnNetClientDisconnection(),
-                                      propMan.getRemotePort(),
-                                      propMan.getHostString());
-            result = netClient.connect();
-            if (!result)
-                netClient = null;
-        }
-        return result;
-    }
-
-    private void login (String name, String password)
-    {
-        //LOGGER.debug("login() start");
-        NasMsg nm = null;
-
-        if (netClient == null || (null == (nm = netClient.login (name, password)))) {
-            messageBox (ALERTHEADER_AUTHENTIFICATION, ERROR_UNABLE_TO_PERFORM, ERROR);
-        }
-        else if (nm.opCode() == NM_OPCODE_OK) {
-            userName = name;
-            updateControlsOnSuccessfulLogin();
-        }
-        else if (nm.opCode() == NM_OPCODE_ERROR) {
-            String strErr = nm.msg();
-
-            if (!sayNoToEmptyStrings (strErr)) {
-                strErr = ERROR_UNABLE_TO_PERFORM;
+            if (nm.opCode() == NM_OPCODE_OK) {
+                userName = login;
+                updateControlsOnConnectionStatusChanged(CONNECTED);
             }
-            messageBox (ALERTHEADER_AUTHENTIFICATION, strErr, WARNING);
+            else if (nm.opCode() == NM_OPCODE_ERROR) {
+                String strErr = nm.msg();
+                if (!sayNoToEmptyStrings (strErr))
+                    strErr = ERROR_UNABLE_TO_PERFORM;
+                messageBox (ALERTHEADER_AUTHENTIFICATION, strErr, WARNING);
+            }
         }
-        //LOGGER.debug ("login() end");
     }
 
-    private void updateControlsOnSuccessfulLogin ()
+/** Обновляем GUI приложения в соответствии со статусом сетевого подключения.<p>
+    При подключении изменяются настройки приложения в соотствии с сохранёнными ранее предпочтениями
+    юзера, и считывается содержимое удалённой папки юзера.<p>
+    При отключении сетевого соединения настройки-предпочтения НЕ сбрасываются на дефолтные. */
+    private void updateControlsOnConnectionStatusChanged (boolean connected)
     {
-        updateMainWndTitleWithUserName();
-        swapControlsOnConnect(CONNECTED);
-        sbarSetDefaultText(null, SBAR_TEXT_SERVER_ONAIR);
+        updateMainWndTitleWithUserName (userName);
+        swapControlsOnConnect (connected);
+        sbarSetText (null, connected ? SBAR_TEXT_SERVER_ONAIR : SBAR_TEXT_SERVER_NOCONNECTION);
 
-        messageBox( ALERTHEADER_AUTHENTIFICATION, sformat (STRFORMAT_YOUARE_LOGGEDIN, userName), INFORMATION);
-        readUserSpecificProperties (userName);
-
-        if (!workUpAListRequestResult(netClient.list(strCurrentServerPath)))
-            messageBox(ALERTHEADER_REMOUTE_STORAGE, sformat (PROMPT_FORMAT_UNABLE_LIST, userName), ERROR);
+        if (connected) {
+            readUserSpecificProperties (userName);
+            messageBox (ALERTHEADER_AUTHENTIFICATION,
+                        sformat (STRFORMAT_YOUARE_LOGGEDIN, userName),
+                        INFORMATION);
+            if (!workUpAListRequestResult (netClient.list (strCurrentServerPath)))
+                messageBox (ALERTHEADER_REMOUTE_STORAGE,
+                            sformat (PROMPT_FORMAT_UNABLE_LIST, userName),
+                            ERROR);
+        }
+        else clearTv (tvServerSide);
     }
 
-/** Наш обработчик события primaryStage.setOnCloseRequest.   */
+/** Наш обработчик события primaryStage.setOnCloseRequest. Вызывается, когда юзер закрывает окно прилодения. */
     void closeSession ()
     {
         storeProperties();  //< это нужно сделать до того, как userName станет == null
-
-        if (netClient != null)  //это приведёт к разрыву соединения с сервером (к закрытию канала) и к вызову onNetClientDisconnection()
-            netClient.disconnect();
+        disconnect();
 
         if (clientWatcher != null)
             clientWatcher.close();
     }
 
+/** Сохраняем предпочтения пользователя. Предпочтения делятся на общие и личные. */
     private void storeProperties ()
     {
         if (propMan != null) {
-            if (!sayNoToEmptyStrings(userName)) {
-                propMan.setLastLocalPathString(strCurrentLocalPath);
-                //if (sayNoToEmptyStrings (strCurrentServerPath))  //< чтобы не сбрасывалось, если во время сессии не было подключения
-                //{
-                //    propMan.setLastRemotePathString (relativizeByFolderName (userName, strCurrentServerPath));
-                //}
-            }
+            if (!sayNoToEmptyStrings (userName))
+                propMan.setLastLocalPath (strCurrentLocalPath);
             else {
-                propMan.setUserLastLocalPath(userName, strCurrentLocalPath);
-                propMan.setUserLastRemotePath(userName, strCurrentServerPath);
+                propMan.setUserLastLocalPath (userName, strCurrentLocalPath);
+                propMan.setUserLastRemotePath (userName, strCurrentServerPath);
             }
             propMan.close();
         }
     }
 
-/** Обработчик события «Явление окна приложения очам юзера». */
-    void onMainWndShowing (Stage primary) //< не надо делать этот метод private!
-    {
-        //LOGGER.debug ("void onMainWndShowing (Stage primaryStage)");
-        primaryStage = primary;
-        clientWatcher.startWatchingOnFolder (strCurrentLocalPath);
+/**  */
+    private void disconnect () {
+        if (netClient != null)  //это приведёт к разрыву соединения с сервером (к закрытию канала) и к вызову onNetClientDisconnection()
+            netClient.disconnect();
     }
+//------------------------------------------ колбэки --------------------------------------
 
 /** callback. Вызывается из netClient при закрытии соединения с сервером. Может вызываться дважды для закрытия одной и той же сессии. */
     private void callbackOnNetClientDisconnection ()
     {
-        netClient = null;
+        storeProperties();
         userName = null;
-        //Platform.runLater(()->{
+        Platform.runLater(()->{
         //    messageBox(ALERTHEADER_REMOUTE_STORAGE,
         //               PROMPT_CONNECTION_GETTING_CLOSED,
         //               WARNING);  //< вызов не из потока javafx вызывает исключение
-        //                      });
-        sbarSetDefaultText(null, SBAR_TEXT_SERVER_NOCONNECTION);
+            updateControlsOnConnectionStatusChanged (NOT_CONNECTED);
+        });
     }
-
-//------------------------------------------ обработчики команд GUI ---------------------------------------------*/
 
 /** Колбэк для службы наблюдения за текущей папкой. Метод вызывается из ClientWatchService при обнаружении
 изменений в текущей локальной папке.
@@ -317,13 +252,60 @@ public class Controller implements Initializable {
         else
             inlineReadRemoteFolder (strCurrentServerPath);
     }
+//------------------------------------------ обработчики команд GUI -----------------------
 
-    private void updateMainWndTitleWithUserName ()
+/** Стандартное окно сообщения с кнопкой Ок.  */
+    public static void messageBox (String header, String message, Alert.AlertType alerttype)
+    {
+        if (header == null) header = "";
+        if (message == null) message = "";
+
+        Alert a = new Alert (alerttype, message, ButtonType.CLOSE);
+        a.setTitle (ALERT_TITLE);
+        a.setHeaderText(header);
+
+        String strFontSizeStyle = sformat(STYLE_FORMAT_SET_FONT_SIZE, fontSize);
+        a.getDialogPane().setStyle(strFontSizeStyle);
+        a.showAndWait();
+    }
+
+/** Стандартное окно сообщения с кнопками Да и Нет. */
+    public static boolean messageBoxConfirmation (String header, String message, Alert.AlertType alerttype)
+    {
+        boolean boolOk = ANSWER_CANCEL;
+        if (header == null) header = "";
+        if (message == null) message = "";
+
+        Alert a = new Alert(alerttype, message, ButtonType.OK, ButtonType.CANCEL);
+        a.setHeaderText(header);
+        a.setTitle (ALERT_TITLE);
+
+        String strFontSizeStyle = sformat(STYLE_FORMAT_SET_FONT_SIZE, fontSize);
+        a.getDialogPane().setStyle(strFontSizeStyle);
+
+        Optional<ButtonType> option = a.showAndWait();
+        if (option.isPresent() && option.get() == ButtonType.OK)
+            boolOk = ANSWER_OK;
+
+        return boolOk;
+    }
+
+    public static boolean itemNameStartsWithString (TableFileInfo t, String prefix)
+    {
+        String name = t.getFileName().toLowerCase(), prfx = prefix.toLowerCase();
+        return name.startsWith(prfx);
+    }
+
+/** Меняем строку заголовка окна приложения в соответствии со статусом сетевого подключения.
+    @param name указывает имя юзера, которое будет выводиться в заголовке окна. Если этот
+    параметр NULL, в заголовке будет выводиться умолчальный текст. */
+    private void updateMainWndTitleWithUserName (String name)
     {
         if (primaryStage != null) {
-            String s = sayNoToEmptyStrings (userName) ? userName : NO_USER_TITLE;
-            String newtitle = sformat ("%s - вы вошли как : %s", MAINWND_TITLE, s);
-            primaryStage.setTitle(newtitle);
+            String newtitle = MAINWND_TITLE;
+            if (name != null)
+                newtitle += " - вы вошли как : "+ name;
+            primaryStage.setTitle (newtitle);
         }
     }
 
@@ -357,16 +339,17 @@ public class Controller implements Initializable {
         return false;
     }
 
+    @FXML public void onactionMenuServer_Connection () {
+        if (isConnected())
+            disconnect();
+        else
+            onactionStartConnect (null);
+    }
+
     @FXML public void onactionStartConnect (ActionEvent actionEvent)
     {
         if (showAuthentificationDialogWindow() && dlgLoginController != null)
-        {
-            String login = dlgLoginController.getLogin();
-            String password = dlgLoginController.getPassword();
-            LOGGER.debug(sformat("onMainWndShowing() юзер ввел пароль (%s) и логин (%s)", login, password));
-            onCmdConnectAndLogin(login, password);
-        }
-        LOGGER.debug("onMainWndShowing() юзер отказался от авторизации");
+            connectAndLogin();
     }
 
 /** Создание папки на сервере в текущей папке.    */
@@ -506,28 +489,12 @@ public class Controller implements Initializable {
 /** Переходим в родительскую папку, если таковая существует.  */
     @FXML public void onactionButton_Client_LevelUp (ActionEvent actionEvent)
     {
-        // !!! Игнорируем содержимое поля ввода textfieldCurrentPath_Client)
         String strParent = stringPath2StringAbsoluteParentPath (strCurrentLocalPath);
-        //boolean locked = false;
         if (strParent != null) {
-            if (strParent.isEmpty()) {
+            if (strParent.isEmpty())
                 messageBox (ALERTHEADER_LOCAL_STORAGE, sformat (PROMPT_FORMAT_ROOT_FOLDER, strCurrentLocalPath), INFORMATION);
-            }
-            else {
-                //try {
-                //    if (locked = lockSuspendWatching.tryLock (2, SECONDS)) {
-                //        populateTableView (listFolderContents (), LOCAL);
-                //        strCurrentLocalPath = strParent;
-                //        textfieldCurrentPath_Client.setText (strCurrentLocalPath);
-                        changeLocalFolder (strParent);
-                        //clientWatcher.startWatchingOnFolder (strCurrentLocalPath);
-                    //}
-                //}
-                //catch (InterruptedException e) { e.printStackTrace(); }
-                //finally {
-                //    if (locked) lockSuspendWatching.unlock();
-                //}
-            }
+            else
+                changeLocalFolder (strParent);
         }
     }
 
@@ -592,21 +559,21 @@ public class Controller implements Initializable {
 
             String s = SBAR_TEXT_FOLDER_READING_IN_PROGRESS;
             if (local)
-                sbarSetDefaultText (s, null);
+                sbarSetText (s, null);
             else
-                sbarSetDefaultText (null, s);
+                sbarSetText (null, s);
             enableUsersInput (DISABLE);
 
-            Point p = populateTv(tv, infolist);
+            Point p = populateTv (tv, infolist);
             folders = p.x;
             files = p.y;
 
             enableUsersInput (ENABLE);
             s = sformat (SBAR_TEXTFORMAT_FOLDER_STATISTICS, strPrefix, folders, files);
             if (local)
-                sbarSetDefaultText(s, null);
+                sbarSetText (s, null);
             else
-                sbarSetDefaultText(null, s);
+                sbarSetText (null, s);
         }
     }
 
@@ -619,9 +586,9 @@ public class Controller implements Initializable {
 
         String s = SBAR_TEXT_FOLDER_READING_IN_PROGRESS;
         if (local)
-            sbarSetDefaultText(s, null);
+            sbarSetText (s, null);
         else
-            sbarSetDefaultText(null, s);
+            sbarSetText (null, s);
         enableUsersInput(DISABLE);
 
         Point point = statisticsTv(tv);
@@ -631,14 +598,14 @@ public class Controller implements Initializable {
         enableUsersInput(ENABLE);
         s = sformat (SBAR_TEXTFORMAT_FOLDER_STATISTICS, strPrefix, folders, files);
         if (local)
-            sbarSetDefaultText(s, null);
+            sbarSetText (s, null);
         else
-            sbarSetDefaultText(null, s);
+            sbarSetText (null, s);
     }
 
 /** Формируем текст, который будет по умолчанию отображаться в строке состояния. Левая часть отображает состояние клиента,
  правая — сервера. В качестве любого из параметров можно передать null, если соответствующую подстроку изменять не нужно. */
-    void sbarSetDefaultText (String local, String server) {
+    void sbarSetText (String local, String server) {
         if (local != null)
             sbarLocalStatistics = local;
         if (server != null)
@@ -683,9 +650,6 @@ nm.data   = список содержимого этой папки (если н
         return ok;
     }
 
-/** считая указанную строку путём к каталогу, пытаемся отобразить содержимое этого каталога в «клиентской» панели.    */
-    private boolean applyStringAsNewLocalPath (String strPath)
-    {
 /*
     callbackOnCurrentFolderEvents()
         onactionTextField_Client_ApplyAsPath()  //-
@@ -694,6 +658,9 @@ nm.data   = список содержимого этой папки (если н
         readUserSpecificProperties()    //-
     changeLocalFolder()
 */
+/** считая указанную строку путём к каталогу, пытаемся отобразить содержимое этого каталога в «клиентской» панели.    */
+    private boolean applyStringAsNewLocalPath (String strPath)
+    {
         boolean ok = false;
         if (!sayNoToEmptyStrings (strPath))
             strPath = System.getProperty (STR_DEF_FOLDER);  //< чтобы не бросаться исключениями, сменим папку на умолчальную
@@ -926,26 +893,30 @@ nm.data   = список содержимого этой папки (если н
         vbox.setStyle(strFontSizeStyle);
     }
 
-    private void swapControlsOnConnect (boolean connected) {
-        buttonConnect.setManaged(!connected);
-        buttonConnect.setVisible(!connected);
-        textfieldCurrentPath_Server.setVisible(connected);
-        textfieldCurrentPath_Server.setManaged(connected);
+/** Переключение некоторых элементов GUI в соответствии со статусом сетевого подключения. */
+    private void swapControlsOnConnect (boolean connected)
+    {
+        buttonConnect.setManaged (!connected);
+        buttonConnect.setVisible (!connected);
+        textfieldCurrentPath_Server.setVisible (connected);
+        textfieldCurrentPath_Server.setManaged (connected);
     }
 
-    private void readUserSpecificProperties (String userName) {
+/** Считываем настройки приложения, специфичные для подключенного юзера. */
+    private void readUserSpecificProperties (String userName)
+    {
         if (propMan != null) {
-            fontSize = propMan.getUserFontSize(userName);
-            setSceneFontSize(rootbox, fontSize);
+            fontSize = propMan.getUserFontSize (userName);
+            setSceneFontSize (rootbox, fontSize);
 
-            strCurrentLocalPath = propMan.getUserLocalPath(userName);
-            strCurrentServerPath = propMan.getUserRemotePath(userName);
+            strCurrentLocalPath = propMan.getUserLocalPath (userName);
+            strCurrentServerPath = propMan.getUserRemotePath (userName);
         }
         else {
             strCurrentServerPath = userName;
-            strCurrentLocalPath = System.getProperty(STR_DEF_FOLDER);
+            strCurrentLocalPath = System.getProperty (STR_DEF_FOLDER);
         }
-        changeLocalFolder(strCurrentLocalPath);
+        changeLocalFolder (strCurrentLocalPath);
     }
 
 /**    Изменяем текущую локальную папку в соотв-вии с параметром strNew. (Синхронизация используется для того, чтобы
@@ -982,4 +953,8 @@ nm.data   = список содержимого этой папки (если н
             return t;
         }
     }
+
+    public boolean isConnected () { return netClient != null  && netClient.isConnected(); }
+
+    public boolean isLocalView (TableView<TableFileInfo> tv) { return tv.equals (tvClientSide); }
 }

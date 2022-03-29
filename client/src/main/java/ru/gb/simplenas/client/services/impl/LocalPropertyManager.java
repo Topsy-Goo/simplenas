@@ -142,7 +142,7 @@ public class LocalPropertyManager implements ClientPropertyManager
     @Override public String getDefaultLastLocalPathString ()  {   return strDefaultLocalPath;   }
 
 //(для случаев, когда пользователь не зарегистрировался)
-    @Override public void setLastLocalPathString (String strLocalPath) {
+    @Override public void setLastLocalPath (String strLocalPath) {
 
         if (!sayNoToEmptyStrings (strLocalPath))
             strLocalPath = System.getProperty (STR_DEF_FOLDER);

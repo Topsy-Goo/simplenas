@@ -27,4 +27,6 @@ public interface NetClient extends Runnable {
     long countFolderEntries (String strParent, FileInfo fi);
 
     NasMsg delete (String strParent, FileInfo fi);
+
+    boolean isConnected ();
 }

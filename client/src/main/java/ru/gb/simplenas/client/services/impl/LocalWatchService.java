@@ -15,7 +15,7 @@ import static ru.gb.simplenas.common.Factory.*;
 import static ru.gb.simplenas.common.services.impl.NasFileManager.*;
 
 public class LocalWatchService implements ClientWatchService {
-
+    private static final boolean WS_DEBUG = false;
     private static final Object            MON_INST  = new Object();
     private        final Object            MON_WATCH = new Object();
     private static       LocalWatchService instance;
@@ -28,7 +28,7 @@ public class LocalWatchService implements ClientWatchService {
 
     public LocalWatchService ()
     {
-lnprint (tt[++level] +"LocalWatchService() start");
+        //if (WS_DEBUG) lnprint (tt[++level] +"WS.LocalWatchService() start");
         try {
             localWatcher = FileSystems.getDefault().newWatchService();
             lnprint ("Создана служба наблюдения за каталогами.");
@@ -38,19 +38,19 @@ lnprint (tt[++level] +"LocalWatchService() start");
             threadWatcher.start();
         }
         catch (IOException e) {e.printStackTrace();}
-lnprint (tt[level--] +"LocalWatchService() end");
+        //if (WS_DEBUG) lnprint (tt[level--] +"WS.LocalWatchService() end");
     }
 
     public static LocalWatchService getInstance ()
     {
-lnprint (tt[++level] +"getInstance() start");
+        //if (WS_DEBUG) lnprint (tt[++level] +"WS.getInstance() start");
         if (instance == null) {
             synchronized (MON_INST) {
                 if (instance == null)
                     instance = new LocalWatchService();
             }
         }
-lnprint (tt[level--] +"getInstance() end");
+        //if (WS_DEBUG) lnprint (tt[level--] +"WS.getInstance() end");
         return instance;
     }
 
@@ -58,26 +58,26 @@ lnprint (tt[level--] +"getInstance() end");
 
     @Override public boolean setCallBack (NasCallback cb)
     {
-lnprint (tt[++level] +"setCallBack() start");
+        //if (WS_DEBUG) lnprint (tt[++level] +"WS.setCallBack() start");
         boolean ok = cb != null;
         if (ok)
             callbackOnCurrentFolderEvents = cb;
-printf ("\n"+ tt[level--] +"setCallBack() end (%b)", ok);
+        //if (WS_DEBUG) printf ("\n"+ tt[level--] +"WS.setCallBack() end (%b)", ok);
         return ok;
     }
 //----------------------------------------------------------------------------------------
 
     @Override public void startWatchingOnFolder (String strFolder)
     {
-lnprint (tt[++level] +"startWatchingOnFolder() start");
+        //if (WS_DEBUG) lnprint (tt[++level] +"WS.startWatchingOnFolder() start");
         stopWatching();
         startWatching (strFolder);
-lnprint (tt[level--] +"startWatchingOnFolder() end");
+        //if (WS_DEBUG) lnprint (tt[level--] +"WS.startWatchingOnFolder() end");
     }
 
     private void threadDoWatching (WatchService service)
     {
-lnprint (tt[++level] +"threadDoWatching() start");
+        //if (WS_DEBUG) lnprint (tt[++level] +"WS.threadDoWatching() start");
         String threadName = Thread.currentThread().getName();
         printf ("\n www www www Поток [%s] службы наблюдения начал работу.", threadName);
         List<NasEvent> watchEvents = new ArrayList<>();
@@ -119,8 +119,8 @@ lnprint (tt[++level] +"threadDoWatching() start");
                                                            key.watchable().toString(),
                                                            event.context().toString());
                                 watchEvents.add (e);
-                                if (DEBUG) printf ("\nсобытие [%s] папка <%s> файл <%s>",
-                                                   e.event, e.path, e.name);
+                                /*if (WS_DEBUG) printf ("\nсобытие [%s] папка <%s> файл <%s>",
+                                                   e.event, e.path, e.name);*/
                             }
                         }
             //Отдаём содержимое списка контроллеру на обработку и очищаем список. Синхронизация в этом
@@ -137,12 +137,12 @@ lnprint (tt[++level] +"threadDoWatching() start");
             catch (ClosedWatchServiceException e) {  service = null; } //< Перехват ClosedWatchServiceException помогает завершить работу сервиса без исключений.
         }//while
         printf ("\n www www www Поток [%s] службы наблюдения завершил работу.", threadName);
-lnprint (tt[level--] +"threadDoWatching() end");
+        //if (WS_DEBUG) lnprint (tt[level--] +"WS.threadDoWatching() end");
     }
 
     private void startWatching (String strFolder)
     {
-printf ("\n"+ tt[++level] +"startWatching (%s) start", strFolder);
+        //if (WS_DEBUG) printf ("\n"+ tt[++level] +"WS.startWatching (%s) start", strFolder);
         if (sayNoToEmptyStrings (strFolder) && localWatcher != null)
         {
             Path p = stringToExistingFolder (strFolder);
@@ -155,27 +155,26 @@ printf ("\n"+ tt[++level] +"startWatching (%s) start", strFolder);
                     catch (Exception e) { e.printStackTrace(); }
                 }
         }
-lnprint (tt[level--] +"startWatching() end");
+        //if (WS_DEBUG) lnprint (tt[level--] +"WS.startWatching() end");
     }
 
     private void stopWatching ()
     {
-lnprint (tt[++level] +"stopWatching() start");
+        //if (WS_DEBUG) lnprint (tt[++level] +"WS.stopWatching() start");
         synchronized (MON_WATCH) {
             if (localWatchingKey != null) {
                 localWatchingKey.cancel();  //< Это можно делать многократно;
-                if (DEBUG)
-                    printf ("\nПрекращено наблюдение за папкой <%s>.", localWatchingKey.watchable());
+                //if (WS_DEBUG) printf ("\nПрекращено наблюдение за папкой <%s>.", localWatchingKey.watchable());
                 localWatchingKey = null;  /* после «отмены» ключ делается недействтельным навсегда, но может
                 получить список событий, произошедших с момента последнего извлечения до момента «отмены». */
             }
         }
-lnprint (tt[level--] +"stopWatching() end");
+        //if (WS_DEBUG) lnprint (tt[level--] +"WS.stopWatching() end");
     }
 
     @Override public void close ()
     {
-lnprint (tt[++level] +"close() start");
+        //if (WS_DEBUG) lnprint (tt[++level] +"WS.close() start");
         stopWatching();
         try {
             localWatcher.close();
@@ -184,7 +183,7 @@ lnprint (tt[++level] +"close() start");
             // можно многократно закрывать.
         }
         catch (IOException e) {e.printStackTrace();}
-lnprint (tt[level--] +"close() end");
+        //if (WS_DEBUG) lnprint (tt[level--] +"WS.close() end");
     }
 
     public static class NasEvent {
@@ -200,18 +199,18 @@ lnprint (tt[level--] +"close() end");
     }
 
     @Override public synchronized void suspendWatching () {
-lnprint (tt[++level] +"suspendWatching() start");
+        //if (WS_DEBUG) lnprint (tt[++level] +"WS.suspendWatching() start");
         stopWatching();
-lnprint (tt[level--] +"suspendWatching() end");
+        //if (WS_DEBUG) lnprint (tt[level--] +"WS.suspendWatching() end");
     }
 
     @Override public synchronized void resumeWatching (String strFolder) {
-lnprint (tt[++level] +"resumeWatching() start");
+        //if (WS_DEBUG) lnprint (tt[++level] +"WS.resumeWatching() start");
         startWatching (strFolder);
-lnprint (tt[level--] +"resumeWatching() end");
+        //if (WS_DEBUG) lnprint (tt[level--] +"WS.resumeWatching() end");
     }
 
-    static String[] tt = {
+/*    static String[] tt = {
         "",
         "\t",
         "\t\t",
@@ -225,7 +224,7 @@ lnprint (tt[level--] +"resumeWatching() end");
         "\t\t\t\t\t\t\t\t\t\t",
         "\t\t\t\t\t\t\t\t\t\t\t",
         "\t\t\t\t\t\t\t\t\t\t\t\t",
-        "\t\t\t\t\t\t\t\t\t\t\t\t\t"};
+        "\t\t\t\t\t\t\t\t\t\t\t\t\t"};*/
 }
 /* Как работает служба наблюдения:
 
@@ -253,5 +252,4 @@ lnprint (tt[level--] +"resumeWatching() end");
       не регистрируются. Недействительный ключ может быть извлечён и для него может
       быть получен список необработанных событий при пом pollEvents(). НК нельзя вернуть
       к наблюдению.
-
 */

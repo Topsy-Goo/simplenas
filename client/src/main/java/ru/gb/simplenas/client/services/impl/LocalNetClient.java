@@ -2,7 +2,6 @@ package ru.gb.simplenas.client.services.impl;
 
 import com.sun.istack.internal.NotNull;
 import io.netty.bootstrap.Bootstrap;
-import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.EventLoopGroup;
@@ -26,6 +25,10 @@ import ru.gb.simplenas.common.structs.NasMsg;
 import ru.gb.simplenas.common.structs.OperationCodes;
 
 import java.nio.file.Paths;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadFactory;
 
 import static ru.gb.simplenas.client.CFactory.ALERTHEADER_CONNECTION;
 import static ru.gb.simplenas.client.Controller.messageBox;
@@ -33,36 +36,39 @@ import static ru.gb.simplenas.common.CommonData.*;
 import static ru.gb.simplenas.common.Factory.lnprint;
 import static ru.gb.simplenas.common.Factory.sayNoToEmptyStrings;
 import static ru.gb.simplenas.common.structs.OperationCodes.*;
+import static sun.misc.Version.print;
 
 public class LocalNetClient implements NetClient {
 
-    private static final Logger LOGGER          = LogManager.getLogger(LocalNetClient.class.getName());
-    private final Object syncObj                = new Object();
-    private final Object syncObj4ConnectionOnly = new Object();
-
-    private SocketChannel       schannel;
-    private Channel             channelOfChannelFuture;
-    private Thread              threadNetWork;
-    private String              userName;
-    private ClientManipulator   manipulator;
-    private NasCallback         callbackOnDisconnection = this::callbackDummy;
-    private boolean             connected               = false;
-
-    private final int    port;
-    private final String hostName;
-    private NasMsg       nmSyncResult;    //< для передачи сообщений между синхронизированными потоками
-    private NasDialogue  closedDialogue;
+    private static final Logger LOGGER = LogManager.getLogger(LocalNetClient.class.getName());
+    private        final Object syncObj                = new Object();
+    private        final Object syncObj4ConnectionOnly = new Object();
+    private              SocketChannel       schannel;
+    //private              Channel             channelOfChannelFuture;  << идентичен schannel
+    private              Thread              threadNetWork;
+    private              String              userName;
+    private        final ClientManipulator manipulator;
+    private              NasCallback       callbackOnNetClientDisconnection = this::callbackDummy;
+    private              boolean           connected  = false;
+    private        final int    port;
+    private        final String hostName;
+    private              NasMsg       nmSyncResult;    //< для передачи сообщений между синхронизированными потоками
+    private              NasDialogue  closedDialogue;
 
 
-    public LocalNetClient (NasCallback cbDisconnection, int p, String hName) {
-        callbackOnDisconnection = cbDisconnection;
+    public LocalNetClient (NasCallback cbDisconnection, int p, String hName)
+    {
+        callbackOnNetClientDisconnection = cbDisconnection;
         port = p;
         hostName = hName;
         manipulator = new LocalManipulator (this::callbackOnChannelActive,
                                             this::callbackOnMsgIncoming,
                                             this::callbackInfo);
-        LOGGER.debug("создан LocalNetClient");
+        //LOGGER.debug("создан LocalNetClient");
     }
+
+    @Override public boolean isConnected () { return connected; }
+
 //----------------------- колбэки для связи с манипулятором ------------------------------------
 
     void callbackDummy (Object... objects) {}
@@ -94,8 +100,7 @@ public class LocalNetClient implements NetClient {
 /** Вызывается из манипулятора. Служит для информирования юзером о событиях.  */
     void callbackInfo (Object... objects)
     {
-        if (objects != null)
-        {
+        if (objects != null) {
             String header        = (objects.length > 0) ? (String) objects[0] : "Ошибка!";
             String text          = (objects.length > 1) ? (String) objects[1] : ERROR_UNABLE_TO_PERFORM;
             Alert.AlertType type = (objects.length > 2) ? (Alert.AlertType) objects[2] : Alert.AlertType.NONE;
@@ -108,26 +113,29 @@ public class LocalNetClient implements NetClient {
 // Запускаем поток, который соединяется с сервером.
     @Override public boolean connect ()
     {
-        boolean isOnAir = schannel != null && schannel.isOpen();
+        boolean onAir = schannel != null && schannel.isOpen();
 
-        if (isOnAir) messageBox(ALERTHEADER_CONNECTION, "Уже установлено.", Alert.AlertType.INFORMATION);
+        if (onAir)
+            messageBox (ALERTHEADER_CONNECTION, "Уже установлено.", Alert.AlertType.INFORMATION);
         else {
             synchronized (syncObj4ConnectionOnly) {
                 schannel = null;
-                threadNetWork = new Thread(this);
-                //threadNetWork.setDaemon(true);
+                threadNetWork = new Thread (this);
+                threadNetWork.setDaemon(true);
                 threadNetWork.start();
                 try {
-                    syncObj4ConnectionOnly.wait(10000);
+                    syncObj4ConnectionOnly.wait();
                 }
-                catch (InterruptedException e) {e.printStackTrace();}
-                isOnAir = schannel != null;
+                catch (InterruptedException e) { e.printStackTrace(); }
+                onAir = schannel != null;
             }//sync
         }
-        return isOnAir;
+        return onAir;
     }
 
-    @Override public void run () {
+    @Override public void run ()
+    {
+        ChannelFuture cfuture = null;
         EventLoopGroup groupWorker = new NioEventLoopGroup();
         try {
             Bootstrap b = new Bootstrap();
@@ -153,17 +161,13 @@ public class LocalNetClient implements NetClient {
                                                    );
                  }
              });
-            // !!! Важное замечание: если подключиться к серверу в потоке JavaFX, то
-            //          блокировка cfuture.channel().closeFuture().sync()  заблокирует весь клиент.
+//Одинаковыми оказались:
+//      SocketChannel sC,
+//      cfuture.channel(),
+//      LocalManipulator.channelActive().ctx.channel
 
-            //Одинаковыми оказались:
-            //      SocketChannel sC,
-            //      cfuture.channel(),
-            //      LocalManipulator.channelActive().ctx.channel
-
-            ChannelFuture cfuture = b.connect(hostName, port).sync();
-            this.channelOfChannelFuture = cfuture.channel();
-            this.connected = true;
+            cfuture = b.connect (hostName, port).sync();
+            connected = true;
 
             lnprint("\n\t\t*** Connected (" + port + "). ***\n");
 
@@ -175,50 +179,46 @@ public class LocalNetClient implements NetClient {
         catch (Exception e) { e.printStackTrace(); }
         finally {
             groupWorker.shutdownGracefully();
-            disconnect();
+            inlineCleanUpOnDisconnection();
             synchronized (syncObj4ConnectionOnly) {   // это продолжит исполнение LocalNetClient.connect(), если сервера нет.
                 syncObj4ConnectionOnly.notify();
             }
         }
     }
 
-/** Метод может вызываться из Controller.closeSession() и из блока catch в run().
-(закрытие socketChannel приведёт к выполнению блока finally в run().)     */
+/** Убираем за собой после закрытия соединения с сервером. */
+    private void inlineCleanUpOnDisconnection ()
+    {
+        int scPort = (schannel != null) ? schannel.remoteAddress().getPort() : -1;
+        if (connected)
+            callbackOnNetClientDisconnection.callback(); //< делаем что-то в контроллере
+        connected = false;
+        manipulator.setSocketChannel (null);
+        schannel = null;
+        userName = null;
+        threadNetWork = null;
+        lnprint("\n\t\t*** Disconnected (" + scPort + "). ***\n");
+    }
+
+/** Метод вызываться из Controller.closeSession(), т.е. когда юзер закрывает приложжение,
+    не разорвав соединение с сервером.  */
     @Override public void disconnect ()
     {
-        //делаем что-то в контроллере
-        if (connected)
-            callbackOnDisconnection.callback();
-
-        manipulator.setSocketChannel (null);
-
-        //закрываем канал
-        if (schannel != null && schannel.isOpen()) {
-            sendExitMessage();
-            schannel.disconnect();
+        if (connected) {
+            sendExitMessageToServer();
+            schannel.close();
         }
-        //закрытие фьючерса желательно, иначе закрытие канала (инициированное пользователем)
-        // происходит заметно дольше.
-        if (channelOfChannelFuture != null && channelOfChannelFuture.isOpen())
-            channelOfChannelFuture.closeFuture();
-
-        lnprint("\n\t\t*** Disconnected. ***\n");
-        connected = false;
-        schannel = null;
-        channelOfChannelFuture = null;
-        threadNetWork = null;
-        userName = null;
     }
 //------------------------------- команды для запросов к серверу ------------------------------------------------*/
 
-    @Override public NasMsg login (@NotNull String username, @NotNull String password)
+    @Override public NasMsg login (String login, String password)
     {
         NasMsg result = null;
-        if (sayNoToEmptyStrings(username)) {
+        if (sayNoToEmptyStrings (login, password)) {
 
             synchronized (syncObj) {
-                NasMsg nm = new NasMsg (NM_OPCODE_LOGIN, username, OUTBOUND);
-                nm.setdata(password);
+                NasMsg nm = new NasMsg (NM_OPCODE_LOGIN, login, OUTBOUND);
+                nm.setdata (password);
                 nmSyncResult = null;
 
                 if (manipulator.startSimpleRequest (nm)) {
@@ -442,7 +442,7 @@ public class LocalNetClient implements NetClient {
     }
 
 /** Отправляем серверу сообщене EXIT  */
-    void sendExitMessage ()
+    void sendExitMessageToServer ()
     {
         if (schannel != null && schannel.isOpen())
             manipulator.startExitRequest();
