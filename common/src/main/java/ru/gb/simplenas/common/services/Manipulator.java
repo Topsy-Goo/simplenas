@@ -5,12 +5,11 @@ import ru.gb.simplenas.common.structs.NasMsg;
 
 import java.io.IOException;
 
-public interface Manipulator {    //эти методы нужны серверу и клиенту
+public interface Manipulator {
 
 /** Поскольку этот метод вызывается <u>только</u> из NasMsgInboundHandler.channelRead0(),
 *    то мы с чистой совестью можем пробрасывать IOException, если не собираемся его обрабатывать.<p>
-*    см. {@link NasMsgInboundHandler}
-*/
+*    см. {@link ru.gb.simplenas.common.services.impl.NasMsgInboundHandler}  */
     void handle (ChannelHandlerContext ctx, NasMsg nm) throws IOException;
 
     void onChannelActive (ChannelHandlerContext ctx);

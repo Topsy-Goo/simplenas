@@ -40,21 +40,20 @@ import static ru.gb.simplenas.common.structs.OperationCodes.*;
 public class LocalManipulator implements ClientManipulator
 {
     private final static Logger LOGGER = LogManager.getLogger(LocalManipulator.class.getName());
-    private       SocketChannel schannel;
-    private       Map<OperationCodes, Method> mapManipulateMetods, mapEndupMetods;
+    private              SocketChannel schannel;
+    private              Map<OperationCodes, Method> mapManipulateMetods, mapEndupMetods;
 
-    private NasCallback callbackOnChannelActive = this::callbackDummy;  //< для последовательного процесса подключения
-    private NasCallback callbackOnMsgIncoming   = this::callbackDummy;  //< для доставки результатов запросов
-    private NasCallback callbackInfo            = this::callbackDummy;
-    private NasDialogue dialogue;
-
+    private              NasCallback callbackOnChannelActive = this::callbackDummy;  //< для последовательного процесса подключения
+    private              NasCallback callbackOnMsgIncoming   = this::callbackDummy;  //< для доставки результатов запросов
+    private              NasCallback callbackInfo            = this::callbackDummy;
+    private              NasDialogue dialogue;
 
     public LocalManipulator (NasCallback callbackOnChannelActive,
-                             NasCallback callbackOnMsgIncoming,
+                             //NasCallback callbackOnMsgIncoming,
                              NasCallback callbackInfo)
     {
         this.callbackOnChannelActive = callbackOnChannelActive;
-        this.callbackOnMsgIncoming = callbackOnMsgIncoming;
+        //this.callbackOnMsgIncoming = callbackOnMsgIncoming;
         this.callbackInfo = callbackInfo;
         buildMethodsMaps();
         LOGGER.debug("создан LocalManipulator");
@@ -126,13 +125,17 @@ public class LocalManipulator implements ClientManipulator
     {
         if (dialogue != null) {
             if (DEBUG) lnprint ("M:пришло сообщение: " + nm.opCode() + "; тема: " + dialogue.getTheme());
-            //dialogue.add(nm);
-            stopTalking(/*nm*/);
-            callbackOnMsgIncoming.callback (nm);
+
+        //Если getSynque().offer(nm) вызвать до удаления текущего dialogue, то следующая операция может
+        // начаться раньше, чем текущйи dialogue будет удалён — сработает isManipulatorBusy().
+            NasDialogue tmpd = dialogue;
+            stopTalking();
+            tmpd.getTheme().getSynque().offer(nm);
         }
         else provideErrorMessage (nm.opCode().getHeader(), PROMPT_INCORRECT_OPERATION_TERMINATION, Alert.AlertType.ERROR);
     }
 //---------------------------------- LIST ------------------------------------------------------*/
+/*  Список передаётся по одному элементу. Передаётся доволно быстро. */
 
     @Override public boolean startListRequest (NasMsg nm)
     {
@@ -179,7 +182,8 @@ public class LocalManipulator implements ClientManipulator
         }
         if (err != null)
             provideErrorMessage (NM_OPCODE_LIST.getHeader(), err, Alert.AlertType.ERROR);
-        callbackOnMsgIncoming.callback (nm);
+        NM_OPCODE_LIST.getSynque().offer(nm); //< предъявляем результат и уходим (без к-л. ожидания;
+        // нет-клиент должен караулить этот момент)
     }
 
 //---------------------------------- LOAD2LOCAL ------------------------------------------------*/
@@ -532,8 +536,12 @@ public class LocalManipulator implements ClientManipulator
     {
         if (message != null)
             nm.setmsg (message);   //< это сообщение для вызывающей ф-ции
-        stopTalking (/*nm*/);
-        callbackOnMsgIncoming.callback (nm);
+
+    //Если getSynque().offer(nm) вызвать до удаления текущего dialogue, то следующая операция может
+    // начаться раньше, чем текущйи dialogue будет удалён — сработает isManipulatorBusy().
+        NasDialogue tmpd = dialogue;
+        stopTalking ();
+        tmpd.getTheme().getSynque().offer(nm);
     }
 
 /** Проверяем, не занят ли клиент обработкой к-л. запроса и, если занят, составляем для юзера

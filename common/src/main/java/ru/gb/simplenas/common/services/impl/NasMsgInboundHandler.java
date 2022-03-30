@@ -17,7 +17,9 @@ public class NasMsgInboundHandler extends SimpleChannelInboundHandler<NasMsg>// 
     }
 
     //«SimpleChannelInboundHandler автоматически освобождает ресурсы…»
-    @Override protected void channelRead0 (ChannelHandlerContext ctx, NasMsg nm) throws Exception {
+    @Override protected void channelRead0 (ChannelHandlerContext ctx, NasMsg nm) throws Exception
+    {
+        //ctx.channel();
         manipulator.handle (ctx, nm);
     }
 //---------------------- методы жизненного циклла хэндлера ----------------------------

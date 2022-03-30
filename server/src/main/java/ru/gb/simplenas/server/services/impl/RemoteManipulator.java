@@ -500,8 +500,8 @@ public class RemoteManipulator implements Manipulator {
                 pathCurrentAbsolute = valid;
                 sendFileInfoList (listFolderContents(valid));
 
-                nm.setmsg(sfm.relativizeByUserName(userName, valid).toString());  //< эту строку клиент должен отобразить в соотв. поле ввода.
-                informClientWithOperationCode(nm, NM_OPCODE_OK);
+                nm.setmsg (sfm.relativizeByUserName (userName, valid).toString());  //< эту строку клиент должен отобразить в соотв. поле ввода.
+                informClientWithOperationCode (nm, NM_OPCODE_OK);
             }
             else replyWithErrorMessage(SFactory.ERROR_INVALID_FOLDER_SPECIFIED);
         }
@@ -510,7 +510,7 @@ public class RemoteManipulator implements Manipulator {
     private void sendFileInfoList (@NotNull List<FileInfo> flist) {
         if (socketChannel != null && flist != null) {
 
-            NasMsg newnm   = new NasMsg(NM_OPCODE_LIST, null, OUTBOUND);
+            NasMsg newnm   = new NasMsg (NM_OPCODE_LIST, null, OUTBOUND);
             int    counter = 0;
             for (FileInfo fi : flist) {
                 newnm.setfileInfo(fi);

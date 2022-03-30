@@ -482,7 +482,7 @@ public class Controller implements Initializable {
     private void inlineReadRemoteFolder (String str)
     {
         NasMsg nm = netClient.goTo (str);
-        if (!workUpAListRequestResult(nm))
+        if (!workUpAListRequestResult (nm))
             messageBox (ALERTHEADER_UNABLE_APPLY_AS_PATH, str, ERROR);
     }
 
@@ -506,7 +506,7 @@ public class Controller implements Initializable {
             if (!sayNoToEmptyStrings(strParent)) strParent = userName;
 
             NasMsg nm = netClient.goTo(strParent);
-            if (nm == null || !workUpAListRequestResult(nm))
+            if (!workUpAListRequestResult (nm))
                 messageBox(ALERTHEADER_UNABLE_APPLY_AS_PATH, strParent, ERROR);
         }
     }
@@ -786,12 +786,12 @@ nm.data   = список содержимого этой папки (если н
         if (dir) {
             entries = netClient.countFolderEntries (strCurrentServerPath, fi);
             error = entries < 0L;
-            ok = !error && (entries == 0L || confirmEntryDeletion(paim, entries));
+            ok = !error && (entries == 0L || confirmEntryDeletion (paim, entries));
         }
         else { ok = confirmFileDeletion(paim); }
 
         if (ok) {
-            OperationCodes opcode = netClient.delete(strCurrentServerPath, fi).opCode();
+            OperationCodes opcode = netClient.delete (strCurrentServerPath, fi).opCode();
             ok = opcode == NM_OPCODE_OK;
             error = opcode == NM_OPCODE_ERROR;
         }
@@ -811,7 +811,7 @@ nm.data   = список содержимого этой папки (если н
     {
         String strTarget = Paths.get (strCurrentLocalPath, tfi.getFileName()).toString();
         String strErr = null;
-        if (!isStringOfRealPath (strTarget) || isItSafeToDownloadFile (strTarget))
+        if (!isStringOfRealPath (strTarget) || isItSafeToReplaceFile (strTarget))
         {
     /* При скачивании файла в локальную папку создаётся временный каталог, потом из него
        переносится файл, потом временный каталог удаляется… Служба наблюдения не должна
@@ -834,7 +834,7 @@ nm.data   = список содержимого этой папки (если н
     }
 
 /** проверяем, существует ли файл и, если существует, запрашиваем у юзера подтверждение на перезапись   */
-    private boolean isItSafeToDownloadFile (String strTarget)
+    private boolean isItSafeToReplaceFile (String strTarget)
     {
         String s = sformat (PROMPT_FORMAT_REPLACE_CONFIRMATION, strTarget);
         return ANSWER_OK == messageBoxConfirmation (ALERTHEADER_DOWNLOADING, s,
@@ -846,7 +846,7 @@ nm.data   = список содержимого этой папки (если н
 
         String strTargetName = tfi.getFileName();
         String strErr = ERROR_UNABLE_TO_PERFORM;
-        FileInfo fi = netClient.fileInfo(strCurrentServerPath, strTargetName);
+        FileInfo fi = netClient.fileInfo (strCurrentServerPath, strTargetName);
 
         if (fi != null) {
             if (fi.isDirectory()) {

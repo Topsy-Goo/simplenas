@@ -17,6 +17,7 @@ public class CommonData {
     public static final boolean SYMBOLIC =   true, NOT_SYMBOLIC =  !SYMBOLIC;
     public static final boolean ENABLE =     true, DISABLE =       !ENABLE;
     public static final boolean CONNECTED =  true, NOT_CONNECTED = !CONNECTED;
+    public  static final boolean FAIR      = true;
 
     public static final ZoneId   ZONE_ID = ZoneId.systemDefault();
     public static final Locale   RU_LOCALE      = new Locale ("ru", "RU");
